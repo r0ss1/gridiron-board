@@ -167,6 +167,7 @@
   tbody tr:hover{background:rgba(255,255,255,.02);}
   .rank{font-family:'JetBrains Mono', monospace; color:var(--chalk-dim); width:28px;}
   .team-name{font-weight:600;}
+  .team-id{font-family:'JetBrains Mono', monospace; font-weight:400; font-size:11px; color:var(--chalk-dim);}
   .team-owner{display:block; font-size:10px; color:var(--chalk-dim); font-weight:400;}
   td.num{font-family:'JetBrains Mono', monospace;}
   .rec{white-space:nowrap;}
@@ -375,6 +376,18 @@ const HISTORY_DEFAULT_LOOKBACK = 9;
 histToInput.value = latestLikelySeason;
 histFromInput.value = latestLikelySeason - HISTORY_DEFAULT_LOOKBACK;
 
+// ---------------------------------------------------------------
+// Rename any team here — keys are ESPN's internal team ID, which stays
+// stable for a franchise slot across seasons even if the owner renames
+// their team in ESPN every year. Find each team's ID in the small "#" tag
+// next to their name on the Standings tab. Teams left out just show
+// whatever name ESPN has for them that season.
+// ---------------------------------------------------------------
+const TEAM_NAME_OVERRIDES = {
+  // 1: "The Gridiron Gurus",
+  // 4: "Waiver Wire Wizards",
+};
+
 let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
@@ -388,6 +401,7 @@ function setTab(name){
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
 function teamDisplayName(t){
+  if (TEAM_NAME_OVERRIDES[t.id] !== undefined) return TEAM_NAME_OVERRIDES[t.id];
   if (t.name) return t.name;
   const loc = t.location || '';
   const nick = t.nickname || '';
@@ -479,7 +493,7 @@ function renderStandings(){
     const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
-      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + '</td>' +
+      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + ' <span class="team-id">#' + t.id + '</span></td>' +
       '<td class="num rec">' + rec + '</td>' +
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
