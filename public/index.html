@@ -246,6 +246,38 @@
   .trend.down{color:var(--loss);}
   .trend.flat{color:var(--ink-dim);}
 
+  /* Awards */
+  .award-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+    margin-bottom:20px;
+  }
+  .award-card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    display:grid;
+    grid-template-columns:auto 1fr;
+    gap:14px;
+    align-items:center;
+  }
+  .award-emoji{font-size:26px; line-height:1;}
+  .award-title{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    letter-spacing:.01em;
+  }
+  .award-desc{font-size:11px; color:var(--ink-dim); margin-top:1px;}
+  .award-winner{font-weight:600; font-size:14px; margin-top:6px;}
+  .award-detail{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--ink-dim);
+    margin-top:2px;
+  }
+
   /* History */
   .season-picker{
     display:flex;
@@ -351,6 +383,7 @@
     <button data-tab="standings" class="active">Standings</button>
     <button data-tab="matchups">Matchups</button>
     <button data-tab="power">Power Rankings</button>
+    <button data-tab="awards">Awards</button>
     <button data-tab="history">History</button>
   </nav>
 
@@ -358,6 +391,7 @@
   <div id="standingsView"></div>
   <div id="matchupsView" style="display:none;"></div>
   <div id="powerView" style="display:none;"></div>
+  <div id="awardsView" style="display:none;"></div>
   <div id="historyView" style="display:none;">
     <div class="controls" style="margin-top:0;">
       <div class="field">
@@ -393,6 +427,7 @@ const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
 const powerView = document.getElementById('powerView');
+const awardsView = document.getElementById('awardsView');
 const historyView = document.getElementById('historyView');
 const histFromInput = document.getElementById('histFrom');
 const histToInput = document.getElementById('histTo');
@@ -441,7 +476,7 @@ const TEAM_NAME_OVERRIDES = {
   // 4: "Waiver Wire Wizards",
 };
 
-let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
+let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
@@ -449,6 +484,7 @@ function setTab(name){
   standingsView.style.display = name === 'standings' ? '' : 'none';
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
   powerView.style.display = name === 'power' ? '' : 'none';
+  awardsView.style.display = name === 'awards' ? '' : 'none';
   historyView.style.display = name === 'history' ? '' : 'none';
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
@@ -563,6 +599,7 @@ async function loadLeague(){
     state.schedule = data.schedule || [];
     state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
     state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
+    state.seasonYear = parseInt(season, 10);
 
     leagueTitle.textContent = state.leagueName;
     weekChip.innerHTML = state.currentWeek
@@ -572,6 +609,7 @@ async function loadLeague(){
     renderStandings();
     renderMatchups();
     renderPowerRankings();
+    renderAwards();
     statusArea.innerHTML = '';
   } catch (err) {
     statusArea.innerHTML = '<div class="error"><strong>Couldn\'t reach the proxy.</strong> ' +
@@ -801,8 +839,7 @@ function renderPowerRankingsMultiSeason(){
     cb.addEventListener('change', () => {
       const year = parseInt(cb.dataset.year, 10);
       if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
-      renderPowerRankingsMultiSeason();
-      renderHistoryContent(); // keep the History tab's picker in sync
+      refreshSeasonDependentViews();
     });
   });
 }
@@ -889,6 +926,204 @@ function renderPointsTrendChart(byTeam, allWeeks, teamList, seasonBoundaries, to
     '</div>';
 }
 
+// ---------------------------------------------------------------
+// Awards. Works from the same single-season-vs-history split as Power
+// Rankings: with history loaded, uses whatever seasons are checked; with
+// no history, falls back to the currently loaded season only.
+// ---------------------------------------------------------------
+
+function renderAwards(){
+  if (history.loadedSeasons.length) {
+    renderAwardsMultiSeason();
+  } else {
+    renderAwardsSingleSeason();
+  }
+}
+
+function renderAwardsSingleSeason(){
+  const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock all-time / select-years awards here too.</p>';
+  if (!state.teams.length) {
+    awardsView.innerHTML = note + '<div class="status">Load a league first.</div>';
+    return;
+  }
+  const seasonsData = [{ year: state.seasonYear, teams: state.teams, schedule: state.schedule }];
+  awardsView.innerHTML = note + buildAwardsHtml(seasonsData);
+}
+
+function renderAwardsMultiSeason(){
+  const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => a - b);
+  const picker = renderSeasonPicker();
+
+  if (!years.length) {
+    awardsView.innerHTML = picker + '<div class="status">Select at least one season above.</div>';
+    return;
+  }
+
+  const seasonsData = years.map(y => ({ year: y, teams: history.data[y].teams || [], schedule: history.data[y].schedule || [] }));
+  awardsView.innerHTML = picker + buildAwardsHtml(seasonsData);
+
+  awardsView.querySelectorAll('.season-chip input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const year = parseInt(cb.dataset.year, 10);
+      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
+      refreshSeasonDependentViews();
+    });
+  });
+}
+
+function buildAwardsHtml(seasonsData){
+  const awards = computeAwards(seasonsData);
+  if (!awards || !awards.length) {
+    return '<div class="status">Not enough completed games yet to hand out awards.</div>';
+  }
+  const cards = awards.map(a =>
+    '<div class="award-card">' +
+      '<div class="award-emoji">' + a.emoji + '</div>' +
+      '<div>' +
+        '<div class="award-title">' + escapeHtml(a.title) + '</div>' +
+        '<div class="award-desc">' + escapeHtml(a.desc) + '</div>' +
+        '<div class="award-winner">' + escapeHtml(a.winner) + '</div>' +
+        '<div class="award-detail">' + escapeHtml(a.detail) + '</div>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+  return '<div class="award-grid">' + cards + '</div>';
+}
+
+// Flattens one or more seasons of {teams, schedule} into:
+//  - teamGames: one row per team per completed game (for score/streak awards)
+//  - games: one row per completed game (for margin awards)
+//  - seasonRecords: one row per team per season (for best/worst season)
+function buildAwardsFromSeasons(seasonsData){
+  const teamGames = [];
+  const games = [];
+  const seasonRecords = [];
+
+  seasonsData.forEach(({ year, teams, schedule }) => {
+    const nameById = {};
+    teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
+
+    teams.forEach(t => {
+      const r = t.record?.overall || {};
+      const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
+      if (gp > 0) {
+        seasonRecords.push({
+          name: nameById[t.id], season: year,
+          wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0,
+          winPct: ((r.wins || 0) + (r.ties || 0) * 0.5) / gp,
+        });
+      }
+    });
+
+    (schedule || []).forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
+      const hName = nameById[g.home.teamId] || ('Team ' + g.home.teamId);
+      const aName = nameById[g.away.teamId] || ('Team ' + g.away.teamId);
+
+      games.push({ season: year, week: g.matchupPeriodId, homeName: hName, homePts: hp, awayName: aName, awayPts: ap, margin: Math.abs(hp - ap), winner: g.winner });
+
+      const hResult = g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T';
+      const aResult = g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T';
+      teamGames.push({ teamId: g.home.teamId, name: hName, season: year, week: g.matchupPeriodId, points: hp, oppName: aName, result: hResult });
+      teamGames.push({ teamId: g.away.teamId, name: aName, season: year, week: g.matchupPeriodId, points: ap, oppName: hName, result: aResult });
+    });
+  });
+
+  return { teamGames, games, seasonRecords };
+}
+
+function weekLabel(g, multiSeason){
+  return (multiSeason ? g.season + ' ' : '') + 'Week ' + g.week;
+}
+
+function computeAwards(seasonsData){
+  const { teamGames, games, seasonRecords } = buildAwardsFromSeasons(seasonsData);
+  if (!teamGames.length) return null;
+  const multi = seasonsData.length > 1;
+  const awards = [];
+
+  const highest = teamGames.reduce((a, b) => b.points > a.points ? b : a);
+  awards.push({ emoji: '🔥', title: 'Blowtorch', desc: 'Highest single-week score', winner: highest.name, detail: highest.points.toFixed(1) + ' pts · ' + weekLabel(highest, multi) });
+
+  const lowest = teamGames.reduce((a, b) => b.points < a.points ? b : a);
+  awards.push({ emoji: '🥶', title: 'Ice Cold', desc: 'Lowest single-week score', winner: lowest.name, detail: lowest.points.toFixed(1) + ' pts · ' + weekLabel(lowest, multi) });
+
+  const decisive = games.filter(g => g.winner !== 'TIE');
+  if (decisive.length) {
+    const blowout = decisive.reduce((a, b) => b.margin > a.margin ? b : a);
+    const bWinner = blowout.winner === 'HOME' ? blowout.homeName : blowout.awayName;
+    const bLoser = blowout.winner === 'HOME' ? blowout.awayName : blowout.homeName;
+    awards.push({ emoji: '💥', title: 'Mercy Rule', desc: 'Biggest margin of victory', winner: bWinner, detail: '+' + blowout.margin.toFixed(1) + ' over ' + bLoser + ' · ' + weekLabel(blowout, multi) });
+
+    const nail = decisive.reduce((a, b) => b.margin < a.margin ? b : a);
+    const nWinner = nail.winner === 'HOME' ? nail.homeName : nail.awayName;
+    const nLoser = nail.winner === 'HOME' ? nail.awayName : nail.homeName;
+    awards.push({ emoji: '😰', title: 'Nail-Biter', desc: 'Closest final margin', winner: nWinner, detail: '+' + nail.margin.toFixed(1) + ' over ' + nLoser + ' · ' + weekLabel(nail, multi) });
+  }
+
+  const losses = teamGames.filter(g => g.result === 'L');
+  if (losses.length) {
+    const heartbreak = losses.reduce((a, b) => b.points > a.points ? b : a);
+    awards.push({ emoji: '💔', title: 'Heartbreaker', desc: 'Highest score in a loss', winner: heartbreak.name, detail: heartbreak.points.toFixed(1) + ' pts, lost to ' + heartbreak.oppName + ' · ' + weekLabel(heartbreak, multi) });
+  }
+
+  const wins = teamGames.filter(g => g.result === 'W');
+  if (wins.length) {
+    const lucky = wins.reduce((a, b) => b.points < a.points ? b : a);
+    awards.push({ emoji: '🍀', title: 'Lucky Escape', desc: 'Lowest score in a win', winner: lucky.name, detail: lucky.points.toFixed(1) + ' pts, beat ' + lucky.oppName + ' · ' + weekLabel(lucky, multi) });
+  }
+
+  if (seasonRecords.length) {
+    const best = seasonRecords.reduce((a, b) => b.winPct > a.winPct ? b : a);
+    awards.push({ emoji: '👑', title: 'Best Season', desc: 'Best single-season record', winner: best.name, detail: best.wins + '-' + best.losses + (best.ties ? '-' + best.ties : '') + ' · ' + best.season });
+
+    const worst = seasonRecords.reduce((a, b) => b.winPct < a.winPct ? b : a);
+    awards.push({ emoji: '🪦', title: 'Worst Season', desc: 'Worst single-season record', winner: worst.name, detail: worst.wins + '-' + worst.losses + (worst.ties ? '-' + worst.ties : '') + ' · ' + worst.season });
+  }
+
+  const streaks = computeStreaks(teamGames, multi);
+  if (streaks.bestWin) awards.push({ emoji: '🚀', title: 'Hot Streak', desc: 'Longest win streak', winner: streaks.bestWin.name, detail: streaks.bestWin.length + ' straight wins · ' + streaks.bestWin.range });
+  if (streaks.worstLoss) awards.push({ emoji: '📉', title: 'The Skid', desc: 'Longest losing streak', winner: streaks.worstLoss.name, detail: streaks.worstLoss.length + ' straight losses · ' + streaks.worstLoss.range });
+
+  return awards;
+}
+
+function computeStreaks(teamGames, multi){
+  const byTeam = {};
+  teamGames.forEach(g => { (byTeam[g.teamId] = byTeam[g.teamId] || []).push(g); });
+  Object.values(byTeam).forEach(arr => arr.sort((a, b) => a.season - b.season || a.week - b.week));
+
+  let bestWin = null, worstLoss = null;
+
+  Object.values(byTeam).forEach(arr => {
+    let curResult = null, curLen = 0, curStart = null;
+    arr.forEach(g => {
+      const relevant = g.result === 'W' ? 'W' : g.result === 'L' ? 'L' : null;
+      if (relevant && relevant === curResult) {
+        curLen++;
+      } else {
+        curResult = relevant;
+        curLen = relevant ? 1 : 0;
+        curStart = g;
+      }
+      if (curResult === 'W' && curLen >= 2 && (!bestWin || curLen > bestWin.length)) {
+        bestWin = { name: g.name, length: curLen, range: streakRange(curStart, g, multi) };
+      }
+      if (curResult === 'L' && curLen >= 2 && (!worstLoss || curLen > worstLoss.length)) {
+        worstLoss = { name: g.name, length: curLen, range: streakRange(curStart, g, multi) };
+      }
+    });
+  });
+
+  return { bestWin, worstLoss };
+}
+
+function streakRange(start, end, multi){
+  const s = weekLabel(start, multi), e = weekLabel(end, multi);
+  return s === e ? s : s + ' – ' + e;
+}
+
 // Static cache, committed to the repo at data/history-cache.json. Anyone
 // visiting the site reads old seasons straight from this file — no ESPN
 // login needed on their end. Only whoever generates the file (via the
@@ -969,8 +1204,7 @@ async function loadHistory(){
   historyStatus.textContent = statusMsg;
 
   histLoadBtn.disabled = false;
-  renderHistoryContent();
-  renderPowerRankings();
+  refreshSeasonDependentViews();
 }
 
 async function downloadHistoryCache(){
@@ -1176,8 +1410,7 @@ function renderHistoryContent(){
     cb.addEventListener('change', () => {
       const year = parseInt(cb.dataset.year, 10);
       if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
-      renderHistoryContent();
-      renderPowerRankings(); // keep the Power Rankings tab's picker in sync
+      refreshSeasonDependentViews();
     });
   });
 }
@@ -1198,6 +1431,12 @@ loadLeague();
 // automatically on startup — no one has to tap "Fetch history" first. Tapping
 // "Fetch history" later still works as before (e.g. to pull in newer seasons
 // not yet in the cache file, or ones outside the cache entirely).
+function refreshSeasonDependentViews(){
+  renderHistoryContent();
+  renderPowerRankings();
+  renderAwards();
+}
+
 async function autoLoadHistoryFromCache(){
   const cache = await loadHistoryCache();
   const years = Object.keys(cache)
@@ -1212,8 +1451,7 @@ async function autoLoadHistoryFromCache(){
   history.checkedSeasons = new Set(years);
 
   historyStatus.textContent = 'Loaded ' + years.length + ' season(s) from the cache file.';
-  renderHistoryContent();
-  renderPowerRankings();
+  refreshSeasonDependentViews();
 }
 autoLoadHistoryFromCache();
 
