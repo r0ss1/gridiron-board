@@ -195,6 +195,33 @@
   .side.lose .pts{color:var(--chalk-dim);}
   .vs{font-family:'Oswald', sans-serif; color:var(--chalk-dim); font-size:13px;}
 
+  /* power rankings */
+  .chart-wrap{
+    background:var(--panel);
+    border:1px solid var(--turf-line);
+    border-radius:6px;
+    padding:16px;
+    margin-bottom:18px;
+    overflow-x:auto;
+  }
+  .chart-wrap svg{display:block; min-width:520px;}
+  .legend{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px 16px;
+    margin-top:12px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    color:var(--chalk-dim);
+  }
+  .legend-item{display:flex; align-items:center; gap:6px;}
+  .legend-swatch{width:10px; height:10px; border-radius:2px; flex:none;}
+  .power-score{font-family:'JetBrains Mono', monospace;}
+  .trend{font-family:'JetBrains Mono', monospace; font-size:13px;}
+  .trend.up{color:var(--win);}
+  .trend.down{color:var(--loss);}
+  .trend.flat{color:var(--chalk-dim);}
+
   footer{
     text-align:center;
     color:var(--chalk-dim);
@@ -232,11 +259,13 @@
   <nav class="tabs">
     <button data-tab="standings" class="active">Standings</button>
     <button data-tab="matchups">Matchups</button>
+    <button data-tab="power">Power Rankings</button>
   </nav>
 
   <div id="statusArea"></div>
   <div id="standingsView"></div>
   <div id="matchupsView" style="display:none;"></div>
+  <div id="powerView" style="display:none;"></div>
 
   <footer>Data from ESPN's public fantasy API · not affiliated with ESPN</footer>
 </div>
@@ -248,6 +277,7 @@ const loadBtn = document.getElementById('loadBtn');
 const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
+const powerView = document.getElementById('powerView');
 const leagueTitle = document.getElementById('leagueTitle');
 const weekChip = document.getElementById('weekChip');
 
@@ -275,6 +305,7 @@ function setTab(name){
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   standingsView.style.display = name === 'standings' ? '' : 'none';
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
+  powerView.style.display = name === 'power' ? '' : 'none';
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -335,6 +366,7 @@ async function loadLeague(){
 
     renderStandings();
     renderMatchups();
+    renderPowerRankings();
     statusArea.innerHTML = '';
   } catch (err) {
     statusArea.innerHTML = '<div class="error"><strong>Couldn\'t reach the proxy.</strong> ' +
@@ -416,6 +448,133 @@ function renderMatchups(){
       '</div>' +
     '</div>';
   }).join('');
+}
+
+// Collects each team's score for every *completed* week (skips the
+// in-progress week so partial scores don't skew the trend).
+function weeklyScoresByTeam(){
+  const byTeam = {};
+  state.teams.forEach(t => byTeam[t.id] = []);
+
+  state.schedule.forEach(g => {
+    if (!g.winner || g.winner === 'UNDECIDED') return; // not finished yet
+    [g.home, g.away].forEach(side => {
+      if (!side || !byTeam[side.teamId]) return;
+      byTeam[side.teamId].push({ week: g.matchupPeriodId, points: side.totalPoints ?? 0 });
+    });
+  });
+
+  Object.values(byTeam).forEach(weeks => weeks.sort((a, b) => a.week - b.week));
+  return byTeam;
+}
+
+// Power score = weighted blend of recent form (last 2 games) and season
+// average, weighted toward recent form. Same idea most fantasy power
+// ranking tools use.
+function powerScore(weeks){
+  if (!weeks.length) return null;
+  const seasonAvg = weeks.reduce((s, w) => s + w.points, 0) / weeks.length;
+  const recent = weeks.slice(-2);
+  const recentAvg = recent.reduce((s, w) => s + w.points, 0) / recent.length;
+  return recentAvg * 0.6 + seasonAvg * 0.4;
+}
+
+function colorForIndex(i, total){
+  const hue = Math.round((i * 360) / Math.max(total, 1));
+  return `hsl(${hue} 65% 62%)`;
+}
+
+function renderPowerRankings(){
+  const byTeam = weeklyScoresByTeam();
+  const allWeeks = [...new Set(state.schedule
+    .filter(g => g.winner && g.winner !== 'UNDECIDED')
+    .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+
+  if (!allWeeks.length) {
+    powerView.innerHTML = '<div class="status">No completed weeks yet — power rankings show up once week 1 finishes.</div>';
+    return;
+  }
+
+  // Rank teams by current power score, and again using everything except
+  // the most recent week, to work out whether each team is trending up.
+  const ranked = state.teams.map(t => ({ team: t, score: powerScore(byTeam[t.id]) }))
+    .filter(r => r.score !== null)
+    .sort((a, b) => b.score - a.score);
+
+  const prevWeek = allWeeks[allWeeks.length - 1];
+  const rankedPrev = state.teams.map(t => {
+    const trimmed = byTeam[t.id].filter(w => w.week < prevWeek);
+    return { team: t, score: powerScore(trimmed) };
+  }).filter(r => r.score !== null).sort((a, b) => b.score - a.score);
+  const prevPosition = {};
+  rankedPrev.forEach((r, i) => prevPosition[r.team.id] = i);
+
+  const rows = ranked.map((r, i) => {
+    const prevIdx = prevPosition[r.team.id];
+    let trendHtml = '<span class="trend flat">–</span>';
+    if (prevIdx !== undefined) {
+      const diff = prevIdx - i; // positive = moved up
+      if (diff > 0) trendHtml = '<span class="trend up">▲ ' + diff + '</span>';
+      else if (diff < 0) trendHtml = '<span class="trend down">▼ ' + Math.abs(diff) + '</span>';
+    }
+    return '<tr>' +
+      '<td class="rank">' + (i + 1) + '</td>' +
+      '<td class="team-name">' + escapeHtml(teamDisplayName(r.team)) + '</td>' +
+      '<td class="num power-score">' + r.score.toFixed(1) + '</td>' +
+      '<td class="num">' + trendHtml + '</td>' +
+      '</tr>';
+  }).join('');
+
+  const table = '<table><thead><tr>' +
+    '<th></th><th>Team</th><th class="num">Power score</th><th class="num">Trend</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  powerView.innerHTML = renderPointsTrendChart(byTeam, allWeeks) + table;
+}
+
+function renderPointsTrendChart(byTeam, allWeeks){
+  const width = 640, height = 260, padL = 40, padR = 12, padT = 12, padB = 28;
+  const plotW = width - padL - padR, plotH = height - padT - padB;
+
+  let minPts = Infinity, maxPts = -Infinity;
+  state.teams.forEach(t => byTeam[t.id].forEach(w => {
+    minPts = Math.min(minPts, w.points);
+    maxPts = Math.max(maxPts, w.points);
+  }));
+  if (!isFinite(minPts)) { minPts = 0; maxPts = 100; }
+  const pad = (maxPts - minPts) * 0.1 || 10;
+  minPts -= pad; maxPts += pad;
+
+  const xFor = week => padL + ((week - allWeeks[0]) / Math.max(allWeeks.length - 1, 1)) * plotW;
+  const yFor = pts => padT + plotH - ((pts - minPts) / (maxPts - minPts)) * plotH;
+
+  const gridLines = allWeeks.map(w =>
+    `<line x1="${xFor(w)}" y1="${padT}" x2="${xFor(w)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
+    `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="10" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
+  ).join('');
+
+  const paths = state.teams.map((t, i) => {
+    const weeks = byTeam[t.id];
+    if (weeks.length < 1) return '';
+    const color = colorForIndex(i, state.teams.length);
+    const d = weeks.map((w, idx) => (idx === 0 ? 'M' : 'L') + xFor(w.week).toFixed(1) + ',' + yFor(w.points).toFixed(1)).join(' ');
+    const dots = weeks.map(w =>
+      `<circle cx="${xFor(w.week).toFixed(1)}" cy="${yFor(w.points).toFixed(1)}" r="2.5" fill="${color}"/>`
+    ).join('');
+    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>` + dots;
+  }).join('');
+
+  const legend = state.teams.map((t, i) =>
+    '<span class="legend-item"><span class="legend-swatch" style="background:' + colorForIndex(i, state.teams.length) + '"></span>' +
+    escapeHtml(teamDisplayName(t)) + '</span>'
+  ).join('');
+
+  return '<div class="chart-wrap">' +
+    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Weekly points by team">` +
+    gridLines + paths +
+    '</svg>' +
+    '<div class="legend">' + legend + '</div>' +
+    '</div>';
 }
 
 function escapeHtml(s){
