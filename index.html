@@ -107,6 +107,34 @@
   button.go:hover{filter:brightness(1.08);}
   button.go:disabled{opacity:.55; cursor:not-allowed;}
 
+  .link-btn{
+    background:none;
+    border:none;
+    color:var(--chalk-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    padding:10px 0 2px;
+    cursor:pointer;
+    text-decoration:underline;
+    text-underline-offset:3px;
+  }
+  .link-btn:hover{color:var(--amber);}
+  .cred-fields{margin-top:6px;}
+  .ghost-btn{
+    align-self:flex-end;
+    background:none;
+    border:1px solid var(--turf-line);
+    color:var(--chalk-dim);
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    padding:0 16px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:13px;
+    height:36px;
+  }
+  .ghost-btn:hover{color:var(--chalk); border-color:var(--chalk-dim);}
+
   /* tabs */
   nav.tabs{
     display:flex;
@@ -299,6 +327,24 @@
       </div>
       <button class="go" id="loadBtn">Load league</button>
     </div>
+
+    <button type="button" id="credToggle" class="link-btn">ESPN login (optional — needed for private or pre-2019 seasons) ▾</button>
+    <div id="credFields" class="cred-fields" style="display:none;">
+      <p class="section-note">Saved only in this browser, never in your GitHub repo. Get these by logging into fantasy.espn.com on a computer, opening dev tools → Application → Cookies, and copying the <code>espn_s2</code> and <code>SWID</code> values.</p>
+      <div class="controls" style="margin-top:0;">
+        <div class="field">
+          <label for="espnS2Input">espn_s2</label>
+          <input id="espnS2Input" type="password" autocomplete="off" style="min-width:200px;">
+        </div>
+        <div class="field">
+          <label for="swidInput">SWID</label>
+          <input id="swidInput" type="password" autocomplete="off" style="min-width:160px;">
+        </div>
+        <button class="go" id="credSaveBtn" type="button">Save</button>
+        <button type="button" id="credClearBtn" class="ghost-btn">Clear</button>
+      </div>
+      <p class="section-note" id="credStatus"></p>
+    </div>
   </div>
 </header>
 
@@ -325,6 +371,7 @@
         <input id="histTo" inputmode="numeric">
       </div>
       <button class="go" id="histLoadBtn">Fetch history</button>
+      <button type="button" id="histDownloadBtn" class="ghost-btn">Download cache file</button>
     </div>
     <div id="historyStatus" class="status"></div>
     <div id="historyContent"></div>
@@ -337,6 +384,13 @@
 const leagueIdInput = document.getElementById('leagueId');
 const seasonSelect = document.getElementById('season');
 const loadBtn = document.getElementById('loadBtn');
+const credToggle = document.getElementById('credToggle');
+const credFields = document.getElementById('credFields');
+const espnS2Input = document.getElementById('espnS2Input');
+const swidInput = document.getElementById('swidInput');
+const credSaveBtn = document.getElementById('credSaveBtn');
+const credClearBtn = document.getElementById('credClearBtn');
+const credStatus = document.getElementById('credStatus');
 const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
@@ -345,6 +399,7 @@ const historyView = document.getElementById('historyView');
 const histFromInput = document.getElementById('histFrom');
 const histToInput = document.getElementById('histTo');
 const histLoadBtn = document.getElementById('histLoadBtn');
+const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
 const leagueTitle = document.getElementById('leagueTitle');
@@ -384,18 +439,8 @@ histFromInput.value = latestLikelySeason - HISTORY_DEFAULT_LOOKBACK;
 // whatever name ESPN has for them that season.
 // ---------------------------------------------------------------
 const TEAM_NAME_OVERRIDES = {
-  1: "Ross",
-  2: "Matt",
-  3: "Tim",
-  4: "Dave",
-  5: "Tiffanie",
-  6: "Joe B",
-  7: "Nate",
-  8: "Alex",
-  9: "Joe G",
-  11: "Scott",
-  12: "KC",
-  13: "Mr Hansen"
+  // 1: "The Gridiron Gurus",
+  // 4: "Waiver Wire Wizards",
 };
 
 let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
@@ -418,6 +463,66 @@ function teamDisplayName(t){
   return (loc + ' ' + nick).trim() || ('Team ' + t.id);
 }
 
+// ---------------------------------------------------------------
+// ESPN login (optional). Only used for private leagues or pre-2019
+// seasons, which now require it. Stored in this browser's localStorage
+// only — never written to any file, so it's safe even though this repo
+// is public. It works once this page is actually deployed (e.g. to
+// Netlify); it won't persist inside Claude's in-chat preview.
+// ---------------------------------------------------------------
+const CRED_KEY_S2 = 'gridironEspnS2';
+const CRED_KEY_SWID = 'gridironSwid';
+
+function getCreds(){
+  try {
+    return {
+      espnS2: localStorage.getItem(CRED_KEY_S2) || '',
+      swid: localStorage.getItem(CRED_KEY_SWID) || '',
+    };
+  } catch (e) {
+    return { espnS2: '', swid: '' }; // storage blocked (e.g. sandboxed preview)
+  }
+}
+
+function credHeaders(){
+  const c = getCreds();
+  return (c.espnS2 && c.swid) ? { 'X-Espn-S2': c.espnS2, 'X-Espn-Swid': c.swid } : {};
+}
+
+(function initCredPanel(){
+  const c = getCreds();
+  espnS2Input.value = c.espnS2;
+  swidInput.value = c.swid;
+  if (c.espnS2 && c.swid) {
+    credStatus.textContent = 'Login saved in this browser.';
+    credFields.style.display = '';
+  }
+
+  credToggle.addEventListener('click', () => {
+    credFields.style.display = credFields.style.display === 'none' ? '' : 'none';
+  });
+
+  credSaveBtn.addEventListener('click', () => {
+    try {
+      localStorage.setItem(CRED_KEY_S2, espnS2Input.value.trim());
+      localStorage.setItem(CRED_KEY_SWID, swidInput.value.trim());
+      credStatus.textContent = 'Saved. Try loading the league or fetching history again.';
+    } catch (e) {
+      credStatus.textContent = 'Could not save — this browser/preview is blocking local storage.';
+    }
+  });
+
+  credClearBtn.addEventListener('click', () => {
+    try {
+      localStorage.removeItem(CRED_KEY_S2);
+      localStorage.removeItem(CRED_KEY_SWID);
+    } catch (e) {}
+    espnS2Input.value = '';
+    swidInput.value = '';
+    credStatus.textContent = 'Cleared.';
+  });
+})();
+
 async function loadLeague(){
   const leagueId = leagueIdInput.value.trim();
   const season = seasonSelect.value;
@@ -433,7 +538,7 @@ async function loadLeague(){
                     '&season=' + encodeURIComponent(season);
 
   try {
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json', ...credHeaders() } });
 
     if (res.status === 401 || res.status === 403) {
       statusArea.innerHTML = privateLeagueMessage();
@@ -483,11 +588,9 @@ function privateLeagueMessage(){
   return '<div class="error"><strong>This league looks private.</strong><br>' + privateLeagueMessageInner() + '</div>';
 }
 function privateLeagueMessageInner(){
-  return 'Public leagues work directly from the browser. Private leagues need two ESPN cookies ' +
-    '(<code>espn_s2</code> and <code>SWID</code>) sent with the request — browsers won\'t forward those ' +
-    'automatically to a third-party site like this one, so it needs a small server-side proxy to work for ' +
-    'a private league. Ask your commissioner to set the league to public under League Settings if you\'d ' +
-    'rather skip that step.';
+  return 'Add your ESPN login in the "ESPN login" panel above (log into fantasy.espn.com on a computer, ' +
+    'copy the <code>espn_s2</code> and <code>SWID</code> cookies from dev tools, paste them in, Save) — ' +
+    'that lets the app prove it\'s you. Or ask your commissioner to set the league to public under League Settings.';
 }
 
 function renderStandings(){
@@ -679,11 +782,30 @@ function renderPointsTrendChart(byTeam, allWeeks){
     '</div>';
 }
 
+// Static cache, committed to the repo at data/history-cache.json. Anyone
+// visiting the site reads old seasons straight from this file — no ESPN
+// login needed on their end. Only whoever generates the file (via the
+// "Download cache file" button) needs cookies, once.
+let historyCachePromise = null;
+function loadHistoryCache(){
+  if (!historyCachePromise) {
+    historyCachePromise = fetch('./data/history-cache.json')
+      .then(r => r.ok ? r.json() : {})
+      .catch(() => ({}));
+  }
+  return historyCachePromise;
+}
+
 async function fetchHistorySeason(leagueId, season){
+  const cache = await loadHistoryCache();
+  if (cache[season]) {
+    return { ok: true, data: cache[season], fromCache: true };
+  }
+
   const proxyUrl = '/.netlify/functions/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
                     '&season=' + encodeURIComponent(season);
   try {
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json', ...credHeaders() } });
     const payload = await res.json().catch(() => null);
 
     if (!res.ok) {
@@ -712,6 +834,7 @@ async function loadHistory(){
   history.data = {};
   history.loadedSeasons = [];
   const failures = []; // { year, reason }
+  let cacheHits = 0;
 
   for (let year = from; year <= to; year++) {
     historyStatus.textContent = 'Loading ' + year + '… (' + (year - from + 1) + '/' + (to - from + 1) + ')';
@@ -719,6 +842,7 @@ async function loadHistory(){
     if (result.ok) {
       history.data[year] = result.data;
       history.loadedSeasons.push(year);
+      if (result.fromCache) cacheHits++;
     } else {
       failures.push({ year, reason: result.reason });
     }
@@ -728,7 +852,7 @@ async function loadHistory(){
   history.checkedSeasons = new Set(history.loadedSeasons);
 
   let statusMsg = history.loadedSeasons.length
-    ? 'Loaded ' + history.loadedSeasons.length + ' season(s).'
+    ? 'Loaded ' + history.loadedSeasons.length + ' season(s)' + (cacheHits ? ' (' + cacheHits + ' from cache file)' : '') + '.'
     : 'No seasons found in that range for this league ID.';
   if (failures.length) {
     statusMsg += ' Skipped: ' + failures.map(f => f.year + ' (' + f.reason + ')').join('; ') + '.';
@@ -737,6 +861,30 @@ async function loadHistory(){
 
   histLoadBtn.disabled = false;
   renderHistoryContent();
+}
+
+async function downloadHistoryCache(){
+  histDownloadBtn.disabled = true;
+  histDownloadBtn.textContent = 'Preparing…';
+  try {
+    const existing = await loadHistoryCache();
+    // Merge so downloading after a partial re-fetch doesn't drop seasons
+    // that were cached before but weren't reloaded this time.
+    const merged = { ...existing, ...history.data };
+
+    const blob = new Blob([JSON.stringify(merged)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'history-cache.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } finally {
+    histDownloadBtn.disabled = false;
+    histDownloadBtn.textContent = 'Download cache file';
+  }
 }
 
 function historyTeamNames(){
@@ -930,6 +1078,7 @@ function escapeHtml(s){
 loadBtn.addEventListener('click', loadLeague);
 leagueIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
 histLoadBtn.addEventListener('click', loadHistory);
+histDownloadBtn.addEventListener('click', downloadHistoryCache);
 
 // Kick off an initial load with the pre-filled league ID.
 loadLeague();
