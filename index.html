@@ -752,6 +752,47 @@ function toiletBowlChampion(data){
   return best.winner === 'HOME' ? best.home.teamId : best.away.teamId;
 }
 
+// Championship / runner-up / 3rd place, derived the same way as the toilet
+// bowl above — straight from bracket games rather than ESPN's rankFinal
+// field, which isn't reliably populated for every league. The winners
+// bracket keeps playing its losers too (for 3rd place, 5th place, etc.), all
+// still tagged WINNERS_BRACKET, so in the final week there can be more than
+// one game there. The pair with the best (lowest) combined seed is the
+// championship game; the next-best pair is the 3rd place game.
+function seasonPlacements(data){
+  const teams = data.teams || [];
+  const schedule = data.schedule || [];
+
+  const games = schedule.filter(g =>
+    g.playoffTierType === 'WINNERS_BRACKET' &&
+    g.winner && g.winner !== 'UNDECIDED' && g.home && g.away
+  );
+  if (!games.length) return null;
+
+  const finalWeek = Math.max(...games.map(g => g.matchupPeriodId));
+  const finalGames = games.filter(g => g.matchupPeriodId === finalWeek);
+  if (!finalGames.length) return null;
+
+  const seedById = {};
+  teams.forEach(t => seedById[t.id] = t.playoffSeed || 999);
+
+  const bySeed = finalGames
+    .map(g => ({ g, sum: (seedById[g.home.teamId] || 999) + (seedById[g.away.teamId] || 999) }))
+    .sort((a, b) => a.sum - b.sum);
+
+  const champGame = bySeed[0].g;
+  const champion = champGame.winner === 'HOME' ? champGame.home.teamId : champGame.away.teamId;
+  const runnerUp = champGame.winner === 'HOME' ? champGame.away.teamId : champGame.home.teamId;
+
+  let thirdPlace = null;
+  if (bySeed[1]) {
+    const tg = bySeed[1].g;
+    thirdPlace = tg.winner === 'HOME' ? tg.home.teamId : tg.away.teamId;
+  }
+
+  return { champion, runnerUp, thirdPlace };
+}
+
 function renderHistoryContent(){
   if (!history.loadedSeasons.length) { historyContent.innerHTML = ''; return; }
 
@@ -772,14 +813,16 @@ function renderHistoryContent(){
       const s = ensure(t.id);
       const r = t.record?.overall || {};
       s.w += r.wins || 0; s.l += r.losses || 0; s.t += r.ties || 0;
-
-      const finalRank = t.rankFinal && t.rankFinal > 0 ? t.rankFinal : null;
-      if (finalRank) {
-        if (finalRank === 1) s.championships++;
-        if (finalRank <= 3) s.top3++;
-      }
       if (playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots) s.playoffs++;
     });
+
+    const placements = seasonPlacements(data);
+    if (placements) {
+      ensure(placements.champion).championships++;
+      ensure(placements.champion).top3++;
+      ensure(placements.runnerUp).top3++;
+      if (placements.thirdPlace) ensure(placements.thirdPlace).top3++;
+    }
 
     const toiletChamp = toiletBowlChampion(data);
     if (toiletChamp !== null) ensure(toiletChamp).toiletBowl++;
@@ -797,7 +840,7 @@ function renderHistoryContent(){
       '</tr>').join('');
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
-    '<p class="section-note">Across the seasons checked below. Toilet bowl championships are the winner of the final week\'s top consolation-bracket game each season (identified by playoff seed when the ladder has multiple games that week).</p>' +
+    '<p class="section-note">Across the seasons checked below. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league.</p>' +
     '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
