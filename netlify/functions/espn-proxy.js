@@ -17,6 +17,8 @@ const LEGACY_CUTOFF_YEAR = 2019; // seasons before this use leagueHistory
 
 exports.handler = async (event) => {
   const { leagueId, season } = event.queryStringParameters || {};
+  const espnS2 = event.headers['x-espn-s2'];
+  const swid = event.headers['x-espn-swid'];
 
   if (!leagueId || !season) {
     return {
@@ -33,13 +35,25 @@ exports.handler = async (event) => {
     ? `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/${leagueId}?seasonId=${season}&${VIEWS}`
     : `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}?${VIEWS}`;
 
+  const reqHeaders = {
+    Accept: 'application/json',
+    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+    Referer: 'https://fantasy.espn.com/',
+    Origin: 'https://fantasy.espn.com',
+  };
+  if (espnS2 && swid) {
+    reqHeaders.Cookie = `espn_s2=${espnS2}; SWID=${swid}`;
+  }
+
   try {
-    const espnRes = await fetch(url, { headers: { Accept: 'application/json' } });
+    const espnRes = await fetch(url, { headers: reqHeaders });
 
     if (!espnRes.ok) {
       const errBody = await espnRes.text();
       const hint = isLegacy
-        ? ' ESPN restricts the legacy history endpoint for some leagues as of Aug 2025 — this may require a logged-in cookie that a static app cannot provide.'
+        ? (espnS2 && swid
+            ? ' Login cookies were sent but ESPN still rejected the request — double check you copied the full espn_s2 value and the SWID including its curly braces, and that they\'re not expired (re-copy them if it\'s been a while since you logged in).'
+            : ' ESPN restricts the legacy history endpoint for some leagues as of Aug 2025 — add your ESPN login (espn_s2/SWID) in the app\'s "ESPN login" panel to unlock it.')
         : '';
       return {
         statusCode: espnRes.status,
