@@ -531,10 +531,10 @@ async function loadLeague(){
   loadBtn.disabled = true;
   statusArea.innerHTML = '<div class="status">Loading league ' + leagueId + ' (' + season + ')…</div>';
 
-  // Goes through our own serverless proxy (netlify/functions/espn-proxy.js)
+  // Goes through our own serverless proxy (functions/api/espn-proxy.js)
   // because ESPN's API doesn't send CORS headers, so the browser can't call
   // it directly. The proxy makes the request server-side instead.
-  const proxyUrl = '/.netlify/functions/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
+  const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
                     '&season=' + encodeURIComponent(season);
 
   try {
@@ -547,7 +547,7 @@ async function loadLeague(){
     }
     if (res.status === 404) {
       statusArea.innerHTML = '<div class="error"><strong>Proxy function not found.</strong> ' +
-        'This page needs to be deployed to Netlify (with the netlify/functions folder intact) for ' +
+        'This page needs to be deployed to Cloudflare Pages (with the functions/api folder intact) for ' +
         'league data to load — opening index.html directly, or hosting on plain GitHub Pages, won\'t run ' +
         'the proxy. See the README for deploy steps.</div>';
       loadBtn.disabled = false;
@@ -911,7 +911,7 @@ async function fetchHistorySeason(leagueId, season){
     return { ok: true, data: cache[season], fromCache: true };
   }
 
-  const proxyUrl = '/.netlify/functions/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
+  const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
                     '&season=' + encodeURIComponent(season);
   try {
     const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json', ...credHeaders() } });
