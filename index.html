@@ -809,7 +809,9 @@ async function fetchHistorySeason(leagueId, season){
     const payload = await res.json().catch(() => null);
 
     if (!res.ok) {
-      const reason = (payload && payload.error) ? payload.error : ('HTTP ' + res.status);
+      let reason = (payload && payload.error) ? payload.error : ('HTTP ' + res.status);
+      if (payload && payload.status) reason += ' [ESPN status ' + payload.status + ']';
+      if (payload && payload.detail) reason += ' — ' + payload.detail.slice(0, 120);
       return { ok: false, reason };
     }
     if (!payload || !payload.teams || !payload.teams.length) {
