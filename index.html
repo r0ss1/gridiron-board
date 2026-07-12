@@ -1196,6 +1196,29 @@ histDownloadBtn.addEventListener('click', downloadHistoryCache);
 // Kick off an initial load with the pre-filled league ID.
 loadLeague();
 
+// If a data/history-cache.json file has been committed to the repo, load it
+// automatically on startup — no one has to tap "Fetch history" first. Tapping
+// "Fetch history" later still works as before (e.g. to pull in newer seasons
+// not yet in the cache file, or ones outside the cache entirely).
+async function autoLoadHistoryFromCache(){
+  const cache = await loadHistoryCache();
+  const years = Object.keys(cache)
+    .map(Number)
+    .filter(y => cache[y] && cache[y].teams && cache[y].teams.length)
+    .sort((a, b) => a - b);
+
+  if (!years.length) return; // no cache file yet, or it's empty — nothing to do
+
+  history.data = cache;
+  history.loadedSeasons = years;
+  history.checkedSeasons = new Set(years);
+
+  historyStatus.textContent = 'Loaded ' + years.length + ' season(s) from the cache file.';
+  renderHistoryContent();
+  renderPowerRankings();
+}
+autoLoadHistoryFromCache();
+
 // Register the service worker so the app can be installed and work offline
 // once it's hosted somewhere (this no-ops harmlessly inside a sandboxed preview).
 if ('serviceWorker' in navigator) {
