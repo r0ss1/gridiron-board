@@ -673,9 +673,48 @@ function weeklyScoresByTeam(){
   return byTeam;
 }
 
+// Same idea, but strings multiple seasons together into one continuous
+// timeline (a global "idx" instead of raw week number, since week numbers
+// reset every season). Used for the all-time / select-years power view.
+function weeklyScoresAcrossSeasons(years){
+  const points = []; // chronological list of {year, week}
+  years.forEach(year => {
+    const sched = (history.data[year].schedule || []);
+    const weeks = [...new Set(sched
+      .filter(g => g.winner && g.winner !== 'UNDECIDED')
+      .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+    weeks.forEach(w => points.push({ year, week: w }));
+  });
+  const idxOf = {};
+  points.forEach((p, i) => idxOf[p.year + '-' + p.week] = i);
+
+  const byTeam = {};
+  const teamsMeta = {};
+  years.forEach(year => {
+    const data = history.data[year];
+    (data.teams || []).forEach(t => { teamsMeta[t.id] = t; if (!byTeam[t.id]) byTeam[t.id] = []; });
+    (data.schedule || []).forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const idx = idxOf[year + '-' + g.matchupPeriodId];
+      [g.home, g.away].forEach(side => {
+        if (!byTeam[side.teamId]) byTeam[side.teamId] = [];
+        byTeam[side.teamId].push({ idx, points: side.totalPoints ?? 0, year, week: g.matchupPeriodId });
+      });
+    });
+  });
+  Object.values(byTeam).forEach(arr => arr.sort((a, b) => a.idx - b.idx));
+
+  const seasonBoundaries = [];
+  let lastYear = null;
+  points.forEach((p, i) => { if (p.year !== lastYear) { seasonBoundaries.push({ idx: i, year: p.year }); lastYear = p.year; } });
+
+  return { byTeam, teamsMeta, seasonBoundaries, totalPoints: points.length };
+}
+
 // Power score = weighted blend of recent form (last 2 games) and season
 // average, weighted toward recent form. Same idea most fantasy power
-// ranking tools use.
+// ranking tools use. Works the same whether "weeks" spans one season or
+// several strung together.
 function powerScore(weeks){
   if (!weeks.length) return null;
   const seasonAvg = weeks.reduce((s, w) => s + w.points, 0) / weeks.length;
@@ -690,32 +729,92 @@ function colorForIndex(i, total){
 }
 
 function renderPowerRankings(){
+  if (history.loadedSeasons.length) {
+    renderPowerRankingsMultiSeason();
+  } else {
+    renderPowerRankingsSingleSeason();
+  }
+}
+
+function renderPowerRankingsSingleSeason(){
   const byTeam = weeklyScoresByTeam();
   const allWeeks = [...new Set(state.schedule
     .filter(g => g.winner && g.winner !== 'UNDECIDED')
     .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
 
+  const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock all-time / select-years power rankings here too.</p>';
+
   if (!allWeeks.length) {
-    powerView.innerHTML = '<div class="status">No completed weeks yet — power rankings show up once week 1 finishes.</div>';
+    powerView.innerHTML = note + '<div class="status">No completed weeks yet — power rankings show up once week 1 finishes.</div>';
     return;
   }
 
-  // Rank teams by current power score, and again using everything except
-  // the most recent week, to work out whether each team is trending up.
-  const ranked = state.teams.map(t => ({ team: t, score: powerScore(byTeam[t.id]) }))
+  const ranked = state.teams.map(t => ({ id: t.id, name: teamDisplayName(t), score: powerScore(byTeam[t.id]) }))
     .filter(r => r.score !== null)
     .sort((a, b) => b.score - a.score);
 
   const prevWeek = allWeeks[allWeeks.length - 1];
   const rankedPrev = state.teams.map(t => {
     const trimmed = byTeam[t.id].filter(w => w.week < prevWeek);
-    return { team: t, score: powerScore(trimmed) };
+    return { id: t.id, score: powerScore(trimmed) };
   }).filter(r => r.score !== null).sort((a, b) => b.score - a.score);
+
+  const table = buildPowerTable(ranked, rankedPrev);
+  const teamList = state.teams.map(t => ({ id: t.id, name: teamDisplayName(t) }));
+  const chart = renderPointsTrendChart(byTeam, allWeeks, teamList, []);
+
+  powerView.innerHTML = note + chart + table;
+}
+
+function renderPowerRankingsMultiSeason(){
+  const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => a - b);
+  const picker = renderSeasonPicker();
+
+  if (!years.length) {
+    powerView.innerHTML = picker + '<div class="status">Select at least one season above.</div>';
+    return;
+  }
+
+  const { byTeam, teamsMeta, seasonBoundaries, totalPoints } = weeklyScoresAcrossSeasons(years);
+
+  if (!totalPoints) {
+    powerView.innerHTML = picker + '<div class="status">No completed weeks in the selected season(s).</div>';
+    return;
+  }
+
+  const teamIds = Object.keys(teamsMeta);
+  const ranked = teamIds.map(id => ({ id, name: teamDisplayName(teamsMeta[id]), score: powerScore(byTeam[id] || []) }))
+    .filter(r => r.score !== null)
+    .sort((a, b) => b.score - a.score);
+
+  const lastIdx = totalPoints - 1;
+  const rankedPrev = teamIds.map(id => {
+    const trimmed = (byTeam[id] || []).filter(w => w.idx < lastIdx);
+    return { id, score: powerScore(trimmed) };
+  }).filter(r => r.score !== null).sort((a, b) => b.score - a.score);
+
+  const table = buildPowerTable(ranked, rankedPrev);
+  const teamList = teamIds.map(id => ({ id, name: teamDisplayName(teamsMeta[id]) }));
+  const chart = renderPointsTrendChart(byTeam, null, teamList, seasonBoundaries, totalPoints);
+
+  powerView.innerHTML = picker + chart + table;
+
+  powerView.querySelectorAll('.season-chip input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const year = parseInt(cb.dataset.year, 10);
+      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
+      renderPowerRankingsMultiSeason();
+      renderHistoryContent(); // keep the History tab's picker in sync
+    });
+  });
+}
+
+function buildPowerTable(ranked, rankedPrev){
   const prevPosition = {};
-  rankedPrev.forEach((r, i) => prevPosition[r.team.id] = i);
+  rankedPrev.forEach((r, i) => prevPosition[r.id] = i);
 
   const rows = ranked.map((r, i) => {
-    const prevIdx = prevPosition[r.team.id];
+    const prevIdx = prevPosition[r.id];
     let trendHtml = '<span class="trend flat">–</span>';
     if (prevIdx !== undefined) {
       const diff = prevIdx - i; // positive = moved up
@@ -724,25 +823,26 @@ function renderPowerRankings(){
     }
     return '<tr>' +
       '<td class="rank">' + (i + 1) + '</td>' +
-      '<td class="team-name">' + escapeHtml(teamDisplayName(r.team)) + '</td>' +
+      '<td class="team-name">' + escapeHtml(r.name) + '</td>' +
       '<td class="num power-score">' + r.score.toFixed(1) + '</td>' +
       '<td class="num">' + trendHtml + '</td>' +
       '</tr>';
   }).join('');
 
-  const table = '<table><thead><tr>' +
+  return '<table><thead><tr>' +
     '<th></th><th>Team</th><th class="num">Power score</th><th class="num">Trend</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>';
-
-  powerView.innerHTML = renderPointsTrendChart(byTeam, allWeeks) + table;
 }
 
-function renderPointsTrendChart(byTeam, allWeeks){
+// allWeeks: single-season mode (array of week numbers), pass null for multi-season.
+// seasonBoundaries/totalPoints: multi-season mode only.
+function renderPointsTrendChart(byTeam, allWeeks, teamList, seasonBoundaries, totalPoints){
   const width = 640, height = 260, padL = 40, padR = 12, padT = 12, padB = 28;
   const plotW = width - padL - padR, plotH = height - padT - padB;
+  const multi = allWeeks === null;
 
   let minPts = Infinity, maxPts = -Infinity;
-  state.teams.forEach(t => byTeam[t.id].forEach(w => {
+  teamList.forEach(t => (byTeam[t.id] || []).forEach(w => {
     minPts = Math.min(minPts, w.points);
     maxPts = Math.max(maxPts, w.points);
   }));
@@ -750,28 +850,37 @@ function renderPointsTrendChart(byTeam, allWeeks){
   const pad = (maxPts - minPts) * 0.1 || 10;
   minPts -= pad; maxPts += pad;
 
-  const xFor = week => padL + ((week - allWeeks[0]) / Math.max(allWeeks.length - 1, 1)) * plotW;
+  const xSpan = multi ? Math.max(totalPoints - 1, 1) : Math.max(allWeeks.length - 1, 1);
+  const xFor = multi
+    ? idx => padL + (idx / xSpan) * plotW
+    : week => padL + ((week - allWeeks[0]) / xSpan) * plotW;
   const yFor = pts => padT + plotH - ((pts - minPts) / (maxPts - minPts)) * plotH;
 
-  const gridLines = allWeeks.map(w =>
-    `<line x1="${xFor(w)}" y1="${padT}" x2="${xFor(w)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
-    `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
-  ).join('');
+  const gridLines = multi
+    ? seasonBoundaries.map(b =>
+        `<line x1="${xFor(b.idx)}" y1="${padT}" x2="${xFor(b.idx)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
+        `<text x="${xFor(b.idx)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">${b.year}</text>`
+      ).join('')
+    : allWeeks.map(w =>
+        `<line x1="${xFor(w)}" y1="${padT}" x2="${xFor(w)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
+        `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
+      ).join('');
 
-  const paths = state.teams.map((t, i) => {
-    const weeks = byTeam[t.id];
+  const paths = teamList.map((t, i) => {
+    const weeks = byTeam[t.id] || [];
     if (weeks.length < 1) return '';
-    const color = colorForIndex(i, state.teams.length);
-    const d = weeks.map((w, idx) => (idx === 0 ? 'M' : 'L') + xFor(w.week).toFixed(1) + ',' + yFor(w.points).toFixed(1)).join(' ');
+    const color = colorForIndex(i, teamList.length);
+    const xOf = w => multi ? xFor(w.idx) : xFor(w.week);
+    const d = weeks.map((w, idx) => (idx === 0 ? 'M' : 'L') + xOf(w).toFixed(1) + ',' + yFor(w.points).toFixed(1)).join(' ');
     const dots = weeks.map(w =>
-      `<circle cx="${xFor(w.week).toFixed(1)}" cy="${yFor(w.points).toFixed(1)}" r="2.5" fill="${color}"/>`
+      `<circle cx="${xOf(w).toFixed(1)}" cy="${yFor(w.points).toFixed(1)}" r="2.5" fill="${color}"/>`
     ).join('');
     return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>` + dots;
   }).join('');
 
-  const legend = state.teams.map((t, i) =>
-    '<span class="legend-item"><span class="legend-swatch" style="background:' + colorForIndex(i, state.teams.length) + '"></span>' +
-    escapeHtml(teamDisplayName(t)) + '</span>'
+  const legend = teamList.map((t, i) =>
+    '<span class="legend-item"><span class="legend-swatch" style="background:' + colorForIndex(i, teamList.length) + '"></span>' +
+    escapeHtml(t.name) + '</span>'
   ).join('');
 
   return '<div class="chart-wrap">' +
@@ -863,6 +972,7 @@ async function loadHistory(){
 
   histLoadBtn.disabled = false;
   renderHistoryContent();
+  renderPowerRankings();
 }
 
 async function downloadHistoryCache(){
@@ -1069,6 +1179,7 @@ function renderHistoryContent(){
       const year = parseInt(cb.dataset.year, 10);
       if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
       renderHistoryContent();
+      renderPowerRankings(); // keep the Power Rankings tab's picker in sync
     });
   });
 }
