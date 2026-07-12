@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gridiron Board — League Tracker</title>
+<meta name="theme-color" content="#0F2A1D">
+<meta name="description" content="A scoreboard for your ESPN fantasy football league.">
+
+<!-- PWA hookup -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --turf:#0F2A1D;
+    --turf-line:#20402C;
+    --panel:#14202B;
+    --chalk:#F1EFE7;
+    --chalk-dim:#B9C2BC;
+    --amber:#FFB13D;
+    --loss:#C0432E;
+    --win:#4CAF7D;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      repeating-linear-gradient(0deg, var(--turf-line) 0 1px, transparent 1px 64px),
+      var(--turf);
+    color:var(--chalk);
+    font-family:'Inter', sans-serif;
+    min-height:100vh;
+    padding-bottom:48px;
+  }
+  .wrap{max-width:840px;margin:0 auto;padding:0 20px;}
+
+  /* Hero / scoreboard header */
+  header.board{
+    background:var(--panel);
+    border-bottom:3px solid var(--amber);
+    padding:28px 20px 22px;
+  }
+  header.board .wrap{display:flex;flex-direction:column;gap:10px;}
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:.14em;
+    color:var(--amber);
+    text-transform:uppercase;
+  }
+  h1{
+    font-family:'Oswald', sans-serif;
+    font-weight:700;
+    font-size:clamp(28px, 6vw, 44px);
+    margin:0;
+    letter-spacing:.01em;
+    line-height:1.05;
+  }
+  .week-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    color:var(--chalk-dim);
+  }
+  .week-chip strong{color:var(--amber); font-size:16px;}
+
+  /* controls */
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+  }
+  .field{display:flex; flex-direction:column; gap:4px;}
+  .field label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--chalk-dim);}
+  input, select{
+    background:#0B1710;
+    border:1px solid var(--turf-line);
+    color:var(--chalk);
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    padding:9px 10px;
+    border-radius:4px;
+    min-width:120px;
+  }
+  input:focus, select:focus, button:focus{outline:2px solid var(--amber); outline-offset:1px;}
+  button.go{
+    align-self:flex-end;
+    background:var(--amber);
+    color:#1A1200;
+    border:none;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    letter-spacing:.03em;
+    padding:0 20px;
+    border-radius:4px;
+    cursor:pointer;
+    font-size:14px;
+  }
+  button.go:hover{filter:brightness(1.08);}
+  button.go:disabled{opacity:.55; cursor:not-allowed;}
+
+  /* tabs */
+  nav.tabs{
+    display:flex;
+    gap:2px;
+    margin:26px 0 14px;
+    border-bottom:1px solid var(--turf-line);
+  }
+  nav.tabs button{
+    background:none;
+    border:none;
+    color:var(--chalk-dim);
+    font-family:'Oswald', sans-serif;
+    font-size:15px;
+    letter-spacing:.02em;
+    padding:10px 4px;
+    margin-right:22px;
+    cursor:pointer;
+    border-bottom:3px solid transparent;
+  }
+  nav.tabs button.active{color:var(--chalk); border-bottom-color:var(--amber);}
+
+  /* status / errors */
+  .status{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    color:var(--chalk-dim);
+    padding:14px 0;
+  }
+  .error{
+    background:rgba(192,67,46,.12);
+    border:1px solid var(--loss);
+    border-radius:6px;
+    padding:14px 16px;
+    font-size:14px;
+    line-height:1.5;
+    color:var(--chalk);
+  }
+  .error strong{color:var(--loss);}
+
+  /* standings table */
+  table{width:100%; border-collapse:collapse; margin-bottom:30px;}
+  thead th{
+    text-align:left;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--chalk-dim);
+    padding:0 10px 8px;
+    border-bottom:1px solid var(--turf-line);
+  }
+  thead th.num, td.num{text-align:right;}
+  tbody td{
+    padding:12px 10px;
+    border-bottom:1px solid rgba(32,64,44,.6);
+    font-size:14px;
+  }
+  tbody tr:hover{background:rgba(255,255,255,.02);}
+  .rank{font-family:'JetBrains Mono', monospace; color:var(--chalk-dim); width:28px;}
+  .team-name{font-weight:600;}
+  .team-owner{display:block; font-size:11px; color:var(--chalk-dim); font-weight:400;}
+  td.num{font-family:'JetBrains Mono', monospace;}
+  .rec{white-space:nowrap;}
+
+  /* matchups */
+  .matchup{
+    background:var(--panel);
+    border:1px solid var(--turf-line);
+    border-radius:6px;
+    padding:16px 18px;
+    margin-bottom:12px;
+    display:grid;
+    grid-template-columns:1fr auto 1fr;
+    align-items:center;
+    gap:14px;
+  }
+  .side{display:flex; flex-direction:column; gap:2px;}
+  .side.right{text-align:right; align-items:flex-end;}
+  .side .nm{font-weight:600; font-size:15px;}
+  .side .pts{
+    font-family:'JetBrains Mono', monospace;
+    font-size:26px;
+    font-weight:700;
+  }
+  .side.win .pts{color:var(--win);}
+  .side.lose .pts{color:var(--chalk-dim);}
+  .vs{font-family:'Oswald', sans-serif; color:var(--chalk-dim); font-size:13px;}
+
+  footer{
+    text-align:center;
+    color:var(--chalk-dim);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    margin-top:30px;
+  }
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+
+<header class="board">
+  <div class="wrap">
+    <span class="eyebrow">Fantasy Football / League Tracker</span>
+    <h1 id="leagueTitle">Gridiron Board</h1>
+    <span class="week-chip" id="weekChip"></span>
+
+    <div class="controls">
+      <div class="field">
+        <label for="leagueId">League ID</label>
+        <input id="leagueId" inputmode="numeric" value="232506">
+      </div>
+      <div class="field">
+        <label for="season">Season</label>
+        <select id="season"></select>
+      </div>
+      <button class="go" id="loadBtn">Load league</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="tabs">
+    <button data-tab="standings" class="active">Standings</button>
+    <button data-tab="matchups">Matchups</button>
+  </nav>
+
+  <div id="statusArea"></div>
+  <div id="standingsView"></div>
+  <div id="matchupsView" style="display:none;"></div>
+
+  <footer>Data from ESPN's public fantasy API · not affiliated with ESPN</footer>
+</div>
+
+<script>
+const leagueIdInput = document.getElementById('leagueId');
+const seasonSelect = document.getElementById('season');
+const loadBtn = document.getElementById('loadBtn');
+const statusArea = document.getElementById('statusArea');
+const standingsView = document.getElementById('standingsView');
+const matchupsView = document.getElementById('matchupsView');
+const leagueTitle = document.getElementById('leagueTitle');
+const weekChip = document.getElementById('weekChip');
+
+// Build season dropdown: most recently completed season defaults selected.
+// NFL seasons run roughly Sep -> Feb, so before ~August the "current" season
+// on ESPN is still last year's completed one.
+const now = new Date();
+const currentCalendarYear = now.getFullYear();
+const seasonInProgressCutoffMonth = 8; // August (1-indexed) - rough heuristic
+const latestLikelySeason = now.getMonth() + 1 >= seasonInProgressCutoffMonth
+  ? currentCalendarYear
+  : currentCalendarYear - 1;
+
+for (let y = latestLikelySeason + 1; y >= latestLikelySeason - 4; y--) {
+  const opt = document.createElement('option');
+  opt.value = y;
+  opt.textContent = y;
+  if (y === latestLikelySeason) opt.selected = true;
+  seasonSelect.appendChild(opt);
+}
+
+let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
+
+function setTab(name){
+  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  standingsView.style.display = name === 'standings' ? '' : 'none';
+  matchupsView.style.display = name === 'matchups' ? '' : 'none';
+}
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+function teamDisplayName(t){
+  if (t.name) return t.name;
+  const loc = t.location || '';
+  const nick = t.nickname || '';
+  return (loc + ' ' + nick).trim() || ('Team ' + t.id);
+}
+
+async function loadLeague(){
+  const leagueId = leagueIdInput.value.trim();
+  const season = seasonSelect.value;
+  if (!leagueId) { statusArea.innerHTML = '<div class="error">Enter a league ID.</div>'; return; }
+
+  loadBtn.disabled = true;
+  statusArea.innerHTML = '<div class="status">Loading league ' + leagueId + ' (' + season + ')…</div>';
+
+  // Goes through our own serverless proxy (netlify/functions/espn-proxy.js)
+  // because ESPN's API doesn't send CORS headers, so the browser can't call
+  // it directly. The proxy makes the request server-side instead.
+  const proxyUrl = '/.netlify/functions/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
+                    '&season=' + encodeURIComponent(season);
+
+  try {
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+
+    if (res.status === 401 || res.status === 403) {
+      statusArea.innerHTML = privateLeagueMessage();
+      loadBtn.disabled = false;
+      return;
+    }
+    if (res.status === 404) {
+      statusArea.innerHTML = '<div class="error"><strong>Proxy function not found.</strong> ' +
+        'This page needs to be deployed to Netlify (with the netlify/functions folder intact) for ' +
+        'league data to load — opening index.html directly, or hosting on plain GitHub Pages, won\'t run ' +
+        'the proxy. See the README for deploy steps.</div>';
+      loadBtn.disabled = false;
+      return;
+    }
+    if (!res.ok) {
+      statusArea.innerHTML = '<div class="error"><strong>Error ' + res.status + '.</strong> ' +
+        'Double check the league ID and season. If the season hasn\'t started yet, ESPN may not have data for it.</div>';
+      loadBtn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    state.teams = data.teams || [];
+    state.schedule = data.schedule || [];
+    state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
+    state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
+
+    leagueTitle.textContent = state.leagueName;
+    weekChip.innerHTML = state.currentWeek
+      ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
+      : state.teams.length + ' teams';
+
+    renderStandings();
+    renderMatchups();
+    statusArea.innerHTML = '';
+  } catch (err) {
+    statusArea.innerHTML = '<div class="error"><strong>Couldn\'t reach the proxy.</strong> ' +
+      'Check your internet connection, or make sure this app is deployed to Netlify (see README) ' +
+      'rather than opened as a local file.</div>';
+  } finally {
+    loadBtn.disabled = false;
+  }
+}
+
+function privateLeagueMessage(){
+  return '<div class="error"><strong>This league looks private.</strong><br>' + privateLeagueMessageInner() + '</div>';
+}
+function privateLeagueMessageInner(){
+  return 'Public leagues work directly from the browser. Private leagues need two ESPN cookies ' +
+    '(<code>espn_s2</code> and <code>SWID</code>) sent with the request — browsers won\'t forward those ' +
+    'automatically to a third-party site like this one, so it needs a small server-side proxy to work for ' +
+    'a private league. Ask your commissioner to set the league to public under League Settings if you\'d ' +
+    'rather skip that step.';
+}
+
+function renderStandings(){
+  const sorted = [...state.teams].sort((a, b) => {
+    const ra = a.record?.overall || {};
+    const rb = b.record?.overall || {};
+    if ((rb.wins||0) !== (ra.wins||0)) return (rb.wins||0) - (ra.wins||0);
+    return (rb.pointsFor||0) - (ra.pointsFor||0);
+  });
+
+  let rows = sorted.map((t, i) => {
+    const r = t.record?.overall || {};
+    const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
+    return '<tr>' +
+      '<td class="rank">' + (i+1) + '</td>' +
+      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + '</td>' +
+      '<td class="num rec">' + rec + '</td>' +
+      '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
+      '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
+      '</tr>';
+  }).join('');
+
+  standingsView.innerHTML = state.teams.length ? (
+    '<table><thead><tr>' +
+    '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th>' +
+    '</tr></thead><tbody>' + rows + '</tbody></table>'
+  ) : '';
+}
+
+function renderMatchups(){
+  const teamsById = {};
+  state.teams.forEach(t => teamsById[t.id] = t);
+
+  const week = state.currentWeek;
+  const games = state.schedule.filter(g => g.matchupPeriodId === week);
+
+  if (!games.length) {
+    matchupsView.innerHTML = '<div class="status">No matchup data for this week yet.</div>';
+    return;
+  }
+
+  matchupsView.innerHTML = games.map(g => {
+    const home = g.home, away = g.away;
+    if (!home || !away) return '';
+    const homeTeam = teamsById[home.teamId];
+    const awayTeam = teamsById[away.teamId];
+    const homePts = home.totalPoints ?? 0;
+    const awayPts = away.totalPoints ?? 0;
+    const homeWin = homePts > awayPts;
+    const awayWin = awayPts > homePts;
+    return '<div class="matchup">' +
+      '<div class="side ' + (homeWin?'win':(awayWin?'lose':'')) + '">' +
+        '<span class="nm">' + escapeHtml(homeTeam ? teamDisplayName(homeTeam) : 'TBD') + '</span>' +
+        '<span class="pts">' + homePts.toFixed(1) + '</span>' +
+      '</div>' +
+      '<span class="vs">VS</span>' +
+      '<div class="side right ' + (awayWin?'win':(homeWin?'lose':'')) + '">' +
+        '<span class="nm">' + escapeHtml(awayTeam ? teamDisplayName(awayTeam) : 'TBD') + '</span>' +
+        '<span class="pts">' + awayPts.toFixed(1) + '</span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+loadBtn.addEventListener('click', loadLeague);
+leagueIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
+
+// Kick off an initial load with the pre-filled league ID.
+loadLeague();
+
+// Register the service worker so the app can be installed and work offline
+// once it's hosted somewhere (this no-ops harmlessly inside a sandboxed preview).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+</script>
+</body>
+</html>
