@@ -48,7 +48,7 @@
   header.board .wrap{display:flex;flex-direction:column;gap:10px;}
   .eyebrow{
     font-family:'JetBrains Mono', monospace;
-    font-size:12px;
+    font-size:10px;
     letter-spacing:.14em;
     color:var(--amber);
     text-transform:uppercase;
@@ -56,7 +56,7 @@
   h1{
     font-family:'Oswald', sans-serif;
     font-weight:700;
-    font-size:clamp(28px, 6vw, 44px);
+    font-size:clamp(24px, 5.2vw, 38px);
     margin:0;
     letter-spacing:.01em;
     line-height:1.05;
@@ -66,10 +66,10 @@
     align-items:center;
     gap:8px;
     font-family:'JetBrains Mono', monospace;
-    font-size:14px;
+    font-size:12px;
     color:var(--chalk-dim);
   }
-  .week-chip strong{color:var(--amber); font-size:16px;}
+  .week-chip strong{color:var(--amber); font-size:14px;}
 
   /* controls */
   .controls{
@@ -79,13 +79,13 @@
     margin-top:18px;
   }
   .field{display:flex; flex-direction:column; gap:4px;}
-  .field label{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--chalk-dim);}
+  .field label{font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--chalk-dim);}
   input, select{
     background:#0B1710;
     border:1px solid var(--turf-line);
     color:var(--chalk);
     font-family:'JetBrains Mono', monospace;
-    font-size:14px;
+    font-size:12px;
     padding:9px 10px;
     border-radius:4px;
     min-width:120px;
@@ -102,7 +102,7 @@
     padding:0 20px;
     border-radius:4px;
     cursor:pointer;
-    font-size:14px;
+    font-size:12px;
   }
   button.go:hover{filter:brightness(1.08);}
   button.go:disabled{opacity:.55; cursor:not-allowed;}
@@ -119,7 +119,7 @@
     border:none;
     color:var(--chalk-dim);
     font-family:'Oswald', sans-serif;
-    font-size:15px;
+    font-size:13px;
     letter-spacing:.02em;
     padding:10px 4px;
     margin-right:22px;
@@ -131,7 +131,7 @@
   /* status / errors */
   .status{
     font-family:'JetBrains Mono', monospace;
-    font-size:13px;
+    font-size:11px;
     color:var(--chalk-dim);
     padding:14px 0;
   }
@@ -140,7 +140,7 @@
     border:1px solid var(--loss);
     border-radius:6px;
     padding:14px 16px;
-    font-size:14px;
+    font-size:12px;
     line-height:1.5;
     color:var(--chalk);
   }
@@ -151,7 +151,7 @@
   thead th{
     text-align:left;
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:10px;
     letter-spacing:.08em;
     text-transform:uppercase;
     color:var(--chalk-dim);
@@ -162,12 +162,12 @@
   tbody td{
     padding:12px 10px;
     border-bottom:1px solid rgba(32,64,44,.6);
-    font-size:14px;
+    font-size:12px;
   }
   tbody tr:hover{background:rgba(255,255,255,.02);}
   .rank{font-family:'JetBrains Mono', monospace; color:var(--chalk-dim); width:28px;}
   .team-name{font-weight:600;}
-  .team-owner{display:block; font-size:11px; color:var(--chalk-dim); font-weight:400;}
+  .team-owner{display:block; font-size:10px; color:var(--chalk-dim); font-weight:400;}
   td.num{font-family:'JetBrains Mono', monospace;}
   .rec{white-space:nowrap;}
 
@@ -185,15 +185,15 @@
   }
   .side{display:flex; flex-direction:column; gap:2px;}
   .side.right{text-align:right; align-items:flex-end;}
-  .side .nm{font-weight:600; font-size:15px;}
+  .side .nm{font-weight:600; font-size:13px;}
   .side .pts{
     font-family:'JetBrains Mono', monospace;
-    font-size:26px;
+    font-size:23px;
     font-weight:700;
   }
   .side.win .pts{color:var(--win);}
   .side.lose .pts{color:var(--chalk-dim);}
-  .vs{font-family:'Oswald', sans-serif; color:var(--chalk-dim); font-size:13px;}
+  .vs{font-family:'Oswald', sans-serif; color:var(--chalk-dim); font-size:11px;}
 
   /* power rankings */
   .chart-wrap{
@@ -211,13 +211,13 @@
     gap:8px 16px;
     margin-top:12px;
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:10px;
     color:var(--chalk-dim);
   }
   .legend-item{display:flex; align-items:center; gap:6px;}
   .legend-swatch{width:10px; height:10px; border-radius:2px; flex:none;}
   .power-score{font-family:'JetBrains Mono', monospace;}
-  .trend{font-family:'JetBrains Mono', monospace; font-size:13px;}
+  .trend{font-family:'JetBrains Mono', monospace; font-size:11px;}
   .trend.up{color:var(--win);}
   .trend.down{color:var(--loss);}
   .trend.flat{color:var(--chalk-dim);}
@@ -238,7 +238,7 @@
     border-radius:20px;
     padding:5px 12px 5px 8px;
     font-family:'JetBrains Mono', monospace;
-    font-size:12px;
+    font-size:10px;
     cursor:pointer;
     user-select:none;
   }
@@ -246,17 +246,17 @@
   .season-chip.unavailable{opacity:.4; text-decoration:line-through; cursor:not-allowed;}
   h2.section-title{
     font-family:'Oswald', sans-serif;
-    font-size:18px;
+    font-size:16px;
     letter-spacing:.02em;
     margin:0 0 4px;
   }
   .section-note{
-    font-size:12px;
+    font-size:10px;
     color:var(--chalk-dim);
     margin:0 0 12px;
     line-height:1.5;
   }
-  table.h2h{font-size:12px;}
+  table.h2h{font-size:10px;}
   table.h2h th, table.h2h td{padding:8px 8px; white-space:nowrap;}
   table.h2h th.rowhead, table.h2h td.rowhead{
     text-align:left;
@@ -272,7 +272,7 @@
     text-align:center;
     color:var(--chalk-dim);
     font-family:'JetBrains Mono', monospace;
-    font-size:11px;
+    font-size:10px;
     margin-top:30px;
   }
 
@@ -626,7 +626,7 @@ function renderPointsTrendChart(byTeam, allWeeks){
 
   const gridLines = allWeeks.map(w =>
     `<line x1="${xFor(w)}" y1="${padT}" x2="${xFor(w)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
-    `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="10" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
+    `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
   ).join('');
 
   const paths = state.teams.map((t, i) => {
