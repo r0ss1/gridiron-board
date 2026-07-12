@@ -367,11 +367,13 @@ for (let y = latestLikelySeason + 1; y >= latestLikelySeason - 4; y--) {
   seasonSelect.appendChild(opt);
 }
 
-// ESPN's v3 API only reliably serves 2018-onward directly; older seasons
-// need a different endpoint (leagueHistory) that isn't wired up here.
-const HISTORY_FLOOR = 2018;
+// Pre-2019 seasons now route through ESPN's older leagueHistory endpoint
+// (see the proxy function) — this floor is just a sane default range, not
+// a hard limit. Type any earlier year in "From season" if your league goes
+// back further.
+const HISTORY_DEFAULT_LOOKBACK = 9;
 histToInput.value = latestLikelySeason;
-histFromInput.value = Math.max(HISTORY_FLOOR, latestLikelySeason - 9);
+histFromInput.value = latestLikelySeason - HISTORY_DEFAULT_LOOKBACK;
 
 let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
@@ -658,12 +660,18 @@ async function fetchHistorySeason(leagueId, season){
                     '&season=' + encodeURIComponent(season);
   try {
     const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (!data.teams || !data.teams.length) return null;
-    return data;
+    const payload = await res.json().catch(() => null);
+
+    if (!res.ok) {
+      const reason = (payload && payload.error) ? payload.error : ('HTTP ' + res.status);
+      return { ok: false, reason };
+    }
+    if (!payload || !payload.teams || !payload.teams.length) {
+      return { ok: false, reason: 'no league data returned' };
+    }
+    return { ok: true, data: payload };
   } catch (err) {
-    return null;
+    return { ok: false, reason: 'network error' };
   }
 }
 
@@ -679,25 +687,29 @@ async function loadHistory(){
   histLoadBtn.disabled = true;
   history.data = {};
   history.loadedSeasons = [];
-  const unavailable = [];
+  const failures = []; // { year, reason }
 
   for (let year = from; year <= to; year++) {
     historyStatus.textContent = 'Loading ' + year + '… (' + (year - from + 1) + '/' + (to - from + 1) + ')';
-    const data = await fetchHistorySeason(leagueId, year);
-    if (data) {
-      history.data[year] = data;
+    const result = await fetchHistorySeason(leagueId, year);
+    if (result.ok) {
+      history.data[year] = result.data;
       history.loadedSeasons.push(year);
     } else {
-      unavailable.push(year);
+      failures.push({ year, reason: result.reason });
     }
   }
 
   history.loadedSeasons.sort((a, b) => a - b);
   history.checkedSeasons = new Set(history.loadedSeasons);
 
-  historyStatus.textContent = history.loadedSeasons.length
-    ? (unavailable.length ? 'Loaded ' + history.loadedSeasons.length + ' season(s). No data for: ' + unavailable.join(', ') + '.' : 'Loaded ' + history.loadedSeasons.length + ' season(s).')
+  let statusMsg = history.loadedSeasons.length
+    ? 'Loaded ' + history.loadedSeasons.length + ' season(s).'
     : 'No seasons found in that range for this league ID.';
+  if (failures.length) {
+    statusMsg += ' Skipped: ' + failures.map(f => f.year + ' (' + f.reason + ')').join('; ') + '.';
+  }
+  historyStatus.textContent = statusMsg;
 
   histLoadBtn.disabled = false;
   renderHistoryContent();
