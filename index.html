@@ -222,6 +222,52 @@
   .trend.down{color:var(--loss);}
   .trend.flat{color:var(--chalk-dim);}
 
+  /* history */
+  .season-picker{
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px;
+    margin:14px 0 22px;
+  }
+  .season-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#0B1710;
+    border:1px solid var(--turf-line);
+    border-radius:20px;
+    padding:5px 12px 5px 8px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    cursor:pointer;
+    user-select:none;
+  }
+  .season-chip input{margin:0; accent-color:var(--amber);}
+  .season-chip.unavailable{opacity:.4; text-decoration:line-through; cursor:not-allowed;}
+  h2.section-title{
+    font-family:'Oswald', sans-serif;
+    font-size:18px;
+    letter-spacing:.02em;
+    margin:0 0 4px;
+  }
+  .section-note{
+    font-size:12px;
+    color:var(--chalk-dim);
+    margin:0 0 12px;
+    line-height:1.5;
+  }
+  table.h2h{font-size:12px;}
+  table.h2h th, table.h2h td{padding:8px 8px; white-space:nowrap;}
+  table.h2h th.rowhead, table.h2h td.rowhead{
+    text-align:left;
+    font-weight:600;
+    position:sticky;
+    left:0;
+    background:var(--turf);
+  }
+  table.h2h td.diag{color:var(--chalk-dim);}
+  .h2h-scroll{overflow-x:auto; margin-bottom:30px;}
+
   footer{
     text-align:center;
     color:var(--chalk-dim);
@@ -260,12 +306,28 @@
     <button data-tab="standings" class="active">Standings</button>
     <button data-tab="matchups">Matchups</button>
     <button data-tab="power">Power Rankings</button>
+    <button data-tab="history">History</button>
   </nav>
 
   <div id="statusArea"></div>
   <div id="standingsView"></div>
   <div id="matchupsView" style="display:none;"></div>
   <div id="powerView" style="display:none;"></div>
+  <div id="historyView" style="display:none;">
+    <div class="controls" style="margin-top:0;">
+      <div class="field">
+        <label for="histFrom">From season</label>
+        <input id="histFrom" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label for="histTo">To season</label>
+        <input id="histTo" inputmode="numeric">
+      </div>
+      <button class="go" id="histLoadBtn">Fetch history</button>
+    </div>
+    <div id="historyStatus" class="status"></div>
+    <div id="historyContent"></div>
+  </div>
 
   <footer>Data from ESPN's public fantasy API · not affiliated with ESPN</footer>
 </div>
@@ -278,6 +340,12 @@ const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
 const powerView = document.getElementById('powerView');
+const historyView = document.getElementById('historyView');
+const histFromInput = document.getElementById('histFrom');
+const histToInput = document.getElementById('histTo');
+const histLoadBtn = document.getElementById('histLoadBtn');
+const historyStatus = document.getElementById('historyStatus');
+const historyContent = document.getElementById('historyContent');
 const leagueTitle = document.getElementById('leagueTitle');
 const weekChip = document.getElementById('weekChip');
 
@@ -299,13 +367,21 @@ for (let y = latestLikelySeason + 1; y >= latestLikelySeason - 4; y--) {
   seasonSelect.appendChild(opt);
 }
 
+// ESPN's v3 API only reliably serves 2018-onward directly; older seasons
+// need a different endpoint (leagueHistory) that isn't wired up here.
+const HISTORY_FLOOR = 2018;
+histToInput.value = latestLikelySeason;
+histFromInput.value = Math.max(HISTORY_FLOOR, latestLikelySeason - 9);
+
 let state = { teams: [], schedule: [], currentWeek: null, leagueName: '' };
+let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   standingsView.style.display = name === 'standings' ? '' : 'none';
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
   powerView.style.display = name === 'power' ? '' : 'none';
+  historyView.style.display = name === 'history' ? '' : 'none';
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -577,12 +653,204 @@ function renderPointsTrendChart(byTeam, allWeeks){
     '</div>';
 }
 
+async function fetchHistorySeason(leagueId, season){
+  const proxyUrl = '/.netlify/functions/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
+                    '&season=' + encodeURIComponent(season);
+  try {
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data.teams || !data.teams.length) return null;
+    return data;
+  } catch (err) {
+    return null;
+  }
+}
+
+async function loadHistory(){
+  const leagueId = leagueIdInput.value.trim();
+  const from = parseInt(histFromInput.value, 10);
+  const to = parseInt(histToInput.value, 10);
+  if (!leagueId || !from || !to || from > to) {
+    historyStatus.textContent = 'Check your league ID and season range.';
+    return;
+  }
+
+  histLoadBtn.disabled = true;
+  history.data = {};
+  history.loadedSeasons = [];
+  const unavailable = [];
+
+  for (let year = from; year <= to; year++) {
+    historyStatus.textContent = 'Loading ' + year + '… (' + (year - from + 1) + '/' + (to - from + 1) + ')';
+    const data = await fetchHistorySeason(leagueId, year);
+    if (data) {
+      history.data[year] = data;
+      history.loadedSeasons.push(year);
+    } else {
+      unavailable.push(year);
+    }
+  }
+
+  history.loadedSeasons.sort((a, b) => a - b);
+  history.checkedSeasons = new Set(history.loadedSeasons);
+
+  historyStatus.textContent = history.loadedSeasons.length
+    ? (unavailable.length ? 'Loaded ' + history.loadedSeasons.length + ' season(s). No data for: ' + unavailable.join(', ') + '.' : 'Loaded ' + history.loadedSeasons.length + ' season(s).')
+    : 'No seasons found in that range for this league ID.';
+
+  histLoadBtn.disabled = false;
+  renderHistoryContent();
+}
+
+function historyTeamNames(){
+  const names = {};
+  history.loadedSeasons.forEach(year => {
+    (history.data[year].teams || []).forEach(t => { names[t.id] = teamDisplayName(t); });
+  });
+  return names;
+}
+
+function renderSeasonPicker(){
+  if (!history.loadedSeasons.length) return '';
+  const chips = history.loadedSeasons.map(y =>
+    '<label class="season-chip"><input type="checkbox" data-year="' + y + '" ' +
+    (history.checkedSeasons.has(y) ? 'checked' : '') + '>' + y + '</label>'
+  ).join('');
+  return '<div class="season-picker">' + chips + '</div>';
+}
+
+// The "toilet bowl championship" is the winner of the final week's game in
+// the consolation bracket (playoffTierType is anything other than NONE or
+// WINNERS_BRACKET). If the ladder has multiple games in its last week, the
+// top one is picked using playoff seed — the ladder keeps higher seeds in
+// the top bracket slot all the way through, so the best-seeded pair is the
+// actual toilet bowl game rather than a lower consolation-ladder rung.
+function toiletBowlChampion(data){
+  const teams = data.teams || [];
+  const schedule = data.schedule || [];
+
+  const consolationGames = schedule.filter(g =>
+    g.playoffTierType && g.playoffTierType !== 'NONE' && g.playoffTierType !== 'WINNERS_BRACKET' &&
+    g.winner && g.winner !== 'UNDECIDED' && g.home && g.away
+  );
+  if (!consolationGames.length) return null;
+
+  const finalWeek = Math.max(...consolationGames.map(g => g.matchupPeriodId));
+  const finalGames = consolationGames.filter(g => g.matchupPeriodId === finalWeek);
+  if (!finalGames.length) return null;
+
+  const seedById = {};
+  teams.forEach(t => seedById[t.id] = t.playoffSeed || 999);
+
+  let best = finalGames[0], bestSeedSum = Infinity;
+  finalGames.forEach(g => {
+    const sum = (seedById[g.home.teamId] || 999) + (seedById[g.away.teamId] || 999);
+    if (sum < bestSeedSum) { bestSeedSum = sum; best = g; }
+  });
+
+  return best.winner === 'HOME' ? best.home.teamId : best.away.teamId;
+}
+
+function renderHistoryContent(){
+  if (!history.loadedSeasons.length) { historyContent.innerHTML = ''; return; }
+
+  const names = historyTeamNames();
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+
+  // ---- All-time records ----
+  const agg = {}; // teamId -> stats
+  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0 });
+
+  checked.forEach(year => {
+    const data = history.data[year];
+    const teams = data.teams || [];
+    const settings = data.settings || {};
+    const playoffSpots = settings.scheduleSettings?.playoffTeamCount || 0;
+
+    teams.forEach(t => {
+      const s = ensure(t.id);
+      const r = t.record?.overall || {};
+      s.w += r.wins || 0; s.l += r.losses || 0; s.t += r.ties || 0;
+
+      const finalRank = t.rankFinal && t.rankFinal > 0 ? t.rankFinal : null;
+      if (finalRank) {
+        if (finalRank === 1) s.championships++;
+        if (finalRank <= 3) s.top3++;
+      }
+      if (playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots) s.playoffs++;
+    });
+
+    const toiletChamp = toiletBowlChampion(data);
+    if (toiletChamp !== null) ensure(toiletChamp).toiletBowl++;
+  });
+
+  const rows = Object.entries(agg)
+    .sort((a, b) => b[1].championships - a[1].championships || (b[1].w / Math.max(b[1].w+b[1].l+b[1].t,1)) - (a[1].w / Math.max(a[1].w+a[1].l+a[1].t,1)))
+    .map(([id, s]) => '<tr>' +
+      '<td class="team-name">' + escapeHtml(names[id] || ('Team ' + id)) + '</td>' +
+      '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
+      '<td class="num">' + s.championships + '</td>' +
+      '<td class="num">' + s.top3 + '</td>' +
+      '<td class="num">' + s.playoffs + '</td>' +
+      '<td class="num">' + s.toiletBowl + '</td>' +
+      '</tr>').join('');
+
+  const recordsTable = '<h2 class="section-title">All-time records</h2>' +
+    '<p class="section-note">Across the seasons checked below. Toilet bowl championships are the winner of the final week\'s top consolation-bracket game each season (identified by playoff seed when the ladder has multiple games that week).</p>' +
+    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>';
+
+  // ---- Head-to-head matrix ----
+  const teamIds = Object.keys(agg);
+  const h2h = {}; // "a|b" -> {w,l,t} from a's perspective
+  teamIds.forEach(a => teamIds.forEach(b => { if (a !== b) h2h[a+'|'+b] = { w:0, l:0, t:0 }; }));
+
+  checked.forEach(year => {
+    (history.data[year].schedule || []).forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const a = String(g.home.teamId), b = String(g.away.teamId);
+      if (!h2h[a+'|'+b] || !h2h[b+'|'+a]) return;
+      if (g.winner === 'HOME') { h2h[a+'|'+b].w++; h2h[b+'|'+a].l++; }
+      else if (g.winner === 'AWAY') { h2h[a+'|'+b].l++; h2h[b+'|'+a].w++; }
+      else { h2h[a+'|'+b].t++; h2h[b+'|'+a].t++; }
+    });
+  });
+
+  const header = '<th class="rowhead"></th>' + teamIds.map(id => '<th>' + escapeHtml((names[id]||'?').slice(0,10)) + '</th>').join('');
+  const bodyRows = teamIds.map(a => {
+    const cells = teamIds.map(b => {
+      if (a === b) return '<td class="diag">—</td>';
+      const rec = h2h[a+'|'+b];
+      return '<td class="num">' + rec.w + '-' + rec.l + (rec.t ? '-' + rec.t : '') + '</td>';
+    }).join('');
+    return '<tr><td class="rowhead">' + escapeHtml((names[a]||'?').slice(0,14)) + '</td>' + cells + '</tr>';
+  }).join('');
+
+  const h2hTable = teamIds.length
+    ? '<h2 class="section-title">Head-to-head</h2>' +
+      '<p class="section-note">Row team\'s record against column team, wins-losses(-ties), across checked seasons.</p>' +
+      '<div class="h2h-scroll"><table class="h2h"><thead><tr>' + header + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
+    : '';
+
+  historyContent.innerHTML = renderSeasonPicker() + recordsTable + h2hTable;
+
+  historyContent.querySelectorAll('.season-chip input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const year = parseInt(cb.dataset.year, 10);
+      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
+      renderHistoryContent();
+    });
+  });
+}
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 loadBtn.addEventListener('click', loadLeague);
 leagueIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
+histLoadBtn.addEventListener('click', loadHistory);
 
 // Kick off an initial load with the pre-filled league ID.
 loadLeague();
