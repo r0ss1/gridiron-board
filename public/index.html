@@ -941,17 +941,17 @@ function renderAwards(){
 }
 
 function renderAwardsSingleSeason(){
-  const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock all-time / select-years awards here too.</p>';
+  const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock awards for past seasons too.</p>';
   if (!state.teams.length) {
     awardsView.innerHTML = note + '<div class="status">Load a league first.</div>';
     return;
   }
-  const seasonsData = [{ year: state.seasonYear, teams: state.teams, schedule: state.schedule }];
-  awardsView.innerHTML = note + buildAwardsHtml(seasonsData);
+  const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, false);
+  awardsView.innerHTML = note + section;
 }
 
 function renderAwardsMultiSeason(){
-  const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => a - b);
+  const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => b - a);
   const picker = renderSeasonPicker();
 
   if (!years.length) {
@@ -959,8 +959,11 @@ function renderAwardsMultiSeason(){
     return;
   }
 
-  const seasonsData = years.map(y => ({ year: y, teams: history.data[y].teams || [], schedule: history.data[y].schedule || [] }));
-  awardsView.innerHTML = picker + buildAwardsHtml(seasonsData);
+  const sections = years.map(y =>
+    renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], true)
+  ).join('');
+
+  awardsView.innerHTML = picker + sections;
 
   awardsView.querySelectorAll('.season-chip input').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -971,11 +974,17 @@ function renderAwardsMultiSeason(){
   });
 }
 
-function buildAwardsHtml(seasonsData){
-  const awards = computeAwards(seasonsData);
+// Awards are always computed for a single season at a time — no pooling
+// across years, so "highest score" etc. means highest in that season, not
+// of all time. With multiple seasons checked, each gets its own section.
+function renderAwardsSection(year, teams, schedule, showHeading){
+  const awards = computeAwards(year, teams, schedule);
+  const heading = showHeading ? '<h2 class="section-title">' + year + '</h2>' : '';
+
   if (!awards || !awards.length) {
-    return '<div class="status">Not enough completed games yet to hand out awards.</div>';
+    return heading + '<div class="status">Not enough completed games in ' + year + ' yet.</div>';
   }
+
   const cards = awards.map(a =>
     '<div class="award-card">' +
       '<div class="award-emoji">' + a.emoji + '</div>' +
@@ -987,112 +996,110 @@ function buildAwardsHtml(seasonsData){
       '</div>' +
     '</div>'
   ).join('');
-  return '<div class="award-grid">' + cards + '</div>';
+
+  return heading + '<div class="award-grid">' + cards + '</div>';
 }
 
-// Flattens one or more seasons of {teams, schedule} into:
+// Flattens one season's {teams, schedule} into:
 //  - teamGames: one row per team per completed game (for score/streak awards)
 //  - games: one row per completed game (for margin awards)
-//  - seasonRecords: one row per team per season (for best/worst season)
-function buildAwardsFromSeasons(seasonsData){
+//  - seasonRecords: one row per team (for best/worst record that season)
+function buildAwardsFromSeason(teams, schedule){
   const teamGames = [];
   const games = [];
   const seasonRecords = [];
 
-  seasonsData.forEach(({ year, teams, schedule }) => {
-    const nameById = {};
-    teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
+  const nameById = {};
+  teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
 
-    teams.forEach(t => {
-      const r = t.record?.overall || {};
-      const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
-      if (gp > 0) {
-        seasonRecords.push({
-          name: nameById[t.id], season: year,
-          wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0,
-          winPct: ((r.wins || 0) + (r.ties || 0) * 0.5) / gp,
-        });
-      }
-    });
+  teams.forEach(t => {
+    const r = t.record?.overall || {};
+    const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
+    if (gp > 0) {
+      seasonRecords.push({
+        name: nameById[t.id],
+        wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0,
+        winPct: ((r.wins || 0) + (r.ties || 0) * 0.5) / gp,
+      });
+    }
+  });
 
-    (schedule || []).forEach(g => {
-      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
-      const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
-      const hName = nameById[g.home.teamId] || ('Team ' + g.home.teamId);
-      const aName = nameById[g.away.teamId] || ('Team ' + g.away.teamId);
+  (schedule || []).forEach(g => {
+    if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+    const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
+    const hName = nameById[g.home.teamId] || ('Team ' + g.home.teamId);
+    const aName = nameById[g.away.teamId] || ('Team ' + g.away.teamId);
 
-      games.push({ season: year, week: g.matchupPeriodId, homeName: hName, homePts: hp, awayName: aName, awayPts: ap, margin: Math.abs(hp - ap), winner: g.winner });
+    games.push({ week: g.matchupPeriodId, homeName: hName, homePts: hp, awayName: aName, awayPts: ap, margin: Math.abs(hp - ap), winner: g.winner });
 
-      const hResult = g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T';
-      const aResult = g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T';
-      teamGames.push({ teamId: g.home.teamId, name: hName, season: year, week: g.matchupPeriodId, points: hp, oppName: aName, result: hResult });
-      teamGames.push({ teamId: g.away.teamId, name: aName, season: year, week: g.matchupPeriodId, points: ap, oppName: hName, result: aResult });
-    });
+    const hResult = g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T';
+    const aResult = g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T';
+    teamGames.push({ teamId: g.home.teamId, name: hName, week: g.matchupPeriodId, points: hp, oppName: aName, result: hResult });
+    teamGames.push({ teamId: g.away.teamId, name: aName, week: g.matchupPeriodId, points: ap, oppName: hName, result: aResult });
   });
 
   return { teamGames, games, seasonRecords };
 }
 
-function weekLabel(g, multiSeason){
-  return (multiSeason ? g.season + ' ' : '') + 'Week ' + g.week;
+function weekLabel(g){
+  return 'Week ' + g.week;
 }
 
-function computeAwards(seasonsData){
-  const { teamGames, games, seasonRecords } = buildAwardsFromSeasons(seasonsData);
+function computeAwards(year, teams, schedule){
+  const { teamGames, games, seasonRecords } = buildAwardsFromSeason(teams, schedule);
   if (!teamGames.length) return null;
-  const multi = seasonsData.length > 1;
   const awards = [];
 
   const highest = teamGames.reduce((a, b) => b.points > a.points ? b : a);
-  awards.push({ emoji: '🔥', title: 'Blowtorch', desc: 'Highest single-week score', winner: highest.name, detail: highest.points.toFixed(1) + ' pts · ' + weekLabel(highest, multi) });
+  awards.push({ emoji: '🔥', title: 'Blowtorch', desc: 'Highest single-week score', winner: highest.name, detail: highest.points.toFixed(1) + ' pts · ' + weekLabel(highest) });
 
   const lowest = teamGames.reduce((a, b) => b.points < a.points ? b : a);
-  awards.push({ emoji: '🥶', title: 'Ice Cold', desc: 'Lowest single-week score', winner: lowest.name, detail: lowest.points.toFixed(1) + ' pts · ' + weekLabel(lowest, multi) });
+  awards.push({ emoji: '🥶', title: 'Ice Cold', desc: 'Lowest single-week score', winner: lowest.name, detail: lowest.points.toFixed(1) + ' pts · ' + weekLabel(lowest) });
 
   const decisive = games.filter(g => g.winner !== 'TIE');
   if (decisive.length) {
     const blowout = decisive.reduce((a, b) => b.margin > a.margin ? b : a);
     const bWinner = blowout.winner === 'HOME' ? blowout.homeName : blowout.awayName;
     const bLoser = blowout.winner === 'HOME' ? blowout.awayName : blowout.homeName;
-    awards.push({ emoji: '💥', title: 'Mercy Rule', desc: 'Biggest margin of victory', winner: bWinner, detail: '+' + blowout.margin.toFixed(1) + ' over ' + bLoser + ' · ' + weekLabel(blowout, multi) });
+    awards.push({ emoji: '💥', title: 'Mercy Rule', desc: 'Biggest margin of victory', winner: bWinner, detail: '+' + blowout.margin.toFixed(1) + ' over ' + bLoser + ' · ' + weekLabel(blowout) });
 
     const nail = decisive.reduce((a, b) => b.margin < a.margin ? b : a);
     const nWinner = nail.winner === 'HOME' ? nail.homeName : nail.awayName;
     const nLoser = nail.winner === 'HOME' ? nail.awayName : nail.homeName;
-    awards.push({ emoji: '😰', title: 'Nail-Biter', desc: 'Closest final margin', winner: nWinner, detail: '+' + nail.margin.toFixed(1) + ' over ' + nLoser + ' · ' + weekLabel(nail, multi) });
+    awards.push({ emoji: '😰', title: 'Nail-Biter', desc: 'Closest final margin', winner: nWinner, detail: '+' + nail.margin.toFixed(1) + ' over ' + nLoser + ' · ' + weekLabel(nail) });
   }
 
   const losses = teamGames.filter(g => g.result === 'L');
   if (losses.length) {
     const heartbreak = losses.reduce((a, b) => b.points > a.points ? b : a);
-    awards.push({ emoji: '💔', title: 'Heartbreaker', desc: 'Highest score in a loss', winner: heartbreak.name, detail: heartbreak.points.toFixed(1) + ' pts, lost to ' + heartbreak.oppName + ' · ' + weekLabel(heartbreak, multi) });
+    awards.push({ emoji: '💔', title: 'Heartbreaker', desc: 'Highest score in a loss', winner: heartbreak.name, detail: heartbreak.points.toFixed(1) + ' pts, lost to ' + heartbreak.oppName + ' · ' + weekLabel(heartbreak) });
   }
 
   const wins = teamGames.filter(g => g.result === 'W');
   if (wins.length) {
     const lucky = wins.reduce((a, b) => b.points < a.points ? b : a);
-    awards.push({ emoji: '🍀', title: 'Lucky Escape', desc: 'Lowest score in a win', winner: lucky.name, detail: lucky.points.toFixed(1) + ' pts, beat ' + lucky.oppName + ' · ' + weekLabel(lucky, multi) });
+    awards.push({ emoji: '🍀', title: 'Lucky Escape', desc: 'Lowest score in a win', winner: lucky.name, detail: lucky.points.toFixed(1) + ' pts, beat ' + lucky.oppName + ' · ' + weekLabel(lucky) });
   }
 
   if (seasonRecords.length) {
     const best = seasonRecords.reduce((a, b) => b.winPct > a.winPct ? b : a);
-    awards.push({ emoji: '👑', title: 'Best Season', desc: 'Best single-season record', winner: best.name, detail: best.wins + '-' + best.losses + (best.ties ? '-' + best.ties : '') + ' · ' + best.season });
+    awards.push({ emoji: '👑', title: 'Best Record', desc: 'Best regular-season record', winner: best.name, detail: best.wins + '-' + best.losses + (best.ties ? '-' + best.ties : '') });
 
     const worst = seasonRecords.reduce((a, b) => b.winPct < a.winPct ? b : a);
-    awards.push({ emoji: '🪦', title: 'Worst Season', desc: 'Worst single-season record', winner: worst.name, detail: worst.wins + '-' + worst.losses + (worst.ties ? '-' + worst.ties : '') + ' · ' + worst.season });
+    awards.push({ emoji: '🪦', title: 'Worst Record', desc: 'Worst regular-season record', winner: worst.name, detail: worst.wins + '-' + worst.losses + (worst.ties ? '-' + worst.ties : '') });
   }
 
-  const streaks = computeStreaks(teamGames, multi);
+  const streaks = computeStreaks(teamGames);
   if (streaks.bestWin) awards.push({ emoji: '🚀', title: 'Hot Streak', desc: 'Longest win streak', winner: streaks.bestWin.name, detail: streaks.bestWin.length + ' straight wins · ' + streaks.bestWin.range });
   if (streaks.worstLoss) awards.push({ emoji: '📉', title: 'The Skid', desc: 'Longest losing streak', winner: streaks.worstLoss.name, detail: streaks.worstLoss.length + ' straight losses · ' + streaks.worstLoss.range });
 
   return awards;
 }
 
-function computeStreaks(teamGames, multi){
+function computeStreaks(teamGames){
   const byTeam = {};
   teamGames.forEach(g => { (byTeam[g.teamId] = byTeam[g.teamId] || []).push(g); });
-  Object.values(byTeam).forEach(arr => arr.sort((a, b) => a.season - b.season || a.week - b.week));
+  Object.values(byTeam).forEach(arr => arr.sort((a, b) => a.week - b.week));
 
   let bestWin = null, worstLoss = null;
 
@@ -1108,10 +1115,10 @@ function computeStreaks(teamGames, multi){
         curStart = g;
       }
       if (curResult === 'W' && curLen >= 2 && (!bestWin || curLen > bestWin.length)) {
-        bestWin = { name: g.name, length: curLen, range: streakRange(curStart, g, multi) };
+        bestWin = { name: g.name, length: curLen, range: streakRange(curStart, g) };
       }
       if (curResult === 'L' && curLen >= 2 && (!worstLoss || curLen > worstLoss.length)) {
-        worstLoss = { name: g.name, length: curLen, range: streakRange(curStart, g, multi) };
+        worstLoss = { name: g.name, length: curLen, range: streakRange(curStart, g) };
       }
     });
   });
@@ -1119,8 +1126,8 @@ function computeStreaks(teamGames, multi){
   return { bestWin, worstLoss };
 }
 
-function streakRange(start, end, multi){
-  const s = weekLabel(start, multi), e = weekLabel(end, multi);
+function streakRange(start, end){
+  const s = weekLabel(start), e = weekLabel(end);
   return s === e ? s : s + ' – ' + e;
 }
 
