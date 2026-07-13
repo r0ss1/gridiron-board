@@ -18,7 +18,7 @@
 // login" panel does this automatically once you've saved them there).
 
 const VIEWS = 'view=mTeam&view=mStandings&view=mMatchupScore&view=mSettings';
-const LEGACY_CUTOFF_YEAR = 2019;
+const LEGACY_CUTOFF_YEAR = 2018;
 
 export default {
   async fetch(request, env) {
