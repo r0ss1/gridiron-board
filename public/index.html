@@ -1409,6 +1409,28 @@ function seasonPlacements(data){
   return { champion, runnerUp, thirdPlace };
 }
 
+// Loads data/manual-adjustments.json — for real-world overrides the API
+// has no field for, like a championship getting vacated after the fact.
+// Currently supports: { "vacatedChampionshipSeasons": [2020] } — any season
+// listed there has its championship stripped from whoever the bracket says
+// won, and counted as a DQ for that team instead. Missing/empty/invalid
+// file just means no adjustments, same as the other data files.
+let MANUAL_ADJUSTMENTS = { vacatedChampionshipSeasons: [] };
+async function loadManualAdjustments(){
+  try {
+    const res = await fetch('./data/manual-adjustments.json');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data && Array.isArray(data.vacatedChampionshipSeasons)) {
+      MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons = data.vacatedChampionshipSeasons;
+    }
+  } catch (e) {
+    return;
+  }
+  if (history.loadedSeasons.length) refreshSeasonDependentViews();
+}
+loadManualAdjustments();
+
 function renderHistoryContent(){
   if (!history.loadedSeasons.length) { historyContent.innerHTML = ''; return; }
 
@@ -1417,7 +1439,7 @@ function renderHistoryContent(){
 
   // ---- All-time records ----
   const agg = {}; // teamId -> stats
-  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0 });
+  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0 });
 
   checked.forEach(year => {
     const data = history.data[year];
@@ -1434,7 +1456,12 @@ function renderHistoryContent(){
 
     const placements = seasonPlacements(data);
     if (placements) {
-      ensure(placements.champion).championships++;
+      const vacated = MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons.includes(year);
+      if (vacated) {
+        ensure(placements.champion).dq++;
+      } else {
+        ensure(placements.champion).championships++;
+      }
       ensure(placements.champion).top3++;
       ensure(placements.runnerUp).top3++;
       if (placements.thirdPlace) ensure(placements.thirdPlace).top3++;
@@ -1453,11 +1480,12 @@ function renderHistoryContent(){
       '<td class="num">' + s.top3 + '</td>' +
       '<td class="num">' + s.playoffs + '</td>' +
       '<td class="num">' + s.toiletBowl + '</td>' +
+      '<td class="num">' + s.dq + '</td>' +
       '</tr>').join('');
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
-    '<p class="section-note">Across the seasons checked below. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league.</p>' +
-    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th></tr></thead>' +
+    '<p class="section-note">Across the seasons checked below. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
+    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
   // ---- Head-to-head matrix ----
