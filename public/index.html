@@ -482,7 +482,7 @@ const TEAM_NAME_OVERRIDES = {
   // 4: "Waiver Wire Wizards",
 };
 
-let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null };
+let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null, settings: {} };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
@@ -630,6 +630,7 @@ async function loadLeague(){
     state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
     state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
     state.seasonYear = parseInt(season, 10);
+    state.settings = data.settings || {};
 
     leagueTitle.textContent = state.leagueName;
     weekChip.innerHTML = state.currentWeek
@@ -1027,7 +1028,7 @@ function renderAwardsSingleSeason(){
     awardsView.innerHTML = note + '<div class="status">Load a league first.</div>';
     return;
   }
-  const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, false);
+  const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, state.settings, false);
   awardsView.innerHTML = note + section;
 }
 
@@ -1041,7 +1042,7 @@ function renderAwardsMultiSeason(){
   }
 
   const sections = years.map(y =>
-    renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], true)
+    renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], history.data[y].settings || {}, true)
   ).join('');
 
   awardsView.innerHTML = picker + sections;
@@ -1058,8 +1059,8 @@ function renderAwardsMultiSeason(){
 // Awards are always computed for a single season at a time — no pooling
 // across years, so "highest score" etc. means highest in that season, not
 // of all time. With multiple seasons checked, each gets its own section.
-function renderAwardsSection(year, teams, schedule, showHeading){
-  const awards = computeAwards(year, teams, schedule);
+function renderAwardsSection(year, teams, schedule, settings, showHeading){
+  const awards = computeAwards(year, teams, schedule, settings);
   const heading = showHeading ? '<h2 class="section-title">' + year + '</h2>' : '';
 
   if (!awards || !awards.length) {
@@ -1084,11 +1085,13 @@ function renderAwardsSection(year, teams, schedule, showHeading){
 // Flattens one season's {teams, schedule} into:
 //  - teamGames: one row per team per completed game (for score/streak awards)
 //  - games: one row per completed game (for margin awards)
-//  - seasonRecords: one row per team (for best/worst record that season)
-function buildAwardsFromSeason(teams, schedule){
+//  - seasonRecords: one row per team (for record-based awards, incl. playoff seed)
+//  - teamTotals: one row per team (for season-total and schedule-strength awards)
+function buildAwardsFromSeason(teams, schedule, settings){
   const teamGames = [];
   const games = [];
   const seasonRecords = [];
+  const playoffSpots = settings?.scheduleSettings?.playoffTeamCount || 0;
 
   const nameById = {};
   teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
@@ -1098,9 +1101,11 @@ function buildAwardsFromSeason(teams, schedule){
     const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
     if (gp > 0) {
       seasonRecords.push({
-        name: nameById[t.id],
+        teamId: t.id, name: nameById[t.id],
         wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0,
         winPct: ((r.wins || 0) + (r.ties || 0) * 0.5) / gp,
+        playoffSeed: t.playoffSeed || null,
+        madePlayoffs: !!(playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots),
       });
     }
   });
@@ -1115,19 +1120,57 @@ function buildAwardsFromSeason(teams, schedule){
 
     const hResult = g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T';
     const aResult = g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T';
-    teamGames.push({ teamId: g.home.teamId, name: hName, week: g.matchupPeriodId, points: hp, oppName: aName, result: hResult });
-    teamGames.push({ teamId: g.away.teamId, name: aName, week: g.matchupPeriodId, points: ap, oppName: hName, result: aResult });
+    teamGames.push({ teamId: g.home.teamId, name: hName, week: g.matchupPeriodId, points: hp, oppPoints: ap, oppName: aName, result: hResult });
+    teamGames.push({ teamId: g.away.teamId, name: aName, week: g.matchupPeriodId, points: ap, oppPoints: hp, oppName: hName, result: aResult });
   });
 
-  return { teamGames, games, seasonRecords };
+  const teamTotalsMap = {};
+  teamGames.forEach(g => {
+    const t = teamTotalsMap[g.teamId] || (teamTotalsMap[g.teamId] = { teamId: g.teamId, name: g.name, points: 0, oppPoints: 0, games: 0 });
+    t.points += g.points;
+    t.oppPoints += g.oppPoints;
+    t.games++;
+  });
+  const recordByTeam = {};
+  seasonRecords.forEach(r => { recordByTeam[r.teamId] = r; });
+  const teamTotals = Object.values(teamTotalsMap).map(t => ({
+    ...t,
+    avgPoints: t.points / t.games,
+    avgOppPoints: t.oppPoints / t.games,
+    madePlayoffs: recordByTeam[t.teamId] ? recordByTeam[t.teamId].madePlayoffs : false,
+  }));
+
+  return { teamGames, games, seasonRecords, teamTotals };
 }
 
 function weekLabel(g){
   return 'Week ' + g.week;
 }
 
-function computeAwards(year, teams, schedule){
-  const { teamGames, games, seasonRecords } = buildAwardsFromSeason(teams, schedule);
+function stdDev(values){
+  const mean = values.reduce((s, v) => s + v, 0) / values.length;
+  const variance = values.reduce((s, v) => s + (v - mean) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+// Looks up a team's win% in the season immediately before `year`, using
+// whatever's in the history cache — doesn't require that season to be
+// checked/displayed, just previously fetched. Returns null if unavailable
+// (team wasn't in the league, season not fetched, or in single-season mode
+// with no history loaded at all).
+function previousSeasonWinPct(year, teamId){
+  const prev = history.data[year - 1];
+  if (!prev) return null;
+  const t = (prev.teams || []).find(tt => tt.id === teamId);
+  if (!t) return null;
+  const r = t.record?.overall || {};
+  const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
+  if (!gp) return null;
+  return ((r.wins || 0) + (r.ties || 0) * 0.5) / gp;
+}
+
+function computeAwards(year, teams, schedule, settings){
+  const { teamGames, games, seasonRecords, teamTotals } = buildAwardsFromSeason(teams, schedule, settings);
   if (!teamGames.length) return null;
   const awards = [];
 
@@ -1174,9 +1217,73 @@ function computeAwards(year, teams, schedule){
   if (streaks.bestWin) awards.push({ emoji: '🚀', title: 'Hot Streak', desc: 'Longest win streak', winner: streaks.bestWin.name, detail: streaks.bestWin.length + ' straight wins · ' + streaks.bestWin.range });
   if (streaks.worstLoss) awards.push({ emoji: '📉', title: 'The Skid', desc: 'Longest losing streak', winner: streaks.worstLoss.name, detail: streaks.worstLoss.length + ' straight losses · ' + streaks.worstLoss.range });
 
+  // ---- Consistency ----
+  const byTeamPoints = {};
+  teamGames.forEach(g => { (byTeamPoints[g.teamId] = byTeamPoints[g.teamId] || { name: g.name, pts: [] }).pts.push(g.points); });
+  const consistency = Object.values(byTeamPoints)
+    .filter(t => t.pts.length >= 3)
+    .map(t => ({ name: t.name, sd: stdDev(t.pts) }));
+  if (consistency.length) {
+    const steady = consistency.reduce((a, b) => b.sd < a.sd ? b : a);
+    awards.push({ emoji: '📏', title: 'Steady Eddy', desc: 'Most consistent scorer week to week', winner: steady.name, detail: '±' + steady.sd.toFixed(1) + ' pts std. dev.' });
+
+    const volatile = consistency.reduce((a, b) => b.sd > a.sd ? b : a);
+    awards.push({ emoji: '🎢', title: 'Boom or Bust', desc: 'Least consistent scorer week to week', winner: volatile.name, detail: '±' + volatile.sd.toFixed(1) + ' pts std. dev.' });
+  }
+
+  // ---- Season totals & schedule strength ----
+  if (teamTotals.length) {
+    const machine = teamTotals.reduce((a, b) => b.points > a.points ? b : a);
+    awards.push({ emoji: '🏗️', title: 'The Machine', desc: 'Most total points scored', winner: machine.name, detail: machine.points.toFixed(1) + ' pts on the season' });
+
+    const punchless = teamTotals.reduce((a, b) => b.points < a.points ? b : a);
+    awards.push({ emoji: '🧱', title: 'Offense Optional', desc: 'Fewest total points scored', winner: punchless.name, detail: punchless.points.toFixed(1) + ' pts on the season' });
+
+    const gauntlet = teamTotals.reduce((a, b) => b.avgOppPoints > a.avgOppPoints ? b : a);
+    awards.push({ emoji: '🥊', title: "Murderers' Row", desc: 'Toughest schedule faced', winner: gauntlet.name, detail: gauntlet.avgOppPoints.toFixed(1) + ' opp. pts/wk on average' });
+
+    const cakewalk = teamTotals.reduce((a, b) => b.avgOppPoints < a.avgOppPoints ? b : a);
+    awards.push({ emoji: '🎯', title: 'Easy Slate', desc: 'Softest schedule faced', winner: cakewalk.name, detail: cakewalk.avgOppPoints.toFixed(1) + ' opp. pts/wk on average' });
+
+    const nonPlayoff = teamTotals.filter(t => !t.madePlayoffs);
+    if (nonPlayoff.length) {
+      const snakeBitten = nonPlayoff.reduce((a, b) => b.points > a.points ? b : a);
+      awards.push({ emoji: '💣', title: 'Snake-Bitten', desc: 'Highest scorer to miss the playoffs', winner: snakeBitten.name, detail: snakeBitten.points.toFixed(1) + ' pts, missed the playoffs anyway' });
+    }
+  }
+
+  // ---- Playoff narrative ----
+  const placements = seasonPlacements({ teams, schedule });
+  if (placements) {
+    const champTotal = teamTotals.find(t => t.teamId === placements.champion);
+    const pointsLeader = teamTotals.length ? teamTotals.reduce((a, b) => b.points > a.points ? b : a) : null;
+    if (champTotal && pointsLeader && champTotal.teamId !== pointsLeader.teamId) {
+      awards.push({ emoji: '📜', title: 'Paper Champion', desc: 'Won it without leading the league in points', winner: champTotal.name, detail: champTotal.points.toFixed(1) + ' pts vs. ' + pointsLeader.name + "'s league-best " + pointsLeader.points.toFixed(1) });
+    }
+
+    const champRecord = seasonRecords.find(r => r.teamId === placements.champion);
+    if (champRecord && champRecord.playoffSeed && champRecord.playoffSeed >= 3) {
+      awards.push({ emoji: '🐊', title: 'Giant Killer', desc: 'Won it all as a low playoff seed', winner: champRecord.name, detail: 'No. ' + champRecord.playoffSeed + ' seed' });
+    }
+  }
+
+  // ---- Year-over-year (only when the prior season is in the cache) ----
+  const deltas = seasonRecords
+    .map(r => {
+      const prevPct = previousSeasonWinPct(year, r.teamId);
+      return prevPct === null ? null : { name: r.name, delta: r.winPct - prevPct };
+    })
+    .filter(Boolean);
+  if (deltas.length) {
+    const riser = deltas.reduce((a, b) => b.delta > a.delta ? b : a);
+    if (riser.delta > 0) awards.push({ emoji: '📈', title: 'Most Improved', desc: "Biggest win% jump vs. the previous season", winner: riser.name, detail: '+' + Math.round(riser.delta * 100) + ' pts of win%' });
+
+    const faller = deltas.reduce((a, b) => b.delta < a.delta ? b : a);
+    if (faller.delta < 0) awards.push({ emoji: '📉', title: 'Biggest Fall-Off', desc: "Biggest win% drop vs. the previous season", winner: faller.name, detail: Math.round(faller.delta * 100) + ' pts of win%' });
+  }
+
   return awards;
 }
-
 function computeStreaks(teamGames){
   const byTeam = {};
   teamGames.forEach(g => { (byTeam[g.teamId] = byTeam[g.teamId] || []).push(g); });
