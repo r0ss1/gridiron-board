@@ -818,22 +818,33 @@ function renderPowerRankingsMultiSeason(){
     return;
   }
 
-  const teamIds = Object.keys(teamsMeta);
-  const ranked = teamIds.map(id => ({ id, name: teamDisplayName(teamsMeta[id]), score: powerScore(byTeam[id] || []) }))
-    .filter(r => r.score !== null)
-    .sort((a, b) => b.score - a.score);
+  // All-time ranking = win% (60%) blended with scoring output (40%, normalized
+  // across the field) — NOT the same recency-weighted formula as the
+  // single-season view. A "last 2 games" bias makes sense for gauging
+  // current form within one season, but across multiple completed seasons
+  // it let two hot recent weeks outweigh years of a losing record, which
+  // produced rankings that didn't match the actual standings. This version
+  // is anchored to wins first, same as the standings are.
+  const ranked = rankAllTime(years, byTeam, teamsMeta);
 
-  const lastIdx = totalPoints - 1;
-  const rankedPrev = teamIds.map(id => {
-    const trimmed = (byTeam[id] || []).filter(w => w.idx < lastIdx);
-    return { id, score: powerScore(trimmed) };
-  }).filter(r => r.score !== null).sort((a, b) => b.score - a.score);
+  // "Trend" = how the ranking would've looked without the most recently
+  // checked season, so it still shows movement without reintroducing a
+  // recency-dominated score.
+  let rankedPrev = [];
+  if (years.length > 1) {
+    const prevYears = years.slice(0, -1);
+    const prevData = weeklyScoresAcrossSeasons(prevYears);
+    rankedPrev = rankAllTime(prevYears, prevData.byTeam, prevData.teamsMeta);
+  }
 
   const table = buildPowerTable(ranked, rankedPrev);
+  const teamIds = Object.keys(teamsMeta);
   const teamList = teamIds.map(id => ({ id, name: teamDisplayName(teamsMeta[id]) }));
   const chart = renderPointsTrendChart(byTeam, null, teamList, seasonBoundaries, totalPoints);
 
-  powerView.innerHTML = picker + chart + table;
+  powerView.innerHTML = picker +
+    '<p class="section-note">All-time score blends win% (60%) with average points scored (40%, normalized against the field) — not the recent-form weighting used for a single season.</p>' +
+    chart + table;
 
   powerView.querySelectorAll('.season-chip input').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -842,6 +853,46 @@ function renderPowerRankingsMultiSeason(){
       refreshSeasonDependentViews();
     });
   });
+}
+
+// Sums wins/losses/ties directly from each season's team record (reliable,
+// same field the Standings tab uses) rather than re-deriving them from
+// schedule results.
+function allTimeRecordTotals(years){
+  const totals = {};
+  years.forEach(year => {
+    (history.data[year].teams || []).forEach(t => {
+      const r = t.record?.overall || {};
+      const cur = totals[t.id] || (totals[t.id] = { wins: 0, losses: 0, ties: 0 });
+      cur.wins += r.wins || 0; cur.losses += r.losses || 0; cur.ties += r.ties || 0;
+    });
+  });
+  return totals;
+}
+
+function rankAllTime(years, byTeam, teamsMeta){
+  const recordTotals = allTimeRecordTotals(years);
+  const teamIds = Object.keys(teamsMeta);
+
+  const metrics = teamIds.map(id => {
+    const rec = recordTotals[id] || { wins: 0, losses: 0, ties: 0 };
+    const gp = rec.wins + rec.losses + rec.ties;
+    if (!gp) return null;
+    const games = byTeam[id] || [];
+    const avgPts = games.length ? games.reduce((s, w) => s + w.points, 0) / games.length : 0;
+    const winPct = (rec.wins + rec.ties * 0.5) / gp;
+    return { id, name: teamDisplayName(teamsMeta[id]), avgPts, winPct };
+  }).filter(Boolean);
+
+  if (!metrics.length) return [];
+
+  const ptsValues = metrics.map(m => m.avgPts);
+  const minPts = Math.min(...ptsValues), maxPts = Math.max(...ptsValues);
+  const normPts = v => maxPts > minPts ? (v - minPts) / (maxPts - minPts) : 0.5;
+
+  return metrics
+    .map(m => ({ id: m.id, name: m.name, score: (m.winPct * 0.6 + normPts(m.avgPts) * 0.4) * 100 }))
+    .sort((a, b) => b.score - a.score);
 }
 
 function buildPowerTable(ranked, rankedPrev){
