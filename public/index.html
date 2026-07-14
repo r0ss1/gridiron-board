@@ -210,6 +210,29 @@
     user-select:text;
   }
   td.num{font-family:'JetBrains Mono', monospace;}
+
+  .owner-ref{margin:20px 0 30px;}
+  .owner-ref summary{
+    cursor:pointer;
+    font-family:'Oswald', sans-serif;
+    font-size:14px;
+    color:var(--ink-dim);
+    padding:10px 0;
+    list-style:none;
+  }
+  .owner-ref summary::-webkit-details-marker{display:none;}
+  .owner-ref summary::before{content:'▸ '; }
+  .owner-ref[open] summary::before{content:'▾ ';}
+  .owner-ref summary:hover{color:var(--ink);}
+  .owner-ref table{font-size:11px;}
+  .owner-ref td, .owner-ref th{padding:7px 9px;}
+  .owner-ref .oid{
+    font-family:'JetBrains Mono', monospace;
+    word-break:break-all;
+    color:var(--ink-dim);
+    -webkit-user-select:text;
+    user-select:text;
+  }
   .rec{white-space:nowrap;}
 
   /* Matchups */
@@ -1778,7 +1801,7 @@ function renderHistoryContent(){
       '<div class="h2h-scroll"><table class="h2h"><thead><tr>' + header + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
     : '';
 
-  historyContent.innerHTML = renderSeasonPicker() + recordsTable + h2hTable;
+  historyContent.innerHTML = renderSeasonPicker() + recordsTable + h2hTable + ownerIdReferenceHtml();
 
   historyContent.querySelectorAll('.season-chip input').forEach(cb => {
     cb.addEventListener('change', () => {
@@ -1787,6 +1810,36 @@ function renderHistoryContent(){
       refreshSeasonDependentViews();
     });
   });
+}
+
+// Covers every fetched season (not just the checked ones), so this stays
+// useful as a lookup table even for years you've currently unchecked from
+// the picker — e.g. finding an old team's owner ID to add to
+// team-names.json without needing to dig through raw API responses.
+function ownerIdReferenceHtml(){
+  if (!history.loadedSeasons.length) return '';
+  const rows = [];
+  history.loadedSeasons.forEach(year => {
+    (history.data[year].teams || []).forEach(t => {
+      const espnName = t.name || [(t.location || ''), (t.nickname || '')].filter(Boolean).join(' ') || ('Team ' + t.id);
+      rows.push({ year, espnName, key: ownerKey(t) });
+    });
+  });
+  if (!rows.length) return '';
+
+  const body = rows
+    .sort((a, b) => b.year - a.year || a.espnName.localeCompare(b.espnName))
+    .map(r => '<tr>' +
+      '<td class="num">' + r.year + '</td>' +
+      '<td>' + escapeHtml(r.espnName) + '</td>' +
+      '<td class="oid">' + escapeHtml(r.key) + '</td>' +
+      '</tr>').join('');
+
+  return '<details class="owner-ref">' +
+    '<summary>Owner ID reference (for team-names.json)</summary>' +
+    '<p class="section-note">Whatever ESPN called the team that season, and the owner ID to use as the key in team-names.json. Tap and hold an ID to select and copy it.</p>' +
+    '<div class="h2h-scroll"><table><thead><tr><th class="num">Season</th><th>ESPN team name</th><th>Owner ID</th></tr></thead><tbody>' + body + '</tbody></table></div>' +
+    '</details>';
 }
 
 function escapeHtml(s){
