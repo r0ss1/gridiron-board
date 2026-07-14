@@ -17,7 +17,7 @@
 // them via the X-Espn-S2 / X-Espn-Swid request headers (the app's "ESPN
 // login" panel does this automatically once you've saved them there).
 
-const VIEWS = 'view=mTeam&view=mStandings&view=mMatchupScore&view=mSettings';
+const VIEWS = 'view=mTeam&view=mStandings&view=mMatchupScore&view=mSettings&view=mTransactions2';
 const LEGACY_CUTOFF_YEAR = 2018;
 
 export default {
