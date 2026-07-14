@@ -362,7 +362,7 @@
       </div>
       <div class="field">
         <label for="season">Season</label>
-        <select id="season"></select>
+        <input id="season" inputmode="numeric" style="min-width:80px;">
       </div>
       <button class="btn btn-primary" id="loadBtn">Load league</button>
     </div>
@@ -459,13 +459,7 @@ const latestLikelySeason = now.getMonth() + 1 >= seasonInProgressCutoffMonth
   ? currentCalendarYear
   : currentCalendarYear - 1;
 
-for (let y = latestLikelySeason + 1; y >= latestLikelySeason - 4; y--) {
-  const opt = document.createElement('option');
-  opt.value = y;
-  opt.textContent = y;
-  if (y === latestLikelySeason) opt.selected = true;
-  seasonSelect.appendChild(opt);
-}
+seasonSelect.value = latestLikelySeason;
 
 // Pre-2019 seasons now route through ESPN's older leagueHistory endpoint
 // (see the proxy function) — this floor is just a sane default range, not
@@ -1768,6 +1762,7 @@ function escapeHtml(s){
 
 loadBtn.addEventListener('click', loadLeague);
 leagueIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
+seasonSelect.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
 histLoadBtn.addEventListener('click', loadHistory);
 histDownloadBtn.addEventListener('click', downloadHistoryCache);
 
