@@ -738,11 +738,9 @@ function renderStandings(){
     const r = t.record?.overall || {};
     const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
     const apPct = allPlayPct(allPlay[t.id] || { wins: 0, losses: 0, ties: 0 });
-    const hint = ownerDisplayHint(t, state.members);
-    const idLine = escapeHtml(ownerKey(t)) + (hint ? ' · ' + escapeHtml(hint) : '');
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
-      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + '<span class="owner-key">' + idLine + '</span></td>' +
+      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + '</td>' +
       '<td class="num rec">' + rec + '</td>' +
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
