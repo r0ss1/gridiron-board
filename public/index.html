@@ -660,7 +660,47 @@ function privateLeagueMessageInner(){
     'that lets the app prove it\'s you. Or ask your commissioner to set the league to public under League Settings.';
 }
 
+// "All-play" record: for every week, compares each team's score against
+// every OTHER team's score that week (not just their actual opponent), so
+// it answers "what would my record be if I played the whole league every
+// week?" — a common way to separate a team's actual output from a lucky/
+// unlucky schedule.
+function computeAllPlayRecords(teams, schedule){
+  const records = {};
+  teams.forEach(t => { records[t.id] = { wins: 0, losses: 0, ties: 0 }; });
+
+  const byWeek = {};
+  (schedule || []).forEach(g => {
+    if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+    const w = g.matchupPeriodId;
+    (byWeek[w] = byWeek[w] || []).push({ teamId: g.home.teamId, points: g.home.totalPoints ?? 0 });
+    byWeek[w].push({ teamId: g.away.teamId, points: g.away.totalPoints ?? 0 });
+  });
+
+  Object.values(byWeek).forEach(entries => {
+    entries.forEach((a, i) => {
+      const rec = records[a.teamId];
+      if (!rec) return;
+      entries.forEach((b, j) => {
+        if (i === j) return;
+        if (a.points > b.points) rec.wins++;
+        else if (a.points < b.points) rec.losses++;
+        else rec.ties++;
+      });
+    });
+  });
+
+  return records;
+}
+
+function allPlayPct(rec){
+  const gp = rec.wins + rec.losses + rec.ties;
+  return gp ? (rec.wins + rec.ties * 0.5) / gp : null;
+}
+
 function renderStandings(){
+  const allPlay = computeAllPlayRecords(state.teams, state.schedule);
+
   const sorted = [...state.teams].sort((a, b) => {
     const ra = a.record?.overall || {};
     const rb = b.record?.overall || {};
@@ -671,18 +711,20 @@ function renderStandings(){
   let rows = sorted.map((t, i) => {
     const r = t.record?.overall || {};
     const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
+    const apPct = allPlayPct(allPlay[t.id] || { wins: 0, losses: 0, ties: 0 });
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
       '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + ' <span class="team-id">#' + t.id + '</span></td>' +
       '<td class="num rec">' + rec + '</td>' +
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
+      '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
       '</tr>';
   }).join('');
 
   standingsView.innerHTML = state.teams.length ? (
     '<table><thead><tr>' +
-    '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th>' +
+    '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th><th class="num">All-Play</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>'
   ) : '';
 }
@@ -1583,7 +1625,7 @@ function renderHistoryContent(){
 
   // ---- All-time records ----
   const agg = {}; // teamId -> stats
-  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0 });
+  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0, apW:0, apL:0, apT:0 });
 
   checked.forEach(year => {
     const data = history.data[year];
@@ -1596,6 +1638,13 @@ function renderHistoryContent(){
       const r = t.record?.overall || {};
       s.w += r.wins || 0; s.l += r.losses || 0; s.t += r.ties || 0;
       if (playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots) s.playoffs++;
+    });
+
+    const allPlay = computeAllPlayRecords(teams, data.schedule || []);
+    teams.forEach(t => {
+      const s = ensure(t.id);
+      const ap = allPlay[t.id];
+      if (ap) { s.apW += ap.wins; s.apL += ap.losses; s.apT += ap.ties; }
     });
 
     const placements = seasonPlacements(data);
@@ -1617,19 +1666,23 @@ function renderHistoryContent(){
 
   const rows = Object.entries(agg)
     .sort((a, b) => b[1].championships - a[1].championships || (b[1].w / Math.max(b[1].w+b[1].l+b[1].t,1)) - (a[1].w / Math.max(a[1].w+a[1].l+a[1].t,1)))
-    .map(([id, s]) => '<tr>' +
+    .map(([id, s]) => {
+      const apPct = allPlayPct({ wins: s.apW, losses: s.apL, ties: s.apT });
+      return '<tr>' +
       '<td class="team-name">' + escapeHtml(names[id] || ('Team ' + id)) + '</td>' +
       '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
+      '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
       '<td class="num">' + s.championships + '</td>' +
       '<td class="num">' + s.top3 + '</td>' +
       '<td class="num">' + s.playoffs + '</td>' +
       '<td class="num">' + s.toiletBowl + '</td>' +
       '<td class="num">' + s.dq + '</td>' +
-      '</tr>').join('');
+      '</tr>';
+    }).join('');
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
-    '<p class="section-note">Across the seasons checked below. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
-    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
+    '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week, instead of just their actual opponent — a look at output separate from schedule luck. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
+    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">All-Play</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
   // ---- Head-to-head matrix ----
