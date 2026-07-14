@@ -198,6 +198,17 @@
   .rank{font-family:'JetBrains Mono', monospace; color:var(--ink-dim); width:26px;}
   .team-name{font-weight:600;}
   .team-id{font-family:'JetBrains Mono', monospace; font-weight:400; font-size:11px; color:var(--ink-dim);}
+  .owner-key{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-weight:400;
+    font-size:10px;
+    color:var(--ink-dim);
+    word-break:break-all;
+    margin-top:2px;
+    -webkit-user-select:text;
+    user-select:text;
+  }
   td.num{font-family:'JetBrains Mono', monospace;}
   .rec{white-space:nowrap;}
 
@@ -465,24 +476,28 @@ histToInput.value = latestLikelySeason;
 histFromInput.value = latestLikelySeason - HISTORY_DEFAULT_LOOKBACK;
 
 // ---------------------------------------------------------------
-// Rename any team here — keys are ESPN's internal team ID, which stays
-// stable for a franchise slot across seasons even if the owner renames
-// their team in ESPN every year. Find each team's ID in the small "#" tag
-// next to their name on the Standings tab. Teams left out just show
-// whatever name ESPN has for them that season.
+// Rename any team here — keys are the owner's ESPN member ID
+// (team.primaryOwner), NOT the team ID. This is what actually stays tied
+// to a person across seasons, even if their team ID changes or the ESPN
+// team name changes every year. Find each owner's ID in the small tag
+// under their name on the Standings tab (shows their ESPN display name
+// too when available, purely as a hint — the ID string is the actual key).
+// Teams left out just show whatever name ESPN has for them that season.
 //
 // This is just the fallback/default set, edited by hand in code. The
 // easier way to manage renames day-to-day is data/team-names.json — it's
 // loaded automatically on startup and overrides anything set here, and
 // it's plain JSON so it's editable straight on GitHub's website, no code
 // required. See loadTeamNameOverrides() below.
+//
+// Falls back to matching by team ID if a team has no primaryOwner for some
+// reason, so this doesn't just silently do nothing in that edge case.
 // ---------------------------------------------------------------
 const TEAM_NAME_OVERRIDES = {
-  // 1: "The Gridiron Gurus",
-  // 4: "Waiver Wire Wizards",
+  // '{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}': 'The Gridiron Gurus',
 };
 
-let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null, settings: {} };
+let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null, settings: {}, members: [] };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
@@ -495,12 +510,28 @@ function setTab(name){
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
+function ownerKey(t){
+  return t.primaryOwner || ('teamid:' + t.id); // fallback if a team has no owner on record
+}
+
 function teamDisplayName(t){
-  if (TEAM_NAME_OVERRIDES[t.id] !== undefined) return TEAM_NAME_OVERRIDES[t.id];
+  const key = ownerKey(t);
+  if (TEAM_NAME_OVERRIDES[key] !== undefined) return TEAM_NAME_OVERRIDES[key];
   if (t.name) return t.name;
   const loc = t.location || '';
   const nick = t.nickname || '';
   return (loc + ' ' + nick).trim() || ('Team ' + t.id);
+}
+
+// ESPN's league response sometimes includes a top-level "members" array
+// (id/displayName pairs) alongside teams — when it's there, this gives a
+// human-readable hint on Standings next to the raw owner ID. When it's
+// not there, the raw ID still works fine as the override key, it's just
+// less friendly to look at while you're setting names up.
+function ownerDisplayHint(t, members){
+  const m = (members || []).find(mm => mm.id === t.primaryOwner);
+  if (!m) return null;
+  return m.displayName || [m.firstName, m.lastName].filter(Boolean).join(' ') || null;
 }
 
 // Loads data/team-names.json (a plain {"<espnTeamId>": "Custom Name"} map)
@@ -631,6 +662,7 @@ async function loadLeague(){
     state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
     state.seasonYear = parseInt(season, 10);
     state.settings = data.settings || {};
+    state.members = data.members || [];
 
     leagueTitle.textContent = state.leagueName;
     weekChip.innerHTML = state.currentWeek
@@ -712,9 +744,11 @@ function renderStandings(){
     const r = t.record?.overall || {};
     const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
     const apPct = allPlayPct(allPlay[t.id] || { wins: 0, losses: 0, ties: 0 });
+    const hint = ownerDisplayHint(t, state.members);
+    const idLine = escapeHtml(ownerKey(t)) + (hint ? ' · ' + escapeHtml(hint) : '');
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
-      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + ' <span class="team-id">#' + t.id + '</span></td>' +
+      '<td class="team-name">' + escapeHtml(teamDisplayName(t)) + '<span class="owner-key">' + idLine + '</span></td>' +
       '<td class="num rec">' + rec + '</td>' +
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
