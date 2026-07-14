@@ -508,6 +508,18 @@ function ownerKey(t){
   return t.primaryOwner || ('teamid:' + t.id); // fallback if a team has no owner on record
 }
 
+// Builds a {teamId: ownerKey} lookup for one season's teams array. Needed
+// anywhere a numeric team ID from schedule/bracket data (which only makes
+// sense within a single season) has to be translated into the stable
+// cross-season owner key before it's used to accumulate multi-season
+// stats — otherwise two different owners who held the same team ID slot
+// in different years get silently merged into one row.
+function idToOwnerKeyMap(teams){
+  const m = {};
+  teams.forEach(t => { m[t.id] = ownerKey(t); });
+  return m;
+}
+
 function teamDisplayName(t){
   const key = ownerKey(t);
   if (TEAM_NAME_OVERRIDES[key] !== undefined) return TEAM_NAME_OVERRIDES[key];
@@ -824,16 +836,24 @@ function weeklyScoresAcrossSeasons(years){
   points.forEach((p, i) => idxOf[p.year + '-' + p.week] = i);
 
   const byTeam = {};
-  const teamsMeta = {};
+  const teamsMeta = {}; // ownerKey -> most recently seen team object (for display name lookup)
   years.forEach(year => {
     const data = history.data[year];
-    (data.teams || []).forEach(t => { teamsMeta[t.id] = t; if (!byTeam[t.id]) byTeam[t.id] = []; });
+    const teams = data.teams || [];
+    const ownerById = idToOwnerKeyMap(teams);
+    teams.forEach(t => {
+      const ok = ownerById[t.id];
+      teamsMeta[ok] = t;
+      if (!byTeam[ok]) byTeam[ok] = [];
+    });
     (data.schedule || []).forEach(g => {
       if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
       const idx = idxOf[year + '-' + g.matchupPeriodId];
       [g.home, g.away].forEach(side => {
-        if (!byTeam[side.teamId]) byTeam[side.teamId] = [];
-        byTeam[side.teamId].push({ idx, points: side.totalPoints ?? 0, year, week: g.matchupPeriodId });
+        const ok = ownerById[side.teamId];
+        if (!ok) return;
+        if (!byTeam[ok]) byTeam[ok] = [];
+        byTeam[ok].push({ idx, points: side.totalPoints ?? 0, year, week: g.matchupPeriodId });
       });
     });
   });
@@ -961,8 +981,9 @@ function allTimeRecordTotals(years){
   const totals = {};
   years.forEach(year => {
     (history.data[year].teams || []).forEach(t => {
+      const key = ownerKey(t);
       const r = t.record?.overall || {};
-      const cur = totals[t.id] || (totals[t.id] = { wins: 0, losses: 0, ties: 0 });
+      const cur = totals[key] || (totals[key] = { wins: 0, losses: 0, ties: 0 });
       cur.wins += r.wins || 0; cur.losses += r.losses || 0; cur.ties += r.ties || 0;
     });
   });
@@ -1171,7 +1192,7 @@ function buildAwardsFromSeason(teams, schedule, settings){
     const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
     if (gp > 0) {
       seasonRecords.push({
-        teamId: t.id, name: nameById[t.id],
+        teamId: t.id, owner: ownerKey(t), name: nameById[t.id],
         wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0,
         winPct: ((r.wins || 0) + (r.ties || 0) * 0.5) / gp,
         playoffSeed: t.playoffSeed || null,
@@ -1225,13 +1246,15 @@ function stdDev(values){
 
 // Looks up a team's win% in the season immediately before `year`, using
 // whatever's in the history cache — doesn't require that season to be
-// checked/displayed, just previously fetched. Returns null if unavailable
-// (team wasn't in the league, season not fetched, or in single-season mode
-// with no history loaded at all).
-function previousSeasonWinPct(year, teamId){
+// checked/displayed, just previously fetched. Matches by owner rather than
+// team ID, since the numeric ID isn't guaranteed to stay with the same
+// person across seasons. Returns null if unavailable (owner wasn't in the
+// league that year, season not fetched, or in single-season mode with no
+// history loaded at all).
+function previousSeasonWinPct(year, owner){
   const prev = history.data[year - 1];
   if (!prev) return null;
-  const t = (prev.teams || []).find(tt => tt.id === teamId);
+  const t = (prev.teams || []).find(tt => ownerKey(tt) === owner);
   if (!t) return null;
   const r = t.record?.overall || {};
   const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
@@ -1340,7 +1363,7 @@ function computeAwards(year, teams, schedule, settings){
   // ---- Year-over-year (only when the prior season is in the cache) ----
   const deltas = seasonRecords
     .map(r => {
-      const prevPct = previousSeasonWinPct(year, r.teamId);
+      const prevPct = previousSeasonWinPct(year, r.owner);
       return prevPct === null ? null : { name: r.name, delta: r.winPct - prevPct };
     })
     .filter(Boolean);
@@ -1534,7 +1557,7 @@ async function downloadHistoryCache(){
 function historyTeamNames(){
   const names = {};
   history.loadedSeasons.forEach(year => {
-    (history.data[year].teams || []).forEach(t => { names[t.id] = teamDisplayName(t); });
+    (history.data[year].teams || []).forEach(t => { names[ownerKey(t)] = teamDisplayName(t); });
   });
   return names;
 }
@@ -1658,9 +1681,10 @@ function renderHistoryContent(){
     const teams = data.teams || [];
     const settings = data.settings || {};
     const playoffSpots = settings.scheduleSettings?.playoffTeamCount || 0;
+    const ownerById = idToOwnerKeyMap(teams);
 
     teams.forEach(t => {
-      const s = ensure(t.id);
+      const s = ensure(ownerKey(t));
       const r = t.record?.overall || {};
       s.w += r.wins || 0; s.l += r.losses || 0; s.t += r.ties || 0;
       if (playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots) s.playoffs++;
@@ -1668,26 +1692,35 @@ function renderHistoryContent(){
 
     const allPlay = computeAllPlayRecords(teams, data.schedule || []);
     teams.forEach(t => {
-      const s = ensure(t.id);
+      const s = ensure(ownerKey(t));
       const ap = allPlay[t.id];
       if (ap) { s.apW += ap.wins; s.apL += ap.losses; s.apT += ap.ties; }
     });
 
     const placements = seasonPlacements(data);
     if (placements) {
+      const champOwner = ownerById[placements.champion];
+      const runnerUpOwner = ownerById[placements.runnerUp];
+      const thirdOwner = placements.thirdPlace !== undefined ? ownerById[placements.thirdPlace] : null;
       const vacated = MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons.includes(year);
-      if (vacated) {
-        ensure(placements.champion).dq++;
-      } else {
-        ensure(placements.champion).championships++;
+
+      if (champOwner) {
+        if (vacated) {
+          ensure(champOwner).dq++;
+        } else {
+          ensure(champOwner).championships++;
+        }
+        ensure(champOwner).top3++;
       }
-      ensure(placements.champion).top3++;
-      ensure(placements.runnerUp).top3++;
-      if (placements.thirdPlace) ensure(placements.thirdPlace).top3++;
+      if (runnerUpOwner) ensure(runnerUpOwner).top3++;
+      if (thirdOwner) ensure(thirdOwner).top3++;
     }
 
     const toiletChamp = toiletBowlChampion(data);
-    if (toiletChamp !== null) ensure(toiletChamp).toiletBowl++;
+    if (toiletChamp !== null) {
+      const toiletOwner = ownerById[toiletChamp];
+      if (toiletOwner) ensure(toiletOwner).toiletBowl++;
+    }
   });
 
   const rows = Object.entries(agg)
@@ -1717,10 +1750,12 @@ function renderHistoryContent(){
   teamIds.forEach(a => teamIds.forEach(b => { if (a !== b) h2h[a+'|'+b] = { w:0, l:0, t:0 }; }));
 
   checked.forEach(year => {
-    (history.data[year].schedule || []).forEach(g => {
+    const data = history.data[year];
+    const ownerById = idToOwnerKeyMap(data.teams || []);
+    (data.schedule || []).forEach(g => {
       if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
-      const a = String(g.home.teamId), b = String(g.away.teamId);
-      if (!h2h[a+'|'+b] || !h2h[b+'|'+a]) return;
+      const a = ownerById[g.home.teamId], b = ownerById[g.away.teamId];
+      if (!a || !b || !h2h[a+'|'+b] || !h2h[b+'|'+a]) return;
       if (g.winner === 'HOME') { h2h[a+'|'+b].w++; h2h[b+'|'+a].l++; }
       else if (g.winner === 'AWAY') { h2h[a+'|'+b].l++; h2h[b+'|'+a].w++; }
       else { h2h[a+'|'+b].t++; h2h[b+'|'+a].t++; }
