@@ -482,7 +482,7 @@ const TEAM_NAME_OVERRIDES = {
   // 4: "Waiver Wire Wizards",
 };
 
-let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null, settings: {}, transactions: [] };
+let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', seasonYear: null, settings: {} };
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
@@ -631,7 +631,6 @@ async function loadLeague(){
     state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
     state.seasonYear = parseInt(season, 10);
     state.settings = data.settings || {};
-    state.transactions = data.transactions || [];
 
     leagueTitle.textContent = state.leagueName;
     weekChip.innerHTML = state.currentWeek
@@ -1029,7 +1028,7 @@ function renderAwardsSingleSeason(){
     awardsView.innerHTML = note + '<div class="status">Load a league first.</div>';
     return;
   }
-  const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, state.settings, state.transactions, false);
+  const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, state.settings, false);
   awardsView.innerHTML = note + section;
 }
 
@@ -1043,7 +1042,7 @@ function renderAwardsMultiSeason(){
   }
 
   const sections = years.map(y =>
-    renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], history.data[y].settings || {}, history.data[y].transactions || [], true)
+    renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], history.data[y].settings || {}, true)
   ).join('');
 
   awardsView.innerHTML = picker + TRADE_AWARDS_NOTE + sections;
@@ -1057,13 +1056,13 @@ function renderAwardsMultiSeason(){
   });
 }
 
-const TRADE_AWARDS_NOTE = '<p class="section-note">Trade awards (Trade Machine, Trade Buddies, etc.) are based on trade activity and timing, not who "won" a trade — ESPN\'s API doesn\'t reliably link a trade to the specific players exchanged.</p>';
+const TRADE_AWARDS_NOTE = '<p class="section-note">Trade Machine reflects how many trades each team made — ESPN\'s API only exposes that count, not who traded with whom, when, or which players, so there\'s no "who won the trade" evaluation here.</p>';
 
 // Awards are always computed for a single season at a time — no pooling
 // across years, so "highest score" etc. means highest in that season, not
 // of all time. With multiple seasons checked, each gets its own section.
-function renderAwardsSection(year, teams, schedule, settings, transactions, showHeading){
-  const awards = computeAwards(year, teams, schedule, settings, transactions);
+function renderAwardsSection(year, teams, schedule, settings, showHeading){
+  const awards = computeAwards(year, teams, schedule, settings);
   const heading = showHeading ? '<h2 class="section-title">' + year + '</h2>' : '';
 
   if (!awards || !awards.length) {
@@ -1172,7 +1171,7 @@ function previousSeasonWinPct(year, teamId){
   return ((r.wins || 0) + (r.ties || 0) * 0.5) / gp;
 }
 
-function computeAwards(year, teams, schedule, settings, transactions){
+function computeAwards(year, teams, schedule, settings){
   const { teamGames, games, seasonRecords, teamTotals } = buildAwardsFromSeason(teams, schedule, settings);
   if (!teamGames.length) return null;
   const awards = [];
@@ -1285,90 +1284,38 @@ function computeAwards(year, teams, schedule, settings, transactions){
     if (faller.delta < 0) awards.push({ emoji: '📉', title: 'Biggest Fall-Off', desc: "Biggest win% drop vs. the previous season", winner: faller.name, detail: Math.round(faller.delta * 100) + ' pts of win%' });
   }
 
-  // ---- Trades (activity/timing only — see TRADE_AWARDS_NOTE) ----
-  const nameById = {};
-  teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
-  awards.push(...computeTradeAwards(transactions, nameById));
+  // ---- Roster activity (trades, waivers) ----
+  awards.push(...computeActivityAwards(teams));
 
   return awards;
 }
 
-// A trade transaction's team involvement isn't given directly as a clean
-// "team A traded with team B" — it has to be inferred from the fromTeamId/
-// toTeamId on each item being swapped. Filters to type containing "TRADE"
-// and, if a status field is present, to executed/accepted trades only (not
-// proposals that were withdrawn or rejected).
-function extractTrades(transactions){
-  if (!Array.isArray(transactions)) return [];
-  return transactions
-    .filter(t => String(t.type || '').toUpperCase().includes('TRADE'))
-    .filter(t => !t.status || ['EXECUTED', 'ACCEPTED'].includes(String(t.status).toUpperCase()))
-    .map(t => {
-      const teamIds = new Set();
-      if (t.teamId !== undefined && t.teamId !== null) teamIds.add(t.teamId);
-      (t.items || []).forEach(item => {
-        if (item.fromTeamId !== undefined && item.fromTeamId !== null) teamIds.add(item.fromTeamId);
-        if (item.toTeamId !== undefined && item.toTeamId !== null) teamIds.add(item.toTeamId);
-      });
-      return {
-        teamIds: [...teamIds],
-        itemCount: (t.items || []).length,
-        date: t.processDate || t.proposedDate || null,
-      };
-    })
-    .filter(t => t.teamIds.length >= 2); // needs 2+ teams to actually be a trade
-}
-
-function formatTradeDate(ms){
-  try {
-    return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch (e) {
-    return '';
-  }
-}
-
-function computeTradeAwards(transactions, nameById){
-  const trades = extractTrades(transactions);
-  if (!trades.length) return [];
+// Each team object carries its own transactionCounter summary (present
+// because the proxy requests view=mTransactions2) — trades/acquisitions/
+// drops counts, but no line-item detail. There's no reliable way to see
+// *who* traded with *whom*, *when*, or *which players* were involved from
+// this view; that lives in ESPN's separate activity-feed endpoint, which
+// even dedicated ESPN-scraping projects have had trouble fully resolving
+// (trade transactions there don't cleanly link back to the players moved).
+// So this sticks to what the count data actually supports.
+function computeActivityAwards(teams){
   const awards = [];
-  const nameOf = id => nameById[id] || ('Team ' + id);
-
-  const countByTeam = {};
-  trades.forEach(t => t.teamIds.forEach(id => { countByTeam[id] = (countByTeam[id] || 0) + 1; }));
-  const activeEntries = Object.entries(countByTeam);
-  if (activeEntries.length) {
-    const [topId, topCount] = activeEntries.reduce((a, b) => b[1] > a[1] ? b : a);
-    awards.push({ emoji: '🤝', title: 'Trade Machine', desc: 'Most trades made', winner: nameOf(topId), detail: topCount + (topCount === 1 ? ' trade' : ' trades') + ' this season' });
-  }
-
-  const pairCounts = {};
-  trades.forEach(t => {
-    if (t.teamIds.length === 2) {
-      const key = [...t.teamIds].sort((a, b) => a - b).join('|');
-      pairCounts[key] = (pairCounts[key] || 0) + 1;
-    }
+  const withCounts = teams.map(t => {
+    const tc = t.transactionCounter || {};
+    return { name: teamDisplayName(t), trades: tc.trades || 0, acquisitions: tc.acquisitions || 0 };
   });
-  const pairEntries = Object.entries(pairCounts).filter(([, c]) => c >= 2);
-  if (pairEntries.length) {
-    const [key, count] = pairEntries.reduce((a, b) => b[1] > a[1] ? b : a);
-    const [idA, idB] = key.split('|');
-    awards.push({ emoji: '🔁', title: 'Trade Buddies', desc: 'Traded with each other the most', winner: nameOf(idA) + ' ↔ ' + nameOf(idB), detail: count + ' trades between them' });
+
+  if (withCounts.some(t => t.trades > 0)) {
+    const top = withCounts.reduce((a, b) => b.trades > a.trades ? b : a);
+    awards.push({ emoji: '\ud83e\udd1d', title: 'Trade Machine', desc: 'Most trades made', winner: top.name, detail: top.trades + (top.trades === 1 ? ' trade' : ' trades') + ' this season' });
   }
 
-  const dated = trades.filter(t => t.date);
-  if (dated.length) {
-    const earliest = dated.reduce((a, b) => b.date < a.date ? b : a);
-    awards.push({ emoji: '🌅', title: 'Early Bird', desc: 'First trade of the season', winner: earliest.teamIds.map(nameOf).join(' ↔ '), detail: formatTradeDate(earliest.date) });
+  if (withCounts.some(t => t.acquisitions > 0)) {
+    const busiest = withCounts.reduce((a, b) => b.acquisitions > a.acquisitions ? b : a);
+    awards.push({ emoji: '\ud83d\udce1', title: 'Waiver Wire Warrior', desc: 'Most waiver/free-agent pickups', winner: busiest.name, detail: busiest.acquisitions + ' adds this season' });
 
-    const latest = dated.reduce((a, b) => b.date > a.date ? b : a);
-    if (latest.date !== earliest.date) {
-      awards.push({ emoji: '⏰', title: 'Deadline Deal', desc: 'Last trade of the season', winner: latest.teamIds.map(nameOf).join(' ↔ '), detail: formatTradeDate(latest.date) });
-    }
-  }
-
-  const blockbuster = trades.reduce((a, b) => b.itemCount > a.itemCount ? b : a);
-  if (blockbuster.itemCount >= 2) {
-    awards.push({ emoji: '📦', title: 'Blockbuster', desc: 'Biggest trade by players involved', winner: blockbuster.teamIds.map(nameOf).join(' ↔ '), detail: blockbuster.itemCount + ' players changed hands' });
+    const quietest = withCounts.reduce((a, b) => b.acquisitions < a.acquisitions ? b : a);
+    awards.push({ emoji: '\ud83e\uddd8', title: 'Set It and Forget It', desc: 'Fewest waiver/free-agent pickups', winner: quietest.name, detail: quietest.acquisitions + ' adds this season' });
   }
 
   return awards;
