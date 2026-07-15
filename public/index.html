@@ -312,6 +312,93 @@
     margin-top:2px;
   }
 
+  /* Profile */
+  .profile-header{
+    background:linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border-radius:var(--radius);
+    padding:22px 20px;
+    margin:16px 0 20px;
+  }
+  .profile-name{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:24px;
+    letter-spacing:.01em;
+  }
+  .profile-sub{font-size:12px; color:var(--ink-dim); margin-top:2px;}
+  .profile-record{
+    font-family:'JetBrains Mono', monospace;
+    font-size:34px;
+    font-weight:700;
+    color:var(--amber);
+    margin-top:10px;
+  }
+  .profile-record-label{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;}
+
+  .stat-tile-grid{
+    display:grid;
+    grid-template-columns:repeat(2, 1fr);
+    gap:8px;
+    margin-bottom:22px;
+  }
+  .stat-tile{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:12px 14px;
+  }
+  .stat-tile-value{font-family:'JetBrains Mono', monospace; font-size:19px; font-weight:700;}
+  .stat-tile-label{font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; margin-top:2px;}
+
+  .profile-pair-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:22px;
+  }
+  .profile-pair-card{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:14px 14px;
+  }
+  .profile-pair-label{font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em;}
+  .profile-pair-name{font-weight:600; font-size:14px; margin-top:6px;}
+  .profile-pair-detail{font-family:'JetBrains Mono', monospace; font-size:12px; color:var(--ink-dim); margin-top:2px;}
+
+  .badge-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(82px, 1fr));
+    gap:10px;
+    margin:14px 0 26px;
+  }
+  .badge-card{
+    background:var(--surface);
+    border-radius:10px;
+    padding:12px 6px 10px;
+    text-align:center;
+    position:relative;
+  }
+  .badge-card.locked{opacity:.32; filter:grayscale(1);}
+  .badge-emoji{font-size:26px; display:block; margin-bottom:6px; line-height:1;}
+  .badge-title{
+    font-family:'Oswald', sans-serif;
+    font-size:10px;
+    line-height:1.25;
+    color:var(--ink-dim);
+  }
+  .badge-card:not(.locked) .badge-title{color:var(--ink);}
+  .badge-count{
+    position:absolute;
+    top:4px;
+    right:5px;
+    background:var(--amber);
+    color:#1A1200;
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    font-weight:700;
+    border-radius:8px;
+    padding:1px 5px;
+  }
+
   /* History */
   .season-picker{
     display:flex;
@@ -418,6 +505,7 @@
     <button data-tab="matchups">Matchups</button>
     <button data-tab="power">Power Rankings</button>
     <button data-tab="awards">Awards</button>
+    <button data-tab="profile">Profile</button>
     <button data-tab="history">History</button>
   </nav>
 
@@ -426,6 +514,15 @@
   <div id="matchupsView" style="display:none;"></div>
   <div id="powerView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
+  <div id="profileView" style="display:none;">
+    <div class="controls" style="margin-top:0;">
+      <div class="field">
+        <label for="profileManagerSelect">Manager</label>
+        <select id="profileManagerSelect" style="min-width:200px;"></select>
+      </div>
+    </div>
+    <div id="profileContent"></div>
+  </div>
   <div id="historyView" style="display:none;">
     <div class="controls" style="margin-top:0;">
       <div class="field">
@@ -462,6 +559,9 @@ const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
 const powerView = document.getElementById('powerView');
 const awardsView = document.getElementById('awardsView');
+const profileView = document.getElementById('profileView');
+const profileManagerSelect = document.getElementById('profileManagerSelect');
+const profileContent = document.getElementById('profileContent');
 const historyView = document.getElementById('historyView');
 const histFromInput = document.getElementById('histFrom');
 const histToInput = document.getElementById('histTo');
@@ -523,6 +623,7 @@ function setTab(name){
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
   powerView.style.display = name === 'power' ? '' : 'none';
   awardsView.style.display = name === 'awards' ? '' : 'none';
+  profileView.style.display = name === 'profile' ? '' : 'none';
   historyView.style.display = name === 'history' ? '' : 'none';
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
@@ -601,6 +702,7 @@ async function loadTeamNameOverrides(){
   if (state.teams.length) { renderStandings(); renderMatchups(); }
   renderPowerRankings();
   renderAwards();
+  renderProfile();
   if (history.loadedSeasons.length) renderHistoryContent();
 }
 loadTeamNameOverrides();
@@ -627,6 +729,7 @@ async function loadOwnerAliases(){
     renderPowerRankings();
     renderAwards();
   }
+  renderProfile();
 }
 loadOwnerAliases();
 
@@ -745,6 +848,7 @@ async function loadLeague(){
     renderMatchups();
     renderPowerRankings();
     renderAwards();
+    renderProfile();
     statusArea.innerHTML = '';
   } catch (err) {
     statusArea.innerHTML = '<div class="error"><strong>Couldn\'t reach the proxy.</strong> ' +
@@ -1887,6 +1991,285 @@ function ownerIdReferenceHtml(){
     '</details>';
 }
 
+// ---------------------------------------------------------------
+// Team Profile — a single manager's whole career in one place. Reuses the
+// same computation helpers as History/Power Rankings/Awards (all-play
+// records, season placements, toilet bowl detection, per-season awards)
+// rather than re-deriving that logic, so it stays consistent with what
+// those tabs show. Always looks at every fetched season (not the
+// checked-seasons picker used elsewhere) since a profile is meant to be a
+// whole career view, not a filtered comparison.
+// ---------------------------------------------------------------
+
+// Every award type that can ever appear, so the badge case can show
+// "locked" slots for ones this manager hasn't won — the Pokédex bit.
+const ALL_AWARD_TYPES = [
+  { emoji: '🔥', title: 'Blowtorch' },
+  { emoji: '🥶', title: 'Ice Cold' },
+  { emoji: '💥', title: 'Mercy Rule' },
+  { emoji: '😰', title: 'Nail-Biter' },
+  { emoji: '💔', title: 'Heartbreaker' },
+  { emoji: '🍀', title: 'Lucky Escape' },
+  { emoji: '👑', title: 'Best Record' },
+  { emoji: '🪦', title: 'Worst Record' },
+  { emoji: '🚀', title: 'Hot Streak' },
+  { emoji: '📉', title: 'The Skid' },
+  { emoji: '📏', title: 'Steady Eddy' },
+  { emoji: '🎢', title: 'Boom or Bust' },
+  { emoji: '🏗️', title: 'The Machine' },
+  { emoji: '🧱', title: 'Offense Optional' },
+  { emoji: '🥊', title: "Murderers' Row" },
+  { emoji: '🎯', title: 'Easy Slate' },
+  { emoji: '💣', title: 'Snake-Bitten' },
+  { emoji: '📜', title: 'Paper Champion' },
+  { emoji: '🐊', title: 'Giant Killer' },
+  { emoji: '📈', title: 'Most Improved' },
+  { emoji: '📉', title: 'Biggest Fall-Off' },
+  { emoji: '🤝', title: 'Trade Machine' },
+  { emoji: '📡', title: 'Waiver Wire Warrior' },
+  { emoji: '🧘', title: 'Set It and Forget It' },
+];
+
+// Every fetched season, oldest first, regardless of the History/Power
+// Rankings/Awards checked-seasons picker — falls back to whatever single
+// season is currently loaded if history hasn't been fetched at all.
+function profileSeasonsData(){
+  if (history.loadedSeasons.length) {
+    return history.loadedSeasons.slice().sort((a, b) => a - b).map(y => ({
+      year: y,
+      teams: history.data[y].teams || [],
+      schedule: history.data[y].schedule || [],
+      settings: history.data[y].settings || {},
+    }));
+  }
+  if (state.teams.length) {
+    return [{ year: state.seasonYear, teams: state.teams, schedule: state.schedule, settings: state.settings }];
+  }
+  return [];
+}
+
+function allManagerOptions(seasonsData){
+  const seen = new Map(); // ownerKey -> most recent team object
+  seasonsData.forEach(({ teams }) => teams.forEach(t => { seen.set(resolvedOwnerKey(t), t); }));
+  return [...seen.entries()]
+    .map(([key, t]) => ({ key, name: teamDisplayName(t) }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function buildManagerProfile(key, seasonsData){
+  const seasons = [];
+  const h2h = {}; // opponent ownerKey -> {name, w, l, t}
+  const awardTally = {}; // title -> {emoji, count, years:[]}
+  let careerW = 0, careerL = 0, careerT = 0, careerPF = 0, careerPA = 0;
+  let apW = 0, apL = 0, apT = 0;
+  let highGame = null, lowGame = null;
+  let champCount = 0, top3Count = 0, playoffCount = 0, toiletCount = 0, dqCount = 0;
+  let bestSeason = null, worstSeason = null;
+  let managerName = null;
+
+  seasonsData.forEach(({ year, teams, schedule, settings }) => {
+    const t = teams.find(tt => resolvedOwnerKey(tt) === key);
+    if (!t) return;
+    const r = t.record?.overall || {};
+    const gp = (r.wins || 0) + (r.losses || 0) + (r.ties || 0);
+    if (!gp) return;
+
+    managerName = teamDisplayName(t);
+    careerW += r.wins || 0; careerL += r.losses || 0; careerT += r.ties || 0;
+    careerPF += r.pointsFor || 0; careerPA += r.pointsAgainst || 0;
+
+    const winPct = ((r.wins || 0) + (r.ties || 0) * 0.5) / gp;
+
+    const allPlay = computeAllPlayRecords(teams, schedule);
+    const ap = allPlay[t.id];
+    if (ap) { apW += ap.wins; apL += ap.losses; apT += ap.ties; }
+
+    const placements = seasonPlacements({ teams, schedule });
+    const vacated = MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons.includes(year);
+    let isChamp = false;
+    if (placements) {
+      if (placements.champion === t.id) {
+        if (vacated) { dqCount++; } else { champCount++; isChamp = true; }
+        top3Count++;
+      } else if (placements.runnerUp === t.id || placements.thirdPlace === t.id) {
+        top3Count++;
+      }
+    }
+
+    const toiletChamp = toiletBowlChampion({ teams, schedule });
+    const isToilet = toiletChamp === t.id;
+    if (isToilet) toiletCount++;
+
+    const playoffSpots = settings?.scheduleSettings?.playoffTeamCount || 0;
+    const madePlayoffs = !!(playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots);
+    if (madePlayoffs) playoffCount++;
+
+    const seasonSummary = { year, wins: r.wins || 0, losses: r.losses || 0, ties: r.ties || 0, winPct, pointsFor: r.pointsFor || 0, isChamp, isToilet, madePlayoffs };
+    seasons.push(seasonSummary);
+
+    if (!bestSeason || winPct > bestSeason.winPct || (winPct === bestSeason.winPct && seasonSummary.pointsFor > bestSeason.pointsFor)) bestSeason = seasonSummary;
+    if (!worstSeason || winPct < worstSeason.winPct || (winPct === worstSeason.winPct && seasonSummary.pointsFor < worstSeason.pointsFor)) worstSeason = seasonSummary;
+
+    const ownerById = idToOwnerKeyMap(teams);
+    (schedule || []).forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      let myPts, oppId, result;
+      if (g.home.teamId === t.id) { myPts = g.home.totalPoints ?? 0; oppId = g.away.teamId; result = g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T'; }
+      else if (g.away.teamId === t.id) { myPts = g.away.totalPoints ?? 0; oppId = g.home.teamId; result = g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T'; }
+      else return;
+
+      if (!highGame || myPts > highGame.points) highGame = { points: myPts, year, week: g.matchupPeriodId };
+      if (!lowGame || myPts < lowGame.points) lowGame = { points: myPts, year, week: g.matchupPeriodId };
+
+      const oppKey = ownerById[oppId];
+      if (oppKey && oppKey !== key) {
+        const oppTeam = teams.find(tt => tt.id === oppId);
+        const rec = h2h[oppKey] || (h2h[oppKey] = { name: oppTeam ? teamDisplayName(oppTeam) : 'Unknown', w: 0, l: 0, t: 0 });
+        if (oppTeam) rec.name = teamDisplayName(oppTeam);
+        if (result === 'W') rec.w++; else if (result === 'L') rec.l++; else rec.t++;
+      }
+    });
+
+    const seasonAwards = computeAwards(year, teams, schedule, settings) || [];
+    seasonAwards.forEach(a => {
+      if (typeof a.winner === 'string' && a.winner.includes(managerName)) {
+        const rec = awardTally[a.title] || (awardTally[a.title] = { emoji: a.emoji, count: 0, years: [] });
+        rec.count++;
+        rec.years.push(year);
+      }
+    });
+  });
+
+  if (!managerName) return null;
+
+  let toughest = null, easiest = null;
+  Object.values(h2h).filter(r => (r.w + r.l + r.t) >= 2).forEach(r => {
+    const gp = r.w + r.l + r.t;
+    const pct = (r.w + r.t * 0.5) / gp;
+    if (!toughest || pct < toughest.pct) toughest = { ...r, pct };
+    if (!easiest || pct > easiest.pct) easiest = { ...r, pct };
+  });
+
+  const careerGp = careerW + careerL + careerT;
+  const apGp = apW + apL + apT;
+
+  return {
+    name: managerName,
+    seasonsPlayed: seasons.length,
+    careerW, careerL, careerT,
+    careerWinPct: careerGp ? (careerW + careerT * 0.5) / careerGp : null,
+    careerPF, careerPA,
+    apW, apL, apT,
+    apPct: apGp ? (apW + apT * 0.5) / apGp : null,
+    champCount, top3Count, playoffCount, toiletCount, dqCount,
+    bestSeason, worstSeason, highGame, lowGame,
+    toughest, easiest,
+    awardTally,
+  };
+}
+
+function renderProfile(){
+  const seasonsData = profileSeasonsData();
+  if (!seasonsData.length) {
+    profileContent.innerHTML = '<div class="status">Load a league first.</div>';
+    return;
+  }
+
+  const managers = allManagerOptions(seasonsData);
+  if (!managers.length) {
+    profileContent.innerHTML = '<div class="status">No managers found.</div>';
+    return;
+  }
+
+  const prevSelected = profileManagerSelect.value;
+  profileManagerSelect.innerHTML = managers.map(m =>
+    '<option value="' + escapeHtml(m.key) + '">' + escapeHtml(m.name) + '</option>'
+  ).join('');
+  profileManagerSelect.value = managers.some(m => m.key === prevSelected) ? prevSelected : managers[0].key;
+
+  renderProfileCard(profileManagerSelect.value);
+}
+
+function renderProfileCard(key){
+  const seasonsData = profileSeasonsData();
+  const p = buildManagerProfile(key, seasonsData);
+  if (!p) {
+    profileContent.innerHTML = '<div class="status">No games found for this manager.</div>';
+    return;
+  }
+
+  const header = '<div class="profile-header">' +
+    '<div class="profile-name">' + escapeHtml(p.name) + '</div>' +
+    '<div class="profile-sub">' + p.seasonsPlayed + (p.seasonsPlayed === 1 ? ' season' : ' seasons') + ' on record</div>' +
+    '<div class="profile-record-label">Career record</div>' +
+    '<div class="profile-record">' + p.careerW + '-' + p.careerL + (p.careerT ? '-' + p.careerT : '') + '</div>' +
+    '</div>';
+
+  const tile = (value, label) => '<div class="stat-tile"><div class="stat-tile-value">' + value + '</div><div class="stat-tile-label">' + label + '</div></div>';
+  const statGrid = '<div class="stat-tile-grid">' +
+    tile(p.careerWinPct === null ? '—' : (p.careerWinPct * 100).toFixed(1) + '%', 'Win %') +
+    tile(p.apPct === null ? '—' : (p.apPct * 100).toFixed(1) + '%', 'All-Play %') +
+    tile(p.careerPF.toFixed(0), 'Career points for') +
+    tile(p.careerPA.toFixed(0), 'Career points against') +
+    tile(p.champCount, '🏆 Championships') +
+    tile(p.top3Count, 'Top-3 finishes') +
+    tile(p.playoffCount, 'Playoff appearances') +
+    tile(p.toiletCount, '🚽 Toilet bowls') +
+    (p.dqCount ? tile(p.dqCount, 'DQs') : '') +
+    '</div>';
+
+  const seasonCard = (label, s) => !s ? '' : '<div class="profile-pair-card">' +
+    '<div class="profile-pair-label">' + label + '</div>' +
+    '<div class="profile-pair-name">' + s.year + '</div>' +
+    '<div class="profile-pair-detail">' + s.wins + '-' + s.losses + (s.ties ? '-' + s.ties : '') + ' · ' + s.pointsFor.toFixed(1) + ' pts' + (s.isChamp ? ' · 🏆' : '') + '</div>' +
+    '</div>';
+  const seasonGrid = (p.bestSeason || p.worstSeason)
+    ? '<h2 class="section-title">Best &amp; worst seasons</h2><div class="profile-pair-grid">' + seasonCard('Best season', p.bestSeason) + seasonCard('Worst season', p.worstSeason) + '</div>'
+    : '';
+
+  const gameCard = (label, g) => !g ? '' : '<div class="profile-pair-card">' +
+    '<div class="profile-pair-label">' + label + '</div>' +
+    '<div class="profile-pair-name">' + g.points.toFixed(1) + ' pts</div>' +
+    '<div class="profile-pair-detail">' + g.year + ' · Week ' + g.week + '</div>' +
+    '</div>';
+  const gameGrid = (p.highGame || p.lowGame)
+    ? '<h2 class="section-title">Single-game extremes</h2><div class="profile-pair-grid">' + gameCard('Career-high score', p.highGame) + gameCard('Career-low score', p.lowGame) + '</div>'
+    : '';
+
+  const rivalCard = (label, r) => !r ? '' : '<div class="profile-pair-card">' +
+    '<div class="profile-pair-label">' + label + '</div>' +
+    '<div class="profile-pair-name">' + escapeHtml(r.name) + '</div>' +
+    '<div class="profile-pair-detail">' + r.w + '-' + r.l + (r.t ? '-' + r.t : '') + '</div>' +
+    '</div>';
+  const rivalGrid = (p.toughest || p.easiest)
+    ? '<h2 class="section-title">Rivalries</h2>' +
+      '<p class="section-note">Based on head-to-head record (min. 2 games played against them).</p>' +
+      '<div class="profile-pair-grid">' + rivalCard('Toughest opponent', p.toughest) + rivalCard('Easiest opponent', p.easiest) + '</div>'
+    : '';
+
+  const badges = ALL_AWARD_TYPES.map(type => {
+    const won = p.awardTally[type.title];
+    if (won) {
+      const recentYear = Math.max(...won.years);
+      return '<div class="badge-card"><span class="badge-count">×' + won.count + '</span>' +
+        '<span class="badge-emoji">' + type.emoji + '</span>' +
+        '<div class="badge-title">' + escapeHtml(type.title) + '</div>' +
+        '<div class="badge-title" style="opacity:.6;">' + recentYear + '</div></div>';
+    }
+    return '<div class="badge-card locked">' +
+      '<span class="badge-emoji">' + type.emoji + '</span>' +
+      '<div class="badge-title">' + escapeHtml(type.title) + '</div></div>';
+  }).join('');
+  const badgeCase = '<h2 class="section-title">Award case</h2>' +
+    '<p class="section-note">Every award this manager has ever won, tallied across every fetched season — dimmed ones haven\'t been earned yet.</p>' +
+    '<div class="badge-grid">' + badges + '</div>';
+
+  profileContent.innerHTML = header + statGrid + seasonGrid + gameGrid + rivalGrid + badgeCase;
+}
+
+profileManagerSelect.addEventListener('change', () => renderProfileCard(profileManagerSelect.value));
+
+
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -1908,6 +2291,7 @@ function refreshSeasonDependentViews(){
   renderHistoryContent();
   renderPowerRankings();
   renderAwards();
+  renderProfile();
 }
 
 async function autoLoadHistoryFromCache(){
