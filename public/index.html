@@ -1545,6 +1545,108 @@ function computeAwards(year, teams, schedule, settings){
     if (faller.delta < 0) awards.push({ emoji: '📉', title: 'Biggest Fall-Off', desc: "Biggest win% drop vs. the previous season", winner: faller.name, detail: Math.round(faller.delta * 100) + ' pts of win%' });
   }
 
+  // ---- Overachiever / underachiever (win-rank vs. scoring-rank) ----
+  if (seasonRecords.length && teamTotals.length) {
+    const byWin = [...seasonRecords].sort((a, b) => b.winPct - a.winPct);
+    const winRank = {}; byWin.forEach((r, i) => { winRank[r.teamId] = i + 1; });
+    const byPts = [...teamTotals].sort((a, b) => b.points - a.points);
+    const ptsRank = {}; byPts.forEach((t, i) => { ptsRank[t.teamId] = i + 1; });
+
+    const rankDiffs = seasonRecords
+      .filter(r => ptsRank[r.teamId] !== undefined)
+      .map(r => ({ name: r.name, diff: ptsRank[r.teamId] - winRank[r.teamId], winRank: winRank[r.teamId], ptsRank: ptsRank[r.teamId] }));
+
+    if (rankDiffs.length) {
+      const over = rankDiffs.reduce((a, b) => b.diff > a.diff ? b : a);
+      if (over.diff > 0) awards.push({ emoji: '🎖️', title: 'Overachiever', desc: 'Won more than the scoreboard says they should have', winner: over.name, detail: 'No. ' + over.winRank + ' in wins, No. ' + over.ptsRank + ' in points' });
+
+      const under = rankDiffs.reduce((a, b) => b.diff < a.diff ? b : a);
+      if (under.diff < 0) awards.push({ emoji: '🫠', title: 'Underachiever', desc: 'Scored better than their record shows', winner: under.name, detail: 'No. ' + under.ptsRank + ' in points, No. ' + under.winRank + ' in wins' });
+    }
+  }
+
+  // ---- Playoff bubble ----
+  const playoffSpotsCount = settings?.scheduleSettings?.playoffTeamCount || 0;
+  if (playoffSpotsCount && seasonRecords.length) {
+    const bubble = seasonRecords.find(r => r.playoffSeed === playoffSpotsCount + 1);
+    if (bubble) awards.push({ emoji: '🥅', title: 'Bubble Team', desc: 'First team left out of the playoffs', winner: bubble.name, detail: bubble.wins + '-' + bubble.losses + (bubble.ties ? '-' + bubble.ties : '') + ' · No. ' + bubble.playoffSeed + ' seed' });
+
+    const sneakIn = seasonRecords.find(r => r.playoffSeed === playoffSpotsCount);
+    if (sneakIn) awards.push({ emoji: '🎟️', title: 'Snuck In', desc: 'Grabbed the last playoff spot', winner: sneakIn.name, detail: sneakIn.wins + '-' + sneakIn.losses + (sneakIn.ties ? '-' + sneakIn.ties : '') + ' · No. ' + sneakIn.playoffSeed + ' seed' });
+  }
+
+  // ---- Week-over-week swings ----
+  const byTeamWeeks = {};
+  teamGames.forEach(g => { (byTeamWeeks[g.teamId] = byTeamWeeks[g.teamId] || { name: g.name, rows: [] }).rows.push(g); });
+  Object.values(byTeamWeeks).forEach(t => t.rows.sort((a, b) => a.week - b.week));
+
+  let biggestJump = null, biggestDrop = null;
+  Object.values(byTeamWeeks).forEach(t => {
+    for (let i = 1; i < t.rows.length; i++) {
+      const delta = t.rows[i].points - t.rows[i - 1].points;
+      const info = { name: t.name, delta, fromWeek: t.rows[i - 1].week, toWeek: t.rows[i].week };
+      if (!biggestJump || delta > biggestJump.delta) biggestJump = info;
+      if (!biggestDrop || delta < biggestDrop.delta) biggestDrop = info;
+    }
+  });
+  if (biggestJump && biggestJump.delta > 0) awards.push({ emoji: '⚡', title: 'Tide Turner', desc: 'Biggest week-over-week point jump', winner: biggestJump.name, detail: '+' + biggestJump.delta.toFixed(1) + ' pts, Week ' + biggestJump.fromWeek + ' → ' + biggestJump.toWeek });
+  if (biggestDrop && biggestDrop.delta < 0) awards.push({ emoji: '🧊', title: 'Wet Blanket', desc: 'Biggest week-over-week point drop', winner: biggestDrop.name, detail: biggestDrop.delta.toFixed(1) + ' pts, Week ' + biggestDrop.fromWeek + ' → ' + biggestDrop.toWeek });
+
+  // ---- Close games (margin ≤ 5 pts) ----
+  const closeGames = teamGames.map(g => ({ ...g, margin: Math.abs(g.points - g.oppPoints) })).filter(g => g.margin <= 5 && g.result !== 'T');
+  const closeByTeam = {};
+  closeGames.forEach(g => {
+    const t = closeByTeam[g.teamId] || (closeByTeam[g.teamId] = { name: g.name, w: 0, l: 0 });
+    if (g.result === 'W') t.w++; else t.l++;
+  });
+  const closeStats = Object.values(closeByTeam).filter(t => (t.w + t.l) >= 2).map(t => ({ ...t, pct: t.w / (t.w + t.l) }));
+  if (closeStats.length) {
+    const clutch = closeStats.reduce((a, b) => b.pct > a.pct ? b : a);
+    awards.push({ emoji: '💪', title: 'Clutch', desc: 'Best record in games decided by 5 pts or less', winner: clutch.name, detail: clutch.w + '-' + clutch.l + ' in close games' });
+
+    const choke = closeStats.reduce((a, b) => b.pct < a.pct ? b : a);
+    awards.push({ emoji: '🃏', title: 'Choke Artist', desc: 'Worst record in games decided by 5 pts or less', winner: choke.name, detail: choke.w + '-' + choke.l + ' in close games' });
+  }
+
+  // ---- Fast/slow starts (first 3 weeks of the season) ----
+  const allWeeksSorted = [...new Set(teamGames.map(g => g.week))].sort((a, b) => a - b);
+  const firstWeeks = new Set(allWeeksSorted.slice(0, 3));
+  if (firstWeeks.size >= 2) {
+    const startByTeam = {};
+    teamGames.filter(g => firstWeeks.has(g.week)).forEach(g => {
+      const t = startByTeam[g.teamId] || (startByTeam[g.teamId] = { name: g.name, w: 0, l: 0, t: 0, gp: 0 });
+      t.gp++;
+      if (g.result === 'W') t.w++; else if (g.result === 'L') t.l++; else t.t++;
+    });
+    const starters = Object.values(startByTeam).filter(t => t.gp === firstWeeks.size).map(t => ({ ...t, pct: (t.w + t.t * 0.5) / t.gp }));
+    if (starters.length) {
+      const fast = starters.reduce((a, b) => b.pct > a.pct ? b : a);
+      awards.push({ emoji: '🏁', title: 'Fast Starter', desc: 'Best record in the first ' + firstWeeks.size + ' weeks', winner: fast.name, detail: fast.w + '-' + fast.l + (fast.t ? '-' + fast.t : '') + ' to open the season' });
+
+      const slow = starters.reduce((a, b) => b.pct < a.pct ? b : a);
+      awards.push({ emoji: '🐌', title: 'Slow Starter', desc: 'Worst record in the first ' + firstWeeks.size + ' weeks', winner: slow.name, detail: slow.w + '-' + slow.l + (slow.t ? '-' + slow.t : '') + ' to open the season' });
+    }
+  }
+
+  // ---- Strong finish (final 3 regular-season weeks) ----
+  const regSeasonWeeks = [...new Set(schedule
+    .filter(g => (!g.playoffTierType || g.playoffTierType === 'NONE') && g.winner && g.winner !== 'UNDECIDED')
+    .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+  const finalWeeks = new Set(regSeasonWeeks.slice(-3));
+  if (finalWeeks.size >= 2) {
+    const finishByTeam = {};
+    teamGames.filter(g => finalWeeks.has(g.week)).forEach(g => {
+      const t = finishByTeam[g.teamId] || (finishByTeam[g.teamId] = { name: g.name, w: 0, l: 0, t: 0, gp: 0 });
+      t.gp++;
+      if (g.result === 'W') t.w++; else if (g.result === 'L') t.l++; else t.t++;
+    });
+    const closers = Object.values(finishByTeam).filter(t => t.gp === finalWeeks.size).map(t => ({ ...t, pct: (t.w + t.t * 0.5) / t.gp }));
+    if (closers.length) {
+      const closer = closers.reduce((a, b) => b.pct > a.pct ? b : a);
+      awards.push({ emoji: '🎬', title: 'The Closer', desc: 'Best record in the final ' + finalWeeks.size + ' regular-season weeks', winner: closer.name, detail: closer.w + '-' + closer.l + (closer.t ? '-' + closer.t : '') + ' down the stretch' });
+    }
+  }
+
   // ---- Roster activity (trades, waivers) ----
   awards.push(...computeActivityAwards(teams));
 
@@ -1563,7 +1665,13 @@ function computeActivityAwards(teams){
   const awards = [];
   const withCounts = teams.map(t => {
     const tc = t.transactionCounter || {};
-    return { name: teamDisplayName(t), trades: tc.trades || 0, acquisitions: tc.acquisitions || 0 };
+    return {
+      name: teamDisplayName(t),
+      trades: tc.trades || 0,
+      acquisitions: tc.acquisitions || 0,
+      drops: tc.drops || 0,
+      faabSpent: tc.acquisitionBudgetSpent || 0,
+    };
   });
 
   if (withCounts.some(t => t.trades > 0)) {
@@ -1577,6 +1685,18 @@ function computeActivityAwards(teams){
 
     const quietest = withCounts.reduce((a, b) => b.acquisitions < a.acquisitions ? b : a);
     awards.push({ emoji: '\ud83e\uddd8', title: 'Set It and Forget It', desc: 'Fewest waiver/free-agent pickups', winner: quietest.name, detail: quietest.acquisitions + ' adds this season' });
+  }
+
+  if (withCounts.some(t => t.drops > 0)) {
+    const churner = withCounts.reduce((a, b) => b.drops > a.drops ? b : a);
+    awards.push({ emoji: '\ud83d\udeaa', title: 'Revolving Door', desc: 'Most roster drops', winner: churner.name, detail: churner.drops + ' drops this season' });
+  }
+
+  // Only meaningful for leagues that actually use a FAAB waiver budget —
+  // stays silent (all-zero faabSpent) for standard waiver-priority leagues.
+  if (withCounts.some(t => t.faabSpent > 0)) {
+    const spender = withCounts.reduce((a, b) => b.faabSpent > a.faabSpent ? b : a);
+    awards.push({ emoji: '\ud83d\udcb0', title: 'High Roller', desc: 'Most FAAB waiver budget spent', winner: spender.name, detail: '$' + spender.faabSpent.toFixed(0) + ' spent this season' });
   }
 
   return awards;
@@ -2028,6 +2148,19 @@ const ALL_AWARD_TYPES = [
   { emoji: '🤝', title: 'Trade Machine' },
   { emoji: '📡', title: 'Waiver Wire Warrior' },
   { emoji: '🧘', title: 'Set It and Forget It' },
+  { emoji: '🎖️', title: 'Overachiever' },
+  { emoji: '🫠', title: 'Underachiever' },
+  { emoji: '🥅', title: 'Bubble Team' },
+  { emoji: '🎟️', title: 'Snuck In' },
+  { emoji: '⚡', title: 'Tide Turner' },
+  { emoji: '🧊', title: 'Wet Blanket' },
+  { emoji: '💪', title: 'Clutch' },
+  { emoji: '🃏', title: 'Choke Artist' },
+  { emoji: '🏁', title: 'Fast Starter' },
+  { emoji: '🐌', title: 'Slow Starter' },
+  { emoji: '🎬', title: 'The Closer' },
+  { emoji: '🚪', title: 'Revolving Door' },
+  { emoji: '💰', title: 'High Roller' },
 ];
 
 // Every fetched season, oldest first, regardless of the History/Power
