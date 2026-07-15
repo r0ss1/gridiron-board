@@ -130,9 +130,6 @@
   }
   .btn-text:hover{color:var(--amber); text-decoration-color:var(--amber);}
 
-  .cred-toggle-row{margin-top:14px;}
-  .cred-fields{margin-top:14px; padding-top:14px; border-top:1px solid var(--line);}
-
   /* Tabs */
   nav.tabs{
     display:flex;
@@ -476,26 +473,6 @@
       </div>
       <button class="btn btn-primary" id="loadBtn">Load league</button>
     </div>
-
-    <div class="cred-toggle-row">
-      <button type="button" id="credToggle" class="btn-text">ESPN login (for private / pre-2019 seasons)</button>
-    </div>
-    <div id="credFields" class="cred-fields" style="display:none;">
-      <p class="section-note">Saved only in this browser, never in your GitHub repo. Get these by logging into fantasy.espn.com on a computer, opening dev tools → Application → Cookies, and copying the <code>espn_s2</code> and <code>SWID</code> values.</p>
-      <div class="controls" style="margin-top:0;">
-        <div class="field">
-          <label for="espnS2Input">espn_s2</label>
-          <input id="espnS2Input" type="password" autocomplete="off" style="min-width:200px;">
-        </div>
-        <div class="field">
-          <label for="swidInput">SWID</label>
-          <input id="swidInput" type="password" autocomplete="off" style="min-width:160px;">
-        </div>
-        <button class="btn btn-primary" id="credSaveBtn" type="button">Save</button>
-        <button type="button" id="credClearBtn" class="btn btn-ghost">Clear</button>
-      </div>
-      <p class="section-note" id="credStatus"></p>
-    </div>
   </div>
 </header>
 
@@ -547,13 +524,6 @@
 const leagueIdInput = document.getElementById('leagueId');
 const seasonSelect = document.getElementById('season');
 const loadBtn = document.getElementById('loadBtn');
-const credToggle = document.getElementById('credToggle');
-const credFields = document.getElementById('credFields');
-const espnS2Input = document.getElementById('espnS2Input');
-const swidInput = document.getElementById('swidInput');
-const credSaveBtn = document.getElementById('credSaveBtn');
-const credClearBtn = document.getElementById('credClearBtn');
-const credStatus = document.getElementById('credStatus');
 const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
@@ -733,66 +703,6 @@ async function loadOwnerAliases(){
 }
 loadOwnerAliases();
 
-// ---------------------------------------------------------------
-// ESPN login (optional). Only used for private leagues or pre-2019
-// seasons, which now require it. Stored in this browser's localStorage
-// only — never written to any file, so it's safe even though this repo
-// is public. It works once this page is actually deployed (e.g. to
-// Netlify); it won't persist inside Claude's in-chat preview.
-// ---------------------------------------------------------------
-const CRED_KEY_S2 = 'gridironEspnS2';
-const CRED_KEY_SWID = 'gridironSwid';
-
-function getCreds(){
-  try {
-    return {
-      espnS2: localStorage.getItem(CRED_KEY_S2) || '',
-      swid: localStorage.getItem(CRED_KEY_SWID) || '',
-    };
-  } catch (e) {
-    return { espnS2: '', swid: '' }; // storage blocked (e.g. sandboxed preview)
-  }
-}
-
-function credHeaders(){
-  const c = getCreds();
-  return (c.espnS2 && c.swid) ? { 'X-Espn-S2': c.espnS2, 'X-Espn-Swid': c.swid } : {};
-}
-
-(function initCredPanel(){
-  const c = getCreds();
-  espnS2Input.value = c.espnS2;
-  swidInput.value = c.swid;
-  if (c.espnS2 && c.swid) {
-    credStatus.textContent = 'Login saved in this browser.';
-    credFields.style.display = '';
-  }
-
-  credToggle.addEventListener('click', () => {
-    credFields.style.display = credFields.style.display === 'none' ? '' : 'none';
-  });
-
-  credSaveBtn.addEventListener('click', () => {
-    try {
-      localStorage.setItem(CRED_KEY_S2, espnS2Input.value.trim());
-      localStorage.setItem(CRED_KEY_SWID, swidInput.value.trim());
-      credStatus.textContent = 'Saved. Try loading the league or fetching history again.';
-    } catch (e) {
-      credStatus.textContent = 'Could not save — this browser/preview is blocking local storage.';
-    }
-  });
-
-  credClearBtn.addEventListener('click', () => {
-    try {
-      localStorage.removeItem(CRED_KEY_S2);
-      localStorage.removeItem(CRED_KEY_SWID);
-    } catch (e) {}
-    espnS2Input.value = '';
-    swidInput.value = '';
-    credStatus.textContent = 'Cleared.';
-  });
-})();
-
 async function loadLeague(){
   const leagueId = leagueIdInput.value.trim();
   const season = seasonSelect.value;
@@ -808,7 +718,7 @@ async function loadLeague(){
                     '&season=' + encodeURIComponent(season);
 
   try {
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json', ...credHeaders() } });
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
 
     if (res.status === 401 || res.status === 403) {
       statusArea.innerHTML = privateLeagueMessage();
@@ -863,9 +773,8 @@ function privateLeagueMessage(){
   return '<div class="error"><strong>This league looks private.</strong><br>' + privateLeagueMessageInner() + '</div>';
 }
 function privateLeagueMessageInner(){
-  return 'Add your ESPN login in the "ESPN login" panel above (log into fantasy.espn.com on a computer, ' +
-    'copy the <code>espn_s2</code> and <code>SWID</code> cookies from dev tools, paste them in, Save) — ' +
-    'that lets the app prove it\'s you. Or ask your commissioner to set the league to public under League Settings.';
+  return 'Ask your commissioner to set the league to public under League Settings — this app doesn\'t currently ' +
+    'support logging in for a private league.';
 }
 
 // "All-play" record: for every week, compares each team's score against
@@ -1760,7 +1669,7 @@ async function fetchHistorySeason(leagueId, season){
   const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
                     '&season=' + encodeURIComponent(season);
   try {
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json', ...credHeaders() } });
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
     const payload = await res.json().catch(() => null);
 
     if (!res.ok) {
