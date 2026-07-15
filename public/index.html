@@ -366,37 +366,37 @@
 
   .badge-grid{
     display:grid;
-    grid-template-columns:repeat(auto-fill, minmax(82px, 1fr));
-    gap:10px;
-    margin:14px 0 26px;
+    grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
+    gap:6px;
+    margin:14px 0 22px;
   }
   .badge-card{
     background:var(--surface);
-    border-radius:10px;
-    padding:12px 6px 10px;
+    border-radius:8px;
+    padding:7px 3px 6px;
     text-align:center;
     position:relative;
   }
   .badge-card.locked{opacity:.32; filter:grayscale(1);}
-  .badge-emoji{font-size:26px; display:block; margin-bottom:6px; line-height:1;}
+  .badge-emoji{font-size:17px; display:block; margin-bottom:3px; line-height:1;}
   .badge-title{
     font-family:'Oswald', sans-serif;
-    font-size:10px;
-    line-height:1.25;
+    font-size:8px;
+    line-height:1.15;
     color:var(--ink-dim);
   }
   .badge-card:not(.locked) .badge-title{color:var(--ink);}
   .badge-count{
     position:absolute;
-    top:4px;
-    right:5px;
+    top:2px;
+    right:3px;
     background:var(--amber);
     color:#1A1200;
     font-family:'JetBrains Mono', monospace;
-    font-size:9px;
+    font-size:7px;
     font-weight:700;
-    border-radius:8px;
-    padding:1px 5px;
+    border-radius:6px;
+    padding:0px 3px;
   }
 
   /* History */
@@ -2251,12 +2251,12 @@ function renderProfileCard(key){
     const won = p.awardTally[type.title];
     if (won) {
       const recentYear = Math.max(...won.years);
-      return '<div class="badge-card"><span class="badge-count">×' + won.count + '</span>' +
+      return '<div class="badge-card" title="' + escapeHtml(type.title) + ' — won ' + won.count + 'x, most recently ' + recentYear + '">' +
+        '<span class="badge-count">×' + won.count + '</span>' +
         '<span class="badge-emoji">' + type.emoji + '</span>' +
-        '<div class="badge-title">' + escapeHtml(type.title) + '</div>' +
-        '<div class="badge-title" style="opacity:.6;">' + recentYear + '</div></div>';
+        '<div class="badge-title">' + escapeHtml(type.title) + '</div></div>';
     }
-    return '<div class="badge-card locked">' +
+    return '<div class="badge-card locked" title="' + escapeHtml(type.title) + ' — not yet won">' +
       '<span class="badge-emoji">' + type.emoji + '</span>' +
       '<div class="badge-title">' + escapeHtml(type.title) + '</div></div>';
   }).join('');
@@ -2264,7 +2264,7 @@ function renderProfileCard(key){
     '<p class="section-note">Every award this manager has ever won, tallied across every fetched season — dimmed ones haven\'t been earned yet.</p>' +
     '<div class="badge-grid">' + badges + '</div>';
 
-  profileContent.innerHTML = header + statGrid + seasonGrid + gameGrid + rivalGrid + badgeCase;
+  profileContent.innerHTML = header + badgeCase + statGrid + seasonGrid + gameGrid + rivalGrid;
 }
 
 profileManagerSelect.addEventListener('change', () => renderProfileCard(profileManagerSelect.value));
