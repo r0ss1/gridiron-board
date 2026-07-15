@@ -69,9 +69,7 @@ async function handleEspnProxy(request, url) {
     if (!espnRes.ok) {
       const errBody = await espnRes.text();
       const hint = isLegacy
-        ? (espnS2 && swid
-            ? ' Login cookies were sent but ESPN still rejected the request — double check you copied the full espn_s2 value and the SWID including its curly braces, and that they\'re not expired.'
-            : ' ESPN restricts the legacy history endpoint for some leagues as of Aug 2025 — add your ESPN login (espn_s2/SWID) in the app\'s "ESPN login" panel to unlock it.')
+        ? ' ESPN restricts the legacy history endpoint for some leagues as of Aug 2025 and this app no longer supports logging in to unlock it — check whether this season is already covered by data/history-cache.json instead.'
         : '';
       return jsonResponse(
         { error: 'ESPN returned an error.' + hint, status: espnRes.status, detail: errBody.slice(0, 300) },
