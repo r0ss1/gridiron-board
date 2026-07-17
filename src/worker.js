@@ -13,9 +13,14 @@
 //              in a one-item array for historical reasons
 //
 // As of Aug 2025 ESPN also started requiring login cookies (espn_s2/SWID)
-// for the leagueHistory endpoint on some leagues, even public ones. Pass
-// them via the X-Espn-S2 / X-Espn-Swid request headers (the app's "ESPN
-// login" panel does this automatically once you've saved them there).
+// for the leagueHistory endpoint on some leagues, even public ones. This
+// app doesn't currently have a UI for supplying those, but the proxy still
+// accepts them via X-Espn-S2 / X-Espn-Swid request headers if ever needed.
+//
+// Roster/box-score data (view=mBoxscore) is heavy — every player on every
+// team's lineup, every week — so it's NOT included in the default VIEWS
+// used for most fetches. It's only added when the caller explicitly asks
+// for it via ?roster=1, e.g. for the Positions tab.
 
 const VIEWS = 'view=mTeam&view=mStandings&view=mMatchupScore&view=mSettings&view=mTransactions2';
 const LEGACY_CUTOFF_YEAR = 2018;
@@ -37,6 +42,7 @@ export default {
 async function handleEspnProxy(request, url) {
   const leagueId = url.searchParams.get('leagueId');
   const season = url.searchParams.get('season');
+  const wantRoster = url.searchParams.get('roster') === '1';
   const espnS2 = request.headers.get('x-espn-s2');
   const swid = request.headers.get('x-espn-swid');
 
@@ -48,10 +54,11 @@ async function handleEspnProxy(request, url) {
 
   const seasonNum = parseInt(season, 10);
   const isLegacy = seasonNum < LEGACY_CUTOFF_YEAR;
+  const views = wantRoster ? VIEWS + '&view=mBoxscore' : VIEWS;
 
   const espnUrl = isLegacy
-    ? `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/${leagueId}?seasonId=${season}&${VIEWS}`
-    : `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}?${VIEWS}`;
+    ? `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/${leagueId}?seasonId=${season}&${views}`
+    : `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}?${views}`;
 
   const reqHeaders = {
     Accept: 'application/json',
