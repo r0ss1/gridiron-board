@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Gridiron Board — League Tracker</title>
-<meta name="theme-color" content="#0C1712">
+<meta name="theme-color" content="#3F3F3F">
 <meta name="description" content="A scoreboard for your ESPN fantasy football league.">
 
 <!-- PWA hookup -->
@@ -17,14 +17,14 @@
 
 <style>
   :root{
-    --bg:#0C1712;
-    --surface:#151F19;
-    --surface-2:#1B2820;
-    --line:#25352C;
-    --ink:#F4F2EA;
-    --ink-dim:#8FA097;
-    --amber:#F0A845;
-    --win:#5FB884;
+    --bg:#3F3F3F;
+    --surface:#4A4A4A;
+    --surface-2:#565656;
+    --line:#5F5F5F;
+    --ink:#E5E5E5;
+    --ink-dim:#A8A8A8;
+    --amber:#CEB888;
+    --win:#8FBF9F;
     --loss:#D3684F;
     --radius:10px;
   }
@@ -84,6 +84,29 @@
     letter-spacing:.07em;
     text-transform:uppercase;
     color:var(--ink-dim);
+  }
+  .controls-compact{ align-items:center; gap:12px; }
+  .fieldC{ display:flex; flex-direction:column; gap:5px; }
+  .fieldC label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px; letter-spacing:.07em;
+    text-transform:uppercase; color:var(--ink-dim);
+  }
+  .year-chips{ display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .year-chips button{
+    appearance:none; border:0; background:var(--surface); color:var(--ink-dim);
+    font-family:'JetBrains Mono', monospace; font-size:12px; font-weight:600;
+    padding:6px 11px; cursor:pointer; border-right:1px solid var(--line);
+    transition:background .12s, color .12s;
+  }
+  .year-chips button:last-child{ border-right:0; }
+  .year-chips button:hover{ color:var(--ink); }
+  .year-chips button.on{ background:var(--amber); color:#1a1a1a; }
+  .sel-sm{ font-size:12px; padding:6px 8px; }
+  .btn-icon-sm{ padding:6px 9px; font-size:13px; line-height:1; }
+  .visually-hidden{
+    position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
   }
   input, select{
     background:var(--surface);
@@ -207,6 +230,8 @@
     user-select:text;
   }
   td.num{font-family:'JetBrains Mono', monospace;}
+  .pos-rank{display:inline-block; margin-left:5px; font-family:'JetBrains Mono', monospace; font-size:9px; color:var(--ink-dim); vertical-align:middle;}
+  .pos-rank.top{color:var(--amber); font-weight:700;}
 
   .owner-ref{margin:20px 0 30px;}
   .owner-ref summary{
@@ -515,16 +540,17 @@
     <h1 id="leagueTitle">Gridiron Board</h1>
     <span class="week-chip" id="weekChip"></span>
 
-    <div class="controls">
-      <div class="field">
+    <div class="controls controls-compact">
+      <div class="fieldC">
         <label for="viewSeason">Season</label>
-        <select id="viewSeason" style="min-width:90px;"></select>
+        <div id="seasonChips" class="year-chips" role="tablist" aria-label="Season"></div>
+        <select id="viewSeason" class="visually-hidden" tabindex="-1" aria-hidden="true"></select>
       </div>
-      <div class="field">
+      <div class="fieldC">
         <label for="viewWeek">Week</label>
-        <select id="viewWeek" style="min-width:80px;"></select>
+        <select id="viewWeek" class="sel-sm" style="min-width:78px;"></select>
       </div>
-      <button type="button" id="refreshBtn" class="btn btn-ghost" title="Pull fresh data for this season">↻ Refresh</button>
+      <button type="button" id="refreshBtn" class="btn btn-ghost btn-icon-sm" title="Pull fresh data for this season" aria-label="Refresh">↻ Refresh</button>
     </div>
   </div>
 </header>
@@ -782,6 +808,33 @@ function populateSeasonSelect(){
   const prev = viewSeasonSelect.value ? parseInt(viewSeasonSelect.value, 10) : state.seasonYear;
   viewSeasonSelect.innerHTML = sorted.map(y => '<option value="' + y + '">' + y + '</option>').join('');
   viewSeasonSelect.value = sorted.includes(prev) ? prev : sorted[0];
+  renderSeasonChips(sorted);
+}
+
+// Renders the segmented year chips that mirror/drive the hidden #viewSeason
+// select. Clicking a chip sets the select value and calls selectSeason so all
+// existing wiring stays untouched.
+function renderSeasonChips(sorted){
+  const strip = document.getElementById('seasonChips');
+  if (!strip) return;
+  const current = parseInt(viewSeasonSelect.value, 10);
+  strip.innerHTML = sorted.map(y =>
+    '<button type="button" role="tab" data-year="' + y + '"'
+    + (y === current ? ' class="on" aria-selected="true"' : ' aria-selected="false"')
+    + '>' + y + '</button>'
+  ).join('');
+  strip.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      const yr = parseInt(b.dataset.year, 10);
+      viewSeasonSelect.value = yr;
+      strip.querySelectorAll('button').forEach(x => {
+        const on = x === b;
+        x.classList.toggle('on', on);
+        x.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      selectSeason(yr, false);
+    });
+  });
 }
 
 // Weeks available for the currently loaded season's schedule — includes
@@ -1079,7 +1132,7 @@ function buildPreviewBanter(homeCtx, awayCtx, byTeam){
   return lines.join(' ');
 }
 
-function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts){
+function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam){
   const lines = [];
   const margin = Math.abs(homePts - awayPts);
   const winnerName = homePts > awayPts ? homeCtx.name : awayCtx.name;
@@ -1099,6 +1152,19 @@ function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts){
   const loseCtx = homePts > awayPts ? awayCtx : homeCtx;
   if (winCtx.streakLen >= 3 && winCtx.streakType === 'W') lines.push(winCtx.name + ' has won ' + winCtx.streakLen + ' straight.');
   if (loseCtx.streakLen >= 3 && loseCtx.streakType === 'L') lines.push(loseCtx.name + ' is now on a ' + loseCtx.streakLen + '-game slide.');
+
+  if (byTeam) {
+    const winRank = scoringRank(byTeam, winCtx.team.id);
+    const loseRank = scoringRank(byTeam, loseCtx.team.id);
+    const winPts = Math.max(homePts, awayPts), losePts = Math.min(homePts, awayPts);
+    if (winRank === 1) lines.push(winCtx.name + ' remains the league\'s top-scoring team.');
+    if (loseRank === 1) lines.push(loseCtx.name + ' put up the most points on the season but still took the loss.');
+    if (winCtx.avgPoints !== null && winPts >= winCtx.avgPoints + 20) {
+      lines.push(winCtx.name + ' torched their season average by ' + (winPts - winCtx.avgPoints).toFixed(1) + ' pts.');
+    } else if (loseCtx.avgPoints !== null && losePts <= loseCtx.avgPoints - 20) {
+      lines.push(loseCtx.name + ' fell ' + (loseCtx.avgPoints - losePts).toFixed(1) + ' pts short of their usual output.');
+    }
+  }
 
   return lines.join(' ');
 }
@@ -1194,7 +1260,7 @@ function renderReview(){
         '<span class="' + (awayWin ? 'winner-name' : '') + '">' + escapeHtml(awayCtx.name) + '</span>' +
       '</div>' +
       '<div class="pr-matchup-result">' + homePts.toFixed(1) + ' – ' + awayPts.toFixed(1) + '</div>' +
-      '<div class="pr-matchup-banter">' + escapeHtml(buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts)) + '</div>' +
+      '<div class="pr-matchup-banter">' + escapeHtml(buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam)) + '</div>' +
       '</div>';
   }).join('');
 
@@ -1298,47 +1364,106 @@ async function renderPositions(){
     return;
   }
 
-  positionsView.innerHTML = '<div class="status">Loading roster data for ' + state.seasonYear + '… this pulls every team\'s weekly lineup, so it can take a few seconds.</div>';
+  // Determine which seasons drive this view: checked seasons from the picker,
+  // or fall back to the single active season if none are checked.
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+  const seasons = checked.length ? checked.slice().sort((a, b) => a - b) : [state.seasonYear];
+  const aggregated = seasons.length > 1;
+  const picker = renderSeasonPicker();
 
-  const data = await fetchRosterData(state.seasonYear);
-  if (!data) {
-    positionsView.innerHTML = '<div class="error"><strong>Couldn\'t load roster data.</strong> The proxy request failed — try again, or check the season is valid.</div>';
-    return;
+  // Owner-keyed accumulator so identity is stable across seasons.
+  const acc = {};        // ownerKey -> { QB:0, RB:0, ... }
+  const nameByKey = {};  // ownerKey -> display name
+  let foundAny = false;
+
+  for (const yr of seasons) {
+    positionsView.innerHTML = picker +
+      '<div class="status">Loading roster data for ' + yr + '??? this pulls every team\'s weekly lineup, so it can take a few seconds.</div>';
+
+    const data = await fetchRosterData(yr);
+    if (!data) {
+      positionsView.innerHTML = picker +
+        '<div class="error"><strong>Couldn\'t load roster data for ' + yr + '.</strong> The proxy request failed ??" try again, or check the season is valid.</div>';
+      wirePositionsPicker();
+      return;
+    }
+
+    const { totals, foundAnyRosterData } = computePositionalTotals(data);
+    if (foundAnyRosterData) foundAny = true;
+    const keyById = idToOwnerKeyMap(data.teams || []);
+
+    Object.keys(totals).forEach(teamId => {
+      const key = keyById[teamId] || teamId;
+      if (!acc[key]) acc[key] = {};
+      const src = totals[teamId];
+      Object.keys(src).forEach(p => { acc[key][p] = (acc[key][p] || 0) + (src[p] || 0); });
+      if (!nameByKey[key]) {
+        const t = (data.teams || []).find(tm => String(tm.id) === String(teamId));
+        if (t) nameByKey[key] = teamDisplayName(t);
+      }
+    });
   }
 
-  const { totals, nameById, foundAnyRosterData } = computePositionalTotals(data);
-
-  if (!foundAnyRosterData) {
-    positionsView.innerHTML = '<div class="error"><strong>No roster data found in the response.</strong> ' +
+  if (!foundAny) {
+    positionsView.innerHTML = picker +
+      '<div class="error"><strong>No roster data found in the response.</strong> ' +
       'This means ESPN\'s box-score field names are different from what this tab assumes (it looks for ' +
       '<code>rosterForCurrentScoringPeriod</code> or <code>rosterForMatchupPeriod</code> on each matchup). ' +
-      'To fix this, visit <code>/api/espn-proxy?leagueId=' + escapeHtml(LEAGUE_ID) + '&season=' + state.seasonYear + '&roster=1</code> ' +
-      'directly in Safari, find a <code>schedule</code> entry, and check what field actually holds the per-player roster/points data — ' +
+      'To fix this, visit <code>/api/espn-proxy?leagueId=' + escapeHtml(LEAGUE_ID) + '&season=' + seasons[0] + '&roster=1</code> ' +
+      'directly in Safari, find a <code>schedule</code> entry, and check what field actually holds the per-player roster/points data ??" ' +
       'then send me what you find and I\'ll fix the field name.</div>';
+    wirePositionsPicker();
     return;
   }
 
   const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'D/ST'];
-  const rows = Object.keys(totals).map(teamId => {
-    const t = totals[teamId];
+  const keys = Object.keys(acc);
+  const rows = keys.map(key => {
+    const t = acc[key];
     const total = positions.reduce((s, p) => s + (t[p] || 0), 0);
-    return { teamId, name: nameById[teamId] || ('Team ' + teamId), t, total };
+    return { key, name: nameByKey[key] || key, t, total };
   }).sort((a, b) => b.total - a.total);
+
+  // Per-position rank across the aggregated totals (all-time positional rank).
+  const posRank = {}; // posRank[position][ownerKey] = 1-based rank
+  positions.forEach(p => {
+    posRank[p] = {};
+    keys.slice()
+      .sort((a, b) => (acc[b][p] || 0) - (acc[a][p] || 0))
+      .forEach((key, i) => { posRank[p][key] = i + 1; });
+  });
 
   const header = '<th></th><th>Team</th>' + positions.map(p => '<th class="num">' + p + '</th>').join('') + '<th class="num">Total</th>';
   const body = rows.map((r, i) => '<tr>' +
     '<td class="rank">' + (i + 1) + '</td>' +
     '<td class="team-name">' + escapeHtml(r.name) + '</td>' +
-    positions.map(p => '<td class="num">' + (r.t[p] ? r.t[p].toFixed(1) : '—') + '</td>').join('') +
+    positions.map(p => '<td class="num">' + (r.t[p] ? r.t[p].toFixed(1) + '<span class="pos-rank' + (posRank[p][r.key] === 1 ? ' top' : '') + '">#' + posRank[p][r.key] + '</span>' : '??"') + '</td>').join('') +
     '<td class="num" style="font-weight:700;">' + r.total.toFixed(1) + '</td>' +
     '</tr>'
   ).join('');
 
-  positionsView.innerHTML =
-    '<p class="section-note">Total points scored by each team\'s STARTED players at each position, ' + state.seasonYear + ' season. FLEX/superflex starts count toward the player\'s actual position, not as a separate column.</p>' +
+  const noteScope = aggregated
+    ? ('all-time across ' + seasons.length + ' seasons (' + seasons[0] + '??"' + seasons[seasons.length - 1] + ')')
+    : (seasons[0] + ' season');
+  positionsView.innerHTML = picker +
+    '<p class="section-note">Total points scored by each team\'s STARTED players at each position, ' + noteScope + '. ' +
+    'FLEX/superflex starts count toward the player\'s actual position, not as a separate column.' +
+    (aggregated ? ' Position rank badges reflect all-time totals.' : '') + '</p>' +
     '<div class="h2h-scroll"><table><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+
+  wirePositionsPicker();
 }
 
+function wirePositionsPicker(){
+  positionsView.querySelectorAll('.season-chip input').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const yr = Number(cb.dataset.year);
+      if (cb.checked) history.checkedSeasons.add(yr);
+      else history.checkedSeasons.delete(yr);
+      refreshSeasonDependentViews();
+    });
+  });
+}
 // Collects each team's score for every *completed* week (skips the
 // in-progress week so partial scores don't skew the trend).
 function weeklyScoresByTeam(){
@@ -2777,7 +2902,7 @@ function escapeHtml(s){
 }
 
 viewSeasonSelect.addEventListener('change', () => selectSeason(parseInt(viewSeasonSelect.value, 10), false));
-viewWeekSelect.addEventListener('change', renderMatchups);
+viewWeekSelect.addEventListener('change', () => { renderMatchups(); renderPreview(); renderReview(); });
 refreshBtn.addEventListener('click', () => selectSeason(parseInt(viewSeasonSelect.value, 10), true));
 histLoadBtn.addEventListener('click', loadHistory);
 histDownloadBtn.addEventListener('click', downloadHistoryCache);
@@ -2792,6 +2917,9 @@ function refreshSeasonDependentViews(){
   renderAwards();
   renderProfile();
   populateSeasonSelect();
+  renderPreview();
+  renderReview();
+  renderPositions();
 }
 
 async function autoLoadHistoryFromCache(){

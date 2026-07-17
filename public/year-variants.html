@@ -1,0 +1,80 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Year-selector variants</title>
+<style>
+  :root{
+    --bg:#3F3F3F; --surface:#4A4A4A; --surface-2:#565656; --line:#5F5F5F;
+    --ink:#E5E5E5; --ink-dim:#A8A8A8; --amber:#CEB888; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:'Inter',sans-serif,system-ui; margin:0; padding:32px;}
+  .wrap{max-width:760px; margin:0 auto;}
+  h2{font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--amber); margin:40px 0 4px; font-family:monospace;}
+  p.note{font-size:12px; color:var(--ink-dim); margin:0 0 14px;}
+  .demo{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px;}
+  select,button,input{color:var(--ink); font-family:'Inter',sans-serif;}
+
+  /* ===== CURRENT (baseline) ===== */
+  .controls{display:flex; align-items:flex-end; gap:8px; flex-wrap:wrap;}
+  .field{display:flex; flex-direction:column; gap:5px;}
+  .field label{font-family:monospace; font-size:10px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-dim);}
+  .controls select{background:var(--surface); border:1px solid var(--line); color:var(--ink); font-size:14px; padding:9px 11px; border-radius:8px; height:38px;}
+  .btn-ghost{background:transparent; border:1px solid var(--line); color:var(--ink); border-radius:8px; height:38px; padding:0 12px; cursor:pointer;}
+
+  /* ===== VARIANT A: compact inline row (smaller chips/font, inline labels) ===== */
+  .ctrlA{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:13px;}
+  .ctrlA .fieldA{display:flex; align-items:center; gap:6px;}
+  .ctrlA label{font-family:monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim);}
+  .ctrlA select{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); font-size:13px; padding:4px 8px; border-radius:6px; height:28px;}
+  .ctrlA .btn-ghost{height:28px; font-size:12px; padding:0 10px;}
+
+  /* ===== VARIANT B: collapse into single dropdown-ish compact combo ===== */
+  .ctrlB{display:inline-flex; align-items:center; background:var(--surface-2); border:1px solid var(--line); border-radius:999px; padding:3px 4px; gap:2px;}
+  .ctrlB select{background:transparent; border:none; color:var(--ink); font-size:13px; padding:5px 8px; border-radius:999px; height:26px; cursor:pointer;}
+  .ctrlB .sep{width:1px; height:16px; background:var(--line);}
+  .ctrlB .btn-icon{background:transparent; border:none; color:var(--ink-dim); height:26px; width:30px; border-radius:999px; cursor:pointer; font-size:14px;}
+  .ctrlB .btn-icon:hover{color:var(--ink); background:var(--surface);}
+
+  /* ===== VARIANT C: segmented year chips + tiny week select ===== */
+  .ctrlC{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .segC{display:inline-flex; background:var(--surface-2); border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .segC button{background:transparent; border:none; color:var(--ink-dim); font-size:13px; padding:5px 11px; cursor:pointer; border-right:1px solid var(--line);}
+  .segC button:last-child{border-right:none;}
+  .segC button.on{background:var(--amber); color:#2a2a2a; font-weight:600;}
+  .ctrlC label{font-family:monospace; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-dim);}
+  .ctrlC select{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); font-size:13px; padding:4px 8px; border-radius:6px; height:28px;}
+</style></head>
+<body><div class="wrap">
+  <h2>Current (baseline)</h2>
+  <p class="note">Stacked uppercase labels, 38px selects. Reference for size.</p>
+  <div class="demo"><div class="controls">
+    <div class="field"><label>Season</label><select><option>2024</option><option>2023</option></select></div>
+    <div class="field"><label>Week</label><select><option>Week 14</option></select></div>
+    <button class="btn-ghost">&#8635; Refresh</button>
+  </div></div>
+
+  <h2>Variant A &mdash; compact inline row</h2>
+  <p class="note">Inline labels, smaller font (13px), 28px selects. Same layout, just shrunk. Lowest-risk.</p>
+  <div class="demo"><div class="ctrlA">
+    <div class="fieldA"><label>Season</label><select><option>2024</option><option>2023</option></select></div>
+    <div class="fieldA"><label>Week</label><select><option>Week 14</option></select></div>
+    <button class="btn-ghost">&#8635;</button>
+  </div></div>
+
+  <h2>Variant B &mdash; single pill combo</h2>
+  <p class="note">Both selects merged into one rounded pill with a divider and an icon-only refresh. Most compact; labels dropped (relies on values being self-evident).</p>
+  <div class="demo"><div class="ctrlB">
+    <select><option>2024</option><option>2023</option></select>
+    <span class="sep"></span>
+    <select><option>Week 14</option></select>
+    <span class="sep"></span>
+    <button class="btn-icon" title="Refresh">&#8635;</button>
+  </div></div>
+
+  <h2>Variant C &mdash; segmented year chips</h2>
+  <p class="note">Recent seasons as tappable chips (great for touch/PWA), week stays a tiny select. Wider if many seasons, but fastest to switch year.</p>
+  <div class="demo"><div class="ctrlC">
+    <div class="segC"><button class="on">2024</button><button>2023</button><button>2022</button></div>
+    <label>Week</label><select><option>Week 14</option></select>
+    <button class="btn-ghost" style="height:28px;font-size:12px;padding:0 10px;">&#8635;</button>
+  </div></div>
+</div></body></html>
