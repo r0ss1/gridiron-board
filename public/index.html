@@ -277,6 +277,59 @@
   .trend.down{color:var(--loss);}
   .trend.flat{color:var(--ink-dim);}
 
+  /* Preview / Review */
+  .placeholder-banner{
+    background:var(--surface);
+    border-left:3px solid var(--amber);
+    border-radius:0 8px 8px 0;
+    padding:12px 14px;
+    font-size:12px;
+    color:var(--ink-dim);
+    line-height:1.55;
+    margin-bottom:18px;
+  }
+  .spotlight-card{
+    background:linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
+    border-radius:var(--radius);
+    padding:18px 18px 16px;
+    margin-bottom:18px;
+  }
+  .spotlight-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:10px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--amber);
+  }
+  .spotlight-matchup{
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:19px;
+    margin:6px 0 8px;
+  }
+  .spotlight-banter{font-size:13px; line-height:1.55; color:var(--ink);}
+
+  .pr-matchup{
+    background:var(--surface);
+    border-radius:var(--radius);
+    padding:16px 18px;
+    margin-bottom:12px;
+  }
+  .pr-matchup-teams{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    font-family:'Oswald', sans-serif;
+    font-weight:600;
+    font-size:15px;
+    margin-bottom:4px;
+  }
+  .pr-matchup-teams .vs-sep{color:var(--ink-dim); font-family:'Inter',sans-serif; font-weight:400; font-size:11px; margin:0 6px;}
+  .pr-matchup-sub{font-family:'JetBrains Mono', monospace; font-size:11px; color:var(--ink-dim); margin-bottom:10px;}
+  .pr-matchup-banter{font-size:13px; line-height:1.55; color:var(--ink); margin-top:8px;}
+  .pr-matchup-result{font-family:'JetBrains Mono', monospace; font-size:13px; margin-top:2px;}
+  .winner-name{color:var(--win); font-weight:700;}
+
   /* Awards */
   .award-grid{
     display:grid;
@@ -464,14 +517,14 @@
 
     <div class="controls">
       <div class="field">
-        <label for="leagueId">League ID</label>
-        <input id="leagueId" inputmode="numeric" value="232506">
+        <label for="viewSeason">Season</label>
+        <select id="viewSeason" style="min-width:90px;"></select>
       </div>
       <div class="field">
-        <label for="season">Season</label>
-        <input id="season" inputmode="numeric" style="min-width:80px;">
+        <label for="viewWeek">Week</label>
+        <select id="viewWeek" style="min-width:80px;"></select>
       </div>
-      <button class="btn btn-primary" id="loadBtn">Load league</button>
+      <button type="button" id="refreshBtn" class="btn btn-ghost" title="Pull fresh data for this season">↻ Refresh</button>
     </div>
   </div>
 </header>
@@ -480,6 +533,9 @@
   <nav class="tabs">
     <button data-tab="standings" class="active">Standings</button>
     <button data-tab="matchups">Matchups</button>
+    <button data-tab="preview">Preview</button>
+    <button data-tab="review">Review</button>
+    <button data-tab="positions">Positions</button>
     <button data-tab="power">Power Rankings</button>
     <button data-tab="awards">Awards</button>
     <button data-tab="profile">Profile</button>
@@ -489,6 +545,9 @@
   <div id="statusArea"></div>
   <div id="standingsView"></div>
   <div id="matchupsView" style="display:none;"></div>
+  <div id="previewView" style="display:none;"></div>
+  <div id="reviewView" style="display:none;"></div>
+  <div id="positionsView" style="display:none;"></div>
   <div id="powerView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
@@ -521,12 +580,19 @@
 </div>
 
 <script>
-const leagueIdInput = document.getElementById('leagueId');
-const seasonSelect = document.getElementById('season');
-const loadBtn = document.getElementById('loadBtn');
+// This app is built for one specific league — no need to expose the ID
+// in the UI. Change it here if you ever repoint this deployment.
+const LEAGUE_ID = '232506';
+
+const viewSeasonSelect = document.getElementById('viewSeason');
+const viewWeekSelect = document.getElementById('viewWeek');
+const refreshBtn = document.getElementById('refreshBtn');
 const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
+const previewView = document.getElementById('previewView');
+const reviewView = document.getElementById('reviewView');
+const positionsView = document.getElementById('positionsView');
 const powerView = document.getElementById('powerView');
 const awardsView = document.getElementById('awardsView');
 const profileView = document.getElementById('profileView');
@@ -551,8 +617,6 @@ const seasonInProgressCutoffMonth = 8; // August (1-indexed) - rough heuristic
 const latestLikelySeason = now.getMonth() + 1 >= seasonInProgressCutoffMonth
   ? currentCalendarYear
   : currentCalendarYear - 1;
-
-seasonSelect.value = latestLikelySeason;
 
 // Pre-2019 seasons now route through ESPN's older leagueHistory endpoint
 // (see the proxy function) — this floor is just a sane default range, not
@@ -591,6 +655,10 @@ function setTab(name){
   document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   standingsView.style.display = name === 'standings' ? '' : 'none';
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
+  previewView.style.display = name === 'preview' ? '' : 'none';
+  reviewView.style.display = name === 'review' ? '' : 'none';
+  positionsView.style.display = name === 'positions' ? '' : 'none';
+  if (name === 'positions') renderPositions();
   powerView.style.display = name === 'power' ? '' : 'none';
   awardsView.style.display = name === 'awards' ? '' : 'none';
   profileView.style.display = name === 'profile' ? '' : 'none';
@@ -703,70 +771,90 @@ async function loadOwnerAliases(){
 }
 loadOwnerAliases();
 
-async function loadLeague(){
-  const leagueId = leagueIdInput.value.trim();
-  const season = seasonSelect.value;
-  if (!leagueId) { statusArea.innerHTML = '<div class="error">Enter a league ID.</div>'; return; }
+// Every season currently available to pick from: whatever's cached/fetched,
+// plus the current likely season even if nothing's been loaded for it yet
+// (selecting it triggers a live fetch the first time).
+function populateSeasonSelect(){
+  const years = new Set(history.loadedSeasons);
+  years.add(latestLikelySeason);
+  const sorted = [...years].sort((a, b) => b - a);
 
-  loadBtn.disabled = true;
-  statusArea.innerHTML = '<div class="status">Loading league ' + leagueId + ' (' + season + ')…</div>';
+  const prev = viewSeasonSelect.value ? parseInt(viewSeasonSelect.value, 10) : state.seasonYear;
+  viewSeasonSelect.innerHTML = sorted.map(y => '<option value="' + y + '">' + y + '</option>').join('');
+  viewSeasonSelect.value = sorted.includes(prev) ? prev : sorted[0];
+}
 
-  // Goes through our own Worker (src/worker.js), which handles /api/*
-  // because ESPN's API doesn't send CORS headers, so the browser can't call
-  // it directly. The proxy makes the request server-side instead.
-  const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
-                    '&season=' + encodeURIComponent(season);
+// Weeks available for the currently loaded season's schedule — includes
+// in-progress weeks (not just completed ones) so Matchups can show live
+// scores mid-week, not just finished games.
+function populateWeekSelect(){
+  const weeks = [...new Set(state.schedule.map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+  if (!weeks.length) { viewWeekSelect.innerHTML = ''; return; }
 
-  try {
-    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+  const defaultWeek = state.currentWeek && weeks.includes(state.currentWeek) ? state.currentWeek : weeks[weeks.length - 1];
+  viewWeekSelect.innerHTML = weeks.map(w => '<option value="' + w + '">Week ' + w + '</option>').join('');
+  viewWeekSelect.value = defaultWeek;
+}
 
-    if (res.status === 401 || res.status === 403) {
+// Cache-first: uses whatever's already in history.data unless forceLive is
+// set (the Refresh button), in which case it bypasses both the in-memory
+// and static-file cache and pulls straight from ESPN.
+async function selectSeason(year, forceLive){
+  refreshBtn.disabled = true;
+  statusArea.innerHTML = '<div class="status">Loading ' + year + (forceLive ? ' (live)' : '') + '…</div>';
+
+  const result = await fetchHistorySeason(LEAGUE_ID, year, forceLive);
+
+  if (!result.ok) {
+    if (result.status === 401 || result.status === 403) {
       statusArea.innerHTML = privateLeagueMessage();
-      loadBtn.disabled = false;
-      return;
-    }
-    if (res.status === 404) {
+    } else if (result.status === 404 && !result.hasPayload) {
       statusArea.innerHTML = '<div class="error"><strong>Proxy function not found.</strong> ' +
         'This page needs to be deployed to Cloudflare Workers (with wrangler.jsonc and src/worker.js intact) for ' +
         'league data to load — opening index.html directly, or hosting on plain GitHub Pages, won\'t run ' +
         'the proxy. See the README for deploy steps.</div>';
-      loadBtn.disabled = false;
-      return;
+    } else {
+      statusArea.innerHTML = '<div class="error"><strong>Couldn\'t load ' + year + '.</strong> ' + escapeHtml(result.reason || 'Unknown error') + '</div>';
     }
-    if (!res.ok) {
-      statusArea.innerHTML = '<div class="error"><strong>Error ' + res.status + '.</strong> ' +
-        'Double check the league ID and season. If the season hasn\'t started yet, ESPN may not have data for it.</div>';
-      loadBtn.disabled = false;
-      return;
-    }
-
-    const data = await res.json();
-    state.teams = data.teams || [];
-    state.schedule = data.schedule || [];
-    state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
-    state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
-    state.seasonYear = parseInt(season, 10);
-    state.settings = data.settings || {};
-    state.members = data.members || [];
-
-    leagueTitle.textContent = state.leagueName;
-    weekChip.innerHTML = state.currentWeek
-      ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
-      : state.teams.length + ' teams';
-
-    renderStandings();
-    renderMatchups();
-    renderPowerRankings();
-    renderAwards();
-    renderProfile();
-    statusArea.innerHTML = '';
-  } catch (err) {
-    statusArea.innerHTML = '<div class="error"><strong>Couldn\'t reach the proxy.</strong> ' +
-      'Check your internet connection, or make sure this app is deployed to Netlify (see README) ' +
-      'rather than opened as a local file.</div>';
-  } finally {
-    loadBtn.disabled = false;
+    refreshBtn.disabled = false;
+    return;
   }
+
+  const data = result.data;
+  history.data[year] = data;
+  if (!history.loadedSeasons.includes(year)) {
+    history.loadedSeasons.push(year);
+    history.loadedSeasons.sort((a, b) => a - b);
+  }
+  history.checkedSeasons.add(year);
+
+  state.teams = data.teams || [];
+  state.schedule = data.schedule || [];
+  state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
+  state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
+  state.seasonYear = year;
+  state.settings = data.settings || {};
+  state.members = data.members || [];
+
+  leagueTitle.textContent = state.leagueName;
+  weekChip.innerHTML = state.currentWeek
+    ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
+    : state.teams.length + ' teams';
+
+  populateSeasonSelect();
+  populateWeekSelect();
+
+  renderStandings();
+  renderMatchups();
+  renderPreview();
+  renderReview();
+  renderPowerRankings();
+  renderAwards();
+  renderProfile();
+  if (history.loadedSeasons.length) renderHistoryContent();
+
+  statusArea.innerHTML = '';
+  refreshBtn.disabled = false;
 }
 
 function privateLeagueMessage(){
@@ -850,7 +938,7 @@ function renderMatchups(){
   const teamsById = {};
   state.teams.forEach(t => teamsById[t.id] = t);
 
-  const week = state.currentWeek;
+  const week = viewWeekSelect.value ? parseInt(viewWeekSelect.value, 10) : state.currentWeek;
   const games = state.schedule.filter(g => g.matchupPeriodId === week);
 
   if (!games.length) {
@@ -879,6 +967,376 @@ function renderMatchups(){
       '</div>' +
     '</div>';
   }).join('');
+}
+
+// ---------------------------------------------------------------
+// Preview (upcoming week) / Review (prior week). Both work off whatever
+// single season is currently selected at the top (same scope as
+// Standings/Matchups) — no separate season picker of their own.
+//
+// Honest scope note: these do NOT include player projections or a
+// "projected vs actual" comparison, because that needs roster/box-score
+// level data (individual player projections and lineups) that this app
+// doesn't currently fetch — see the banner text in each view. Everything
+// else here (matchups, records, streaks, scoring context, generated
+// banter) is real, computed from data already in hand.
+//
+// There's no server-side weekly cron — instead, both views simply
+// recompute from whatever's currently loaded every time they're opened,
+// so they're always current as of the last time the app fetched data
+// (live during an active week, since Standings/Matchups already pull
+// live scores). That satisfies "stays current" without needing Cloudflare
+// Cron Triggers + persistent storage, which would be a bigger infra
+// addition if true scheduled background regeneration is ever wanted.
+// ---------------------------------------------------------------
+
+function currentAndPriorWeeks(){
+  const completedWeeks = [...new Set(state.schedule
+    .filter(g => g.winner && g.winner !== 'UNDECIDED')
+    .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+  const allWeeks = [...new Set(state.schedule.map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+  const priorWeek = completedWeeks.length ? completedWeeks[completedWeeks.length - 1] : null;
+
+  let upcomingWeek = state.currentWeek;
+  if (upcomingWeek !== null && upcomingWeek !== undefined && completedWeeks.includes(upcomingWeek)) {
+    const idx = allWeeks.indexOf(upcomingWeek);
+    upcomingWeek = (idx >= 0 && idx + 1 < allWeeks.length) ? allWeeks[idx + 1] : null;
+  }
+  if (upcomingWeek === null || upcomingWeek === undefined) {
+    const found = allWeeks.find(w => !completedWeeks.includes(w));
+    upcomingWeek = found === undefined ? null : found;
+  }
+  return { priorWeek, upcomingWeek };
+}
+
+// Per-team season-to-date context (record, scoring average, trailing
+// streak) used to build both preview and review banter.
+function teamContexts(){
+  const byTeam = {};
+  state.teams.forEach(t => { byTeam[t.id] = { team: t, name: teamDisplayName(t), games: [] }; });
+
+  state.schedule.forEach(g => {
+    if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+    const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
+    if (byTeam[g.home.teamId]) byTeam[g.home.teamId].games.push({ week: g.matchupPeriodId, points: hp, result: g.winner === 'HOME' ? 'W' : g.winner === 'AWAY' ? 'L' : 'T' });
+    if (byTeam[g.away.teamId]) byTeam[g.away.teamId].games.push({ week: g.matchupPeriodId, points: ap, result: g.winner === 'AWAY' ? 'W' : g.winner === 'HOME' ? 'L' : 'T' });
+  });
+
+  Object.values(byTeam).forEach(ctx => {
+    ctx.games.sort((a, b) => a.week - b.week);
+    const r = ctx.team.record?.overall || {};
+    ctx.wins = r.wins || 0; ctx.losses = r.losses || 0; ctx.ties = r.ties || 0;
+    const gp = ctx.wins + ctx.losses + ctx.ties;
+    ctx.winPct = gp ? (ctx.wins + ctx.ties * 0.5) / gp : null;
+    ctx.avgPoints = ctx.games.length ? ctx.games.reduce((s, g) => s + g.points, 0) / ctx.games.length : null;
+
+    let streakType = null, streakLen = 0;
+    for (let i = ctx.games.length - 1; i >= 0; i--) {
+      const res = ctx.games[i].result;
+      if (res === 'T') break;
+      if (streakType === null) { streakType = res; streakLen = 1; }
+      else if (res === streakType) { streakLen++; }
+      else break;
+    }
+    ctx.streakType = streakType; ctx.streakLen = streakLen;
+  });
+
+  return byTeam;
+}
+
+function scoringRank(byTeam, teamId){
+  const sorted = Object.values(byTeam).filter(c => c.avgPoints !== null).sort((a, b) => b.avgPoints - a.avgPoints);
+  const idx = sorted.findIndex(c => c.team.id === teamId);
+  return idx >= 0 ? idx + 1 : null;
+}
+
+function buildPreviewBanter(homeCtx, awayCtx, byTeam){
+  const lines = [];
+  const hName = homeCtx.name, aName = awayCtx.name;
+
+  if (homeCtx.winPct !== null && awayCtx.winPct !== null) {
+    lines.push(hName + ' (' + homeCtx.wins + '-' + homeCtx.losses + (homeCtx.ties ? '-' + homeCtx.ties : '') + ') takes on ' +
+      aName + ' (' + awayCtx.wins + '-' + awayCtx.losses + (awayCtx.ties ? '-' + awayCtx.ties : '') + ').');
+  }
+
+  [homeCtx, awayCtx].forEach(ctx => {
+    if (ctx.streakType === 'W' && ctx.streakLen >= 2) lines.push(ctx.name + ' rides a ' + ctx.streakLen + '-game win streak into this one.');
+    if (ctx.streakType === 'L' && ctx.streakLen >= 2) lines.push(ctx.name + ' is trying to snap a ' + ctx.streakLen + '-game skid.');
+  });
+
+  const hRank = scoringRank(byTeam, homeCtx.team.id);
+  const aRank = scoringRank(byTeam, awayCtx.team.id);
+  if (hRank === 1) lines.push(hName + ' brings the league\'s top scoring offense.');
+  else if (aRank === 1) lines.push(aName + ' brings the league\'s top scoring offense.');
+
+  if (homeCtx.avgPoints !== null && awayCtx.avgPoints !== null) {
+    const gap = Math.abs(homeCtx.avgPoints - awayCtx.avgPoints);
+    if (gap >= 20) lines.push('On paper this could get lopsided — a ' + gap.toFixed(1) + ' pt/wk scoring gap separates them.');
+    else if (gap <= 5) lines.push('Nearly identical scoring output this season — expect a close one.');
+  }
+
+  if (!lines.length) lines.push('Not enough season data yet to preview this one — check back once a few weeks are in the books.');
+  return lines.join(' ');
+}
+
+function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts){
+  const lines = [];
+  const margin = Math.abs(homePts - awayPts);
+  const winnerName = homePts > awayPts ? homeCtx.name : awayCtx.name;
+  const loserName = homePts > awayPts ? awayCtx.name : homeCtx.name;
+
+  if (g.winner === 'TIE') {
+    lines.push(homeCtx.name + ' and ' + awayCtx.name + ' tied — the fantasy gods couldn\'t decide either.');
+  } else if (margin < 5) {
+    lines.push(winnerName + ' escaped with a ' + margin.toFixed(1) + '-pt nail-biter over ' + loserName + '.');
+  } else if (margin > 40) {
+    lines.push(winnerName + ' put on a clinic, beating ' + loserName + ' by ' + margin.toFixed(1) + '.');
+  } else {
+    lines.push(winnerName + ' handled ' + loserName + ', ' + Math.max(homePts, awayPts).toFixed(1) + '-' + Math.min(homePts, awayPts).toFixed(1) + '.');
+  }
+
+  const winCtx = homePts > awayPts ? homeCtx : awayCtx;
+  const loseCtx = homePts > awayPts ? awayCtx : homeCtx;
+  if (winCtx.streakLen >= 3 && winCtx.streakType === 'W') lines.push(winCtx.name + ' has won ' + winCtx.streakLen + ' straight.');
+  if (loseCtx.streakLen >= 3 && loseCtx.streakType === 'L') lines.push(loseCtx.name + ' is now on a ' + loseCtx.streakLen + '-game slide.');
+
+  return lines.join(' ');
+}
+
+function renderPreview(){
+  if (!state.teams.length) { previewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+
+  const banner = '<div class="placeholder-banner">Player projections and a "projected vs actual" breakdown aren\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything below (matchups, records, streaks, scoring context) is real and recomputes fresh every time you open this tab.</div>';
+
+  const { upcomingWeek } = currentAndPriorWeeks();
+  if (upcomingWeek === null) {
+    previewView.innerHTML = banner + '<div class="status">No upcoming week found — the season may be over, or hasn\'t started yet.</div>';
+    return;
+  }
+
+  const games = state.schedule.filter(g => g.matchupPeriodId === upcomingWeek && g.home && g.away);
+  if (!games.length) {
+    previewView.innerHTML = banner + '<div class="status">No matchups scheduled for Week ' + upcomingWeek + ' yet.</div>';
+    return;
+  }
+
+  const byTeam = teamContexts();
+  const matchups = games.map(g => {
+    const homeCtx = byTeam[g.home.teamId], awayCtx = byTeam[g.away.teamId];
+    if (!homeCtx || !awayCtx) return null;
+    const combinedWinPct = (homeCtx.winPct || 0) + (awayCtx.winPct || 0);
+    const closeness = 1 - Math.abs((homeCtx.winPct || 0) - (awayCtx.winPct || 0));
+    return { homeCtx, awayCtx, banter: buildPreviewBanter(homeCtx, awayCtx, byTeam), spotlightScore: combinedWinPct + closeness };
+  }).filter(Boolean);
+
+  if (!matchups.length) {
+    previewView.innerHTML = banner + '<div class="status">Couldn\'t match up Week ' + upcomingWeek + ' games to teams.</div>';
+    return;
+  }
+
+  const spotlight = matchups.reduce((a, b) => b.spotlightScore > a.spotlightScore ? b : a);
+  const spotlightHtml = '<div class="spotlight-card">' +
+    '<div class="spotlight-label">Matchup of the Week · Week ' + upcomingWeek + '</div>' +
+    '<div class="spotlight-matchup">' + escapeHtml(spotlight.homeCtx.name) + ' <span class="vs-sep">vs</span> ' + escapeHtml(spotlight.awayCtx.name) + '</div>' +
+    '<div class="spotlight-banter">' + escapeHtml(spotlight.banter) + '</div>' +
+    '</div>';
+
+  const cards = matchups.map(m => '<div class="pr-matchup">' +
+    '<div class="pr-matchup-teams">' + escapeHtml(m.homeCtx.name) + '<span class="vs-sep">vs</span>' + escapeHtml(m.awayCtx.name) + '</div>' +
+    '<div class="pr-matchup-sub">' + m.homeCtx.wins + '-' + m.homeCtx.losses + (m.homeCtx.ties ? '-' + m.homeCtx.ties : '') +
+      ' · ' + m.awayCtx.wins + '-' + m.awayCtx.losses + (m.awayCtx.ties ? '-' + m.awayCtx.ties : '') + '</div>' +
+    '<div class="pr-matchup-banter">' + escapeHtml(m.banter) + '</div>' +
+    '</div>').join('');
+
+  previewView.innerHTML = banner + spotlightHtml + '<h2 class="section-title">Week ' + upcomingWeek + ' matchups</h2>' + cards;
+}
+
+function renderReview(){
+  if (!state.teams.length) { reviewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+
+  const banner = '<div class="placeholder-banner">"Projected vs. actual" isn\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything else (results, margins, streak context, banter) is real and recomputes fresh every time you open this tab.</div>';
+
+  const { priorWeek } = currentAndPriorWeeks();
+  if (priorWeek === null) {
+    reviewView.innerHTML = banner + '<div class="status">No completed weeks yet this season.</div>';
+    return;
+  }
+
+  const games = state.schedule.filter(g => g.matchupPeriodId === priorWeek && g.home && g.away && g.winner && g.winner !== 'UNDECIDED');
+  if (!games.length) {
+    reviewView.innerHTML = banner + '<div class="status">No completed matchups found for Week ' + priorWeek + '.</div>';
+    return;
+  }
+
+  const byTeam = teamContexts();
+  let highest = null, lowest = null, closest = null, blowout = null;
+
+  const cards = games.map(g => {
+    const homeCtx = byTeam[g.home.teamId], awayCtx = byTeam[g.away.teamId];
+    if (!homeCtx || !awayCtx) return '';
+    const homePts = g.home.totalPoints ?? 0, awayPts = g.away.totalPoints ?? 0;
+    const margin = Math.abs(homePts - awayPts);
+
+    if (!highest || homePts > highest.pts) highest = { name: homeCtx.name, pts: homePts };
+    if (!highest || awayPts > highest.pts) highest = { name: awayCtx.name, pts: awayPts };
+    if (!lowest || homePts < lowest.pts) lowest = { name: homeCtx.name, pts: homePts };
+    if (!lowest || awayPts < lowest.pts) lowest = { name: awayCtx.name, pts: awayPts };
+    if (g.winner !== 'TIE') {
+      if (!closest || margin < closest.margin) closest = { home: homeCtx.name, away: awayCtx.name, margin };
+      if (!blowout || margin > blowout.margin) blowout = { home: homeCtx.name, away: awayCtx.name, margin };
+    }
+
+    const homeWin = homePts > awayPts, awayWin = awayPts > homePts;
+    return '<div class="pr-matchup">' +
+      '<div class="pr-matchup-teams">' +
+        '<span class="' + (homeWin ? 'winner-name' : '') + '">' + escapeHtml(homeCtx.name) + '</span>' +
+        '<span class="vs-sep">vs</span>' +
+        '<span class="' + (awayWin ? 'winner-name' : '') + '">' + escapeHtml(awayCtx.name) + '</span>' +
+      '</div>' +
+      '<div class="pr-matchup-result">' + homePts.toFixed(1) + ' – ' + awayPts.toFixed(1) + '</div>' +
+      '<div class="pr-matchup-banter">' + escapeHtml(buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts)) + '</div>' +
+      '</div>';
+  }).join('');
+
+  const tile = (value, label) => '<div class="stat-tile"><div class="stat-tile-value">' + value + '</div><div class="stat-tile-label">' + label + '</div></div>';
+  const highlights = '<div class="stat-tile-grid">' +
+    (highest ? tile(highest.pts.toFixed(1), escapeHtml(highest.name) + ' · high score') : '') +
+    (lowest ? tile(lowest.pts.toFixed(1), escapeHtml(lowest.name) + ' · low score') : '') +
+    (closest ? tile(closest.margin.toFixed(1), 'Closest: ' + escapeHtml(closest.home) + ' / ' + escapeHtml(closest.away)) : '') +
+    (blowout ? tile(blowout.margin.toFixed(1), 'Blowout: ' + escapeHtml(blowout.home) + ' / ' + escapeHtml(blowout.away)) : '') +
+    '</div>';
+
+  reviewView.innerHTML = banner + '<h2 class="section-title">Week ' + priorWeek + ' recap</h2>' + highlights + cards;
+}
+
+// ---------------------------------------------------------------
+// Positions — total points scored by each team's STARTED players at each
+// position, for the currently selected season. Needs roster/box-score
+// data (view=mBoxscore), which is heavy, so it's fetched lazily only when
+// this tab is opened, and cached per season afterward.
+//
+// Honesty check: I haven't verified ESPN's exact box-score field names
+// against real data (no network access here to test). This tries a
+// couple of plausible field paths and standard ESPN ID mappings, but if
+// it comes back with all zeros or an empty table, that means the actual
+// shape differs from what's assumed here — see the diagnostic message
+// below for what to check. This is the same "verify against reality"
+// situation we hit with trade transactions earlier.
+// ---------------------------------------------------------------
+
+const POSITION_NAMES = { 1: 'QB', 2: 'RB', 3: 'WR', 4: 'TE', 5: 'K', 16: 'D/ST' };
+const BENCH_SLOTS = new Set([20, 21, 24]); // Bench, IR, and a second IR slot some leagues have
+const rosterDataCache = {}; // year -> raw data with box score info, once fetched
+
+async function fetchRosterData(year){
+  if (rosterDataCache[year]) return rosterDataCache[year];
+
+  const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(LEAGUE_ID) +
+                    '&season=' + encodeURIComponent(year) + '&roster=1';
+  try {
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload) return null;
+    rosterDataCache[year] = payload;
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Pulls a per-team roster-with-points array out of one schedule/box-score
+// entry, trying a couple of plausible field names since this isn't
+// verified against real data yet.
+function extractRosterEntries(sideObj){
+  if (!sideObj) return null;
+  const candidates = [
+    sideObj.rosterForCurrentScoringPeriod,
+    sideObj.rosterForMatchupPeriod,
+  ];
+  for (const c of candidates) {
+    if (c && Array.isArray(c.entries)) return c.entries;
+  }
+  return null;
+}
+
+function computePositionalTotals(data){
+  const teams = data.teams || [];
+  const nameById = {};
+  teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
+
+  const totals = {}; // teamId -> { QB:0, RB:0, ... }
+  teams.forEach(t => { totals[t.id] = {}; });
+
+  let foundAnyRosterData = false;
+
+  (data.schedule || []).forEach(g => {
+    [{ side: g.home, teamId: g.home?.teamId }, { side: g.away, teamId: g.away?.teamId }].forEach(({ side, teamId }) => {
+      if (!teamId || !totals[teamId]) return;
+      const entries = extractRosterEntries(side);
+      if (!entries) return;
+      foundAnyRosterData = true;
+
+      entries.forEach(entry => {
+        if (BENCH_SLOTS.has(entry.lineupSlotId)) return; // only started players count
+        const player = entry.playerPoolEntry?.player;
+        if (!player) return;
+        const posName = POSITION_NAMES[player.defaultPositionId];
+        if (!posName) return; // FLEX/OP/IDP etc. not in the standard set — skipped rather than guessed at
+
+        const pts = entry.playerPoolEntry?.appliedStatTotal ?? 0;
+        totals[teamId][posName] = (totals[teamId][posName] || 0) + pts;
+      });
+    });
+  });
+
+  return { totals, nameById, foundAnyRosterData };
+}
+
+async function renderPositions(){
+  if (!state.seasonYear) {
+    positionsView.innerHTML = '<div class="status">Load a league first.</div>';
+    return;
+  }
+
+  positionsView.innerHTML = '<div class="status">Loading roster data for ' + state.seasonYear + '… this pulls every team\'s weekly lineup, so it can take a few seconds.</div>';
+
+  const data = await fetchRosterData(state.seasonYear);
+  if (!data) {
+    positionsView.innerHTML = '<div class="error"><strong>Couldn\'t load roster data.</strong> The proxy request failed — try again, or check the season is valid.</div>';
+    return;
+  }
+
+  const { totals, nameById, foundAnyRosterData } = computePositionalTotals(data);
+
+  if (!foundAnyRosterData) {
+    positionsView.innerHTML = '<div class="error"><strong>No roster data found in the response.</strong> ' +
+      'This means ESPN\'s box-score field names are different from what this tab assumes (it looks for ' +
+      '<code>rosterForCurrentScoringPeriod</code> or <code>rosterForMatchupPeriod</code> on each matchup). ' +
+      'To fix this, visit <code>/api/espn-proxy?leagueId=' + escapeHtml(LEAGUE_ID) + '&season=' + state.seasonYear + '&roster=1</code> ' +
+      'directly in Safari, find a <code>schedule</code> entry, and check what field actually holds the per-player roster/points data — ' +
+      'then send me what you find and I\'ll fix the field name.</div>';
+    return;
+  }
+
+  const positions = ['QB', 'RB', 'WR', 'TE', 'K', 'D/ST'];
+  const rows = Object.keys(totals).map(teamId => {
+    const t = totals[teamId];
+    const total = positions.reduce((s, p) => s + (t[p] || 0), 0);
+    return { teamId, name: nameById[teamId] || ('Team ' + teamId), t, total };
+  }).sort((a, b) => b.total - a.total);
+
+  const header = '<th></th><th>Team</th>' + positions.map(p => '<th class="num">' + p + '</th>').join('') + '<th class="num">Total</th>';
+  const body = rows.map((r, i) => '<tr>' +
+    '<td class="rank">' + (i + 1) + '</td>' +
+    '<td class="team-name">' + escapeHtml(r.name) + '</td>' +
+    positions.map(p => '<td class="num">' + (r.t[p] ? r.t[p].toFixed(1) : '—') + '</td>').join('') +
+    '<td class="num" style="font-weight:700;">' + r.total.toFixed(1) + '</td>' +
+    '</tr>'
+  ).join('');
+
+  positionsView.innerHTML =
+    '<p class="section-note">Total points scored by each team\'s STARTED players at each position, ' + state.seasonYear + ' season. FLEX/superflex starts count toward the player\'s actual position, not as a separate column.</p>' +
+    '<div class="h2h-scroll"><table><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>';
 }
 
 // Collects each team's score for every *completed* week (skips the
@@ -1660,10 +2118,12 @@ function loadHistoryCache(){
   return historyCachePromise;
 }
 
-async function fetchHistorySeason(leagueId, season){
-  const cache = await loadHistoryCache();
-  if (cache[season]) {
-    return { ok: true, data: cache[season], fromCache: true };
+async function fetchHistorySeason(leagueId, season, forceLive){
+  if (!forceLive) {
+    const cache = await loadHistoryCache();
+    if (cache[season]) {
+      return { ok: true, data: cache[season], fromCache: true };
+    }
   }
 
   const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(leagueId) +
@@ -1676,7 +2136,7 @@ async function fetchHistorySeason(leagueId, season){
       let reason = (payload && payload.error) ? payload.error : ('HTTP ' + res.status);
       if (payload && payload.status) reason += ' [ESPN status ' + payload.status + ']';
       if (payload && payload.detail) reason += ' — ' + payload.detail.slice(0, 120);
-      return { ok: false, reason };
+      return { ok: false, status: res.status, hasPayload: !!payload, reason };
     }
     if (!payload || !payload.teams || !payload.teams.length) {
       return { ok: false, reason: 'no league data returned' };
@@ -1688,7 +2148,7 @@ async function fetchHistorySeason(leagueId, season){
 }
 
 async function loadHistory(){
-  const leagueId = leagueIdInput.value.trim();
+  const leagueId = LEAGUE_ID;
   const from = parseInt(histFromInput.value, 10);
   const to = parseInt(histToInput.value, 10);
   if (!leagueId || !from || !to || from > to) {
@@ -2316,24 +2776,22 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-loadBtn.addEventListener('click', loadLeague);
-leagueIdInput.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
-seasonSelect.addEventListener('keydown', e => { if (e.key === 'Enter') loadLeague(); });
+viewSeasonSelect.addEventListener('change', () => selectSeason(parseInt(viewSeasonSelect.value, 10), false));
+viewWeekSelect.addEventListener('change', renderMatchups);
+refreshBtn.addEventListener('click', () => selectSeason(parseInt(viewSeasonSelect.value, 10), true));
 histLoadBtn.addEventListener('click', loadHistory);
 histDownloadBtn.addEventListener('click', downloadHistoryCache);
 
-// Kick off an initial load with the pre-filled league ID.
-loadLeague();
-
-// If a data/history-cache.json file has been committed to the repo, load it
-// automatically on startup — no one has to tap "Fetch history" first. Tapping
-// "Fetch history" later still works as before (e.g. to pull in newer seasons
-// not yet in the cache file, or ones outside the cache entirely).
+// Keeps the History/Power Rankings/Awards/Profile tabs in sync with
+// whatever's been fetched, and keeps the Season dropdown in the header in
+// sync too — e.g. after a bulk History fetch pulls in years that weren't
+// there before.
 function refreshSeasonDependentViews(){
   renderHistoryContent();
   renderPowerRankings();
   renderAwards();
   renderProfile();
+  populateSeasonSelect();
 }
 
 async function autoLoadHistoryFromCache(){
@@ -2352,7 +2810,15 @@ async function autoLoadHistoryFromCache(){
   historyStatus.textContent = 'Loaded ' + years.length + ' season(s) from the cache file.';
   refreshSeasonDependentViews();
 }
-autoLoadHistoryFromCache();
+
+// Startup: check the static cache first, THEN decide whether the default
+// season needs a live fetch — this is what makes selectSeason() cache-first
+// even on the very first load, not just on later dropdown changes.
+(async function startup(){
+  await autoLoadHistoryFromCache();
+  populateSeasonSelect();
+  await selectSeason(latestLikelySeason, false);
+})();
 
 // Register the service worker so the app can be installed and work offline
 // once it's hosted somewhere (this no-ops harmlessly inside a sandboxed preview).
