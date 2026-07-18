@@ -675,6 +675,8 @@
     <button data-tab="awards">Awards</button>
     <button data-tab="profile">Profile</button>
     <button data-tab="history">History</button>
+    <button data-tab="belt">Belt</button>
+    <button data-tab="records">Record Book</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -683,6 +685,8 @@
   <div id="previewView" style="display:none;"></div>
   <div id="reviewView" style="display:none;"></div>
   <div id="positionsView" style="display:none;"></div>
+  <div id="beltView" style="display:none;"></div>
+  <div id="recordBookView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -733,6 +737,8 @@ const profileView = document.getElementById('profileView');
 const profileManagerSelect = document.getElementById('profileManagerSelect');
 const profileContent = document.getElementById('profileContent');
 const historyView = document.getElementById('historyView');
+const beltView = document.getElementById('beltView');
+const recordBookView = document.getElementById('recordBookView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -794,6 +800,10 @@ function setTab(name){
   awardsView.style.display = name === 'awards' ? '' : 'none';
   profileView.style.display = name === 'profile' ? '' : 'none';
   historyView.style.display = name === 'history' ? '' : 'none';
+  beltView.style.display = name === 'belt' ? '' : 'none';
+  if (name === 'belt') renderBeltContent();
+  recordBookView.style.display = name === 'records' ? '' : 'none';
+  if (name === 'records') renderRecordBookContent();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -2513,6 +2523,166 @@ function championshipBeltReigns(checked){
   return reigns;
 }
 
+function renderBeltContent(){
+  if (!history.loadedSeasons.length) { beltView.innerHTML = ''; return; }
+
+  const names = historyTeamNames();
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+
+  // ---- Championship Belt timeline ----
+  const beltReigns = championshipBeltReigns(checked);
+  let beltTable = '';
+  if (beltReigns && beltReigns.length) {
+    const beltRows = beltReigns.map((r, i) => {
+      const who = escapeHtml(names[r.owner] || ('Team ' + r.owner));
+      let when, how;
+      if (r.wonHow === 'crowned') {
+        when = r.wonYear + ' champion';
+        how = 'Belt created — awarded to the earliest checked season\'s champion.';
+      } else {
+        when = r.wonYear + (r.wonWeek ? ' &middot; Wk ' + r.wonWeek : '');
+        const from = escapeHtml(names[r.wonFrom] || ('Team ' + r.wonFrom));
+        how = 'Took it from ' + from + ' (' + (r.wonHow === 'playoff' ? 'playoff' : 'regular-season') + ' win).';
+      }
+      const defenses = r.defenses === 1 ? '1 defense' : (r.defenses + ' defenses');
+      const badge = r.current ? '<span class="belt-current">CURRENT HOLDER</span>' : '';
+      return '<tr>' +
+        '<td class="num">' + (i + 1) + '</td>' +
+        '<td class="team-name">' + who + ' ' + badge + '</td>' +
+        '<td>' + when + '</td>' +
+        '<td class="num">' + defenses + '</td>' +
+        '<td class="belt-how">' + how + '</td>' +
+        '</tr>';
+    }).join('');
+    const holder = beltReigns[beltReigns.length - 1];
+    const holderName = escapeHtml(names[holder.owner] || ('Team ' + holder.owner));
+    beltTable = '<h2 class="section-title">\uD83C\uDFC6 Championship Belt</h2>' +
+      '<p class="section-note">Wrestling-style lineage. The belt starts with the earliest checked season\'s champion, then changes hands every time the reigning holder loses a head-to-head game (regular season or playoff). Ties and byes keep it put. <strong>' + holderName + '</strong> holds it now with ' + holder.defenses + ' straight ' + (holder.defenses === 1 ? 'defense' : 'defenses') + '.</p>' +
+      '<table><thead><tr><th class="num">#</th><th>Holder</th><th>Won</th><th class="num">Reign</th><th>How</th></tr></thead>' +
+      '<tbody>' + beltRows + '</tbody></table>';
+  }
+
+  beltView.innerHTML = beltTable || '<p class="section-note">No belt history yet &mdash; check some seasons.</p>';
+}
+
+function renderRecordBookContent(){
+  if (!history.loadedSeasons.length) { recordBookView.innerHTML = ''; return; }
+
+  const names = historyTeamNames();
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+
+  // Resolve an owner display name for a history team object.
+  const nameFor = (ownerById, teams, id) => {
+    const key = ownerById[id];
+    return (key && names[key]) || 'Unknown';
+  };
+
+  // ---- Single-game extremes ----
+  let hiGame=null, loGame=null, blowout=null, narrow=null, combo=null, ptsInLoss=null, fewInWin=null;
+  // ---- Season aggregates + streaks ----
+  const seasonPts = {};   // key: owner|year -> {name, year, pts}
+  const seasonRec = {};   // key: owner|year -> {name, year, w, l, t}
+  const chron = {};       // owner -> [{year, week, win}] for streaks
+
+  checked.forEach(year => {
+    const data = history.data[year];
+    if (!data) return;
+    const sched = data.schedule || [];
+    const teams = data.teams || [];
+    const ownerById = idToOwnerKeyMap(teams);
+
+    sched.forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const hp = g.home.totalPoints ?? 0;
+      const ap = g.away.totalPoints ?? 0;
+      const week = g.matchupPeriodId;
+      const hName = nameFor(ownerById, teams, g.home.teamId);
+      const aName = nameFor(ownerById, teams, g.away.teamId);
+      const homeWon = g.winner === 'HOME';
+      const margin = Math.abs(hp - ap);
+      const combined = hp + ap;
+
+      // per-side game records
+      [[hName, hp, homeWon],[aName, ap, !homeWon]].forEach(([nm, pts, won]) => {
+        if (!hiGame || pts > hiGame.pts) hiGame = {name:nm, pts, year, week};
+        if (!loGame || pts < loGame.pts) loGame = {name:nm, pts, year, week};
+        if (won) { if (!fewInWin || pts < fewInWin.pts) fewInWin = {name:nm, pts, year, week}; }
+        else { if (!ptsInLoss || pts > ptsInLoss.pts) ptsInLoss = {name:nm, pts, year, week}; }
+      });
+
+      const winNm = homeWon ? hName : aName;
+      const loseNm = homeWon ? aName : hName;
+      if (!blowout || margin > blowout.margin) blowout = {win:winNm, lose:loseNm, margin, year, week};
+      if (!narrow || margin < narrow.margin) narrow = {win:winNm, lose:loseNm, margin, year, week};
+      if (!combo || combined > combo.combined) combo = {a:hName, b:aName, combined, year, week};
+
+      // season aggregates
+      [[hName, hp, homeWon],[aName, ap, !homeWon]].forEach(([nm, pts, won]) => {
+        const pk = nm + '|' + year;
+        (seasonPts[pk] || (seasonPts[pk] = {name:nm, year, pts:0})).pts += pts;
+        const r = seasonRec[pk] || (seasonRec[pk] = {name:nm, year, w:0, l:0, t:0});
+        if (won) r.w++; else r.l++;
+        (chron[nm] || (chron[nm] = [])).push({year, week, win:won});
+      });
+    });
+  });
+
+  // Season points leader
+  let bestSeasonPts=null;
+  Object.values(seasonPts).forEach(r => { if (!bestSeasonPts || r.pts > bestSeasonPts.pts) bestSeasonPts = r; });
+  // Best season record (by win%, min games)
+  let bestSeasonRec=null;
+  Object.values(seasonRec).forEach(r => {
+    const gp = r.w + r.l + r.t;
+    if (gp < 4) return;
+    const pct = (r.w + r.t*0.5) / gp;
+    if (!bestSeasonRec || pct > bestSeasonRec.pct || (pct === bestSeasonRec.pct && r.w > bestSeasonRec.w))
+      bestSeasonRec = {name:r.name, year:r.year, w:r.w, l:r.l, t:r.t, pct};
+  });
+
+  // Streaks (chronological within each owner)
+  let winStreak=null, loseStreak=null;
+  Object.entries(chron).forEach(([nm, games]) => {
+    games.sort((x,y) => x.year - y.year || x.week - y.week);
+    let cw=0, cl=0, cwStart=null, clStart=null;
+    games.forEach(gm => {
+      if (gm.win) {
+        cw = cw ? cw+1 : 1; if (cw === 1) cwStart = gm; cl = 0;
+        if (!winStreak || cw > winStreak.len) winStreak = {name:nm, len:cw, from:cwStart, to:gm};
+      } else {
+        cl = cl ? cl+1 : 1; if (cl === 1) clStart = gm; cw = 0;
+        if (!loseStreak || cl > loseStreak.len) loseStreak = {name:nm, len:cl, from:clStart, to:gm};
+      }
+    });
+  });
+
+  const n1 = v => (v ?? 0).toFixed(1);
+  const wk = (y, w) => y + ' wk ' + w;
+  const span = (a, b) => a.year === b.year && a.week === b.week ? wk(a.year, a.week) : (wk(a.year, a.week) + ' \u2192 ' + wk(b.year, b.week));
+  const esc = t => String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const row = (cells) => '<tr>' + cells.map((c,i) => i === 0 ? '<td>'+c+'</td>' : '<td class="num">'+c+'</td>').join('') + '</tr>';
+  const tbl = (title, head, rows) =>
+    '<h2 class="section-title">' + title + '</h2>' +
+    '<table><thead><tr>' + head.map((h,i) => i===0 ? '<th>'+h+'</th>' : '<th class="num">'+h+'</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  let html = '<p class="section-note">Single-game and single-season extremes across the seasons checked in the History tab. These are peaks and valleys &mdash; separate from the cumulative career records in History.</p>';
+
+  if (hiGame) html += tbl('Highest single-game score', ['Manager','Points','When'], row([esc(hiGame.name), n1(hiGame.pts), wk(hiGame.year, hiGame.week)]));
+  if (loGame) html += tbl('Lowest single-game score', ['Manager','Points','When'], row([esc(loGame.name), n1(loGame.pts), wk(loGame.year, loGame.week)]));
+  if (blowout) html += tbl('Biggest blowout', ['Winner','Margin','Over','When'], '<tr><td>'+esc(blowout.win)+'</td><td class="num">'+n1(blowout.margin)+'</td><td class="num">'+esc(blowout.lose)+'</td><td class="num">'+wk(blowout.year, blowout.week)+'</td></tr>');
+  if (narrow) html += tbl('Narrowest win', ['Winner','Margin','Over','When'], '<tr><td>'+esc(narrow.win)+'</td><td class="num">'+n1(narrow.margin)+'</td><td class="num">'+esc(narrow.lose)+'</td><td class="num">'+wk(narrow.year, narrow.week)+'</td></tr>');
+  if (combo) html += tbl('Highest combined-score matchup', ['Matchup','Combined','When'], '<tr><td>'+esc(combo.a)+' vs '+esc(combo.b)+'</td><td class="num">'+n1(combo.combined)+'</td><td class="num">'+wk(combo.year, combo.week)+'</td></tr>');
+  if (bestSeasonPts) html += tbl('Most points in a season', ['Manager','Points','Season'], row([esc(bestSeasonPts.name), n1(bestSeasonPts.pts), bestSeasonPts.year]));
+  if (bestSeasonRec) html += tbl('Best single-season record', ['Manager','Record','Season'], row([esc(bestSeasonRec.name), bestSeasonRec.w+'-'+bestSeasonRec.l+(bestSeasonRec.t?'-'+bestSeasonRec.t:''), bestSeasonRec.year]));
+  if (winStreak) html += tbl('Longest win streak', ['Manager','Streak','Span'], row([esc(winStreak.name), winStreak.len+'W', span(winStreak.from, winStreak.to)]));
+  if (loseStreak) html += tbl('Longest losing streak', ['Manager','Streak','Span'], row([esc(loseStreak.name), loseStreak.len+'L', span(loseStreak.from, loseStreak.to)]));
+  if (ptsInLoss) html += tbl('Most points in a loss', ['Manager','Points','When'], row([esc(ptsInLoss.name), n1(ptsInLoss.pts), wk(ptsInLoss.year, ptsInLoss.week)]));
+  if (fewInWin) html += tbl('Fewest points in a win', ['Manager','Points','When'], row([esc(fewInWin.name), n1(fewInWin.pts), wk(fewInWin.year, fewInWin.week)]));
+
+  recordBookView.innerHTML = html || '<p class="section-note">No records yet &mdash; check some seasons in the History tab.</p>';
+}
+
 function renderHistoryContent(){
   if (!history.loadedSeasons.length) { historyContent.innerHTML = ''; return; }
 
@@ -2638,40 +2808,7 @@ function renderHistoryContent(){
       '<div class="h2h-scroll"><table class="h2h"><thead><tr>' + header + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
     : '';
 
-  // ---- Championship Belt timeline ----
-  const beltReigns = championshipBeltReigns(checked);
-  let beltTable = '';
-  if (beltReigns && beltReigns.length) {
-    const beltRows = beltReigns.map((r, i) => {
-      const who = escapeHtml(names[r.owner] || ('Team ' + r.owner));
-      let when, how;
-      if (r.wonHow === 'crowned') {
-        when = r.wonYear + ' champion';
-        how = 'Belt created — awarded to the earliest checked season\'s champion.';
-      } else {
-        when = r.wonYear + (r.wonWeek ? ' &middot; Wk ' + r.wonWeek : '');
-        const from = escapeHtml(names[r.wonFrom] || ('Team ' + r.wonFrom));
-        how = 'Took it from ' + from + ' (' + (r.wonHow === 'playoff' ? 'playoff' : 'regular-season') + ' win).';
-      }
-      const defenses = r.defenses === 1 ? '1 defense' : (r.defenses + ' defenses');
-      const badge = r.current ? '<span class="belt-current">CURRENT HOLDER</span>' : '';
-      return '<tr>' +
-        '<td class="num">' + (i + 1) + '</td>' +
-        '<td class="team-name">' + who + ' ' + badge + '</td>' +
-        '<td>' + when + '</td>' +
-        '<td class="num">' + defenses + '</td>' +
-        '<td class="belt-how">' + how + '</td>' +
-        '</tr>';
-    }).join('');
-    const holder = beltReigns[beltReigns.length - 1];
-    const holderName = escapeHtml(names[holder.owner] || ('Team ' + holder.owner));
-    beltTable = '<h2 class="section-title">\uD83C\uDFC6 Championship Belt</h2>' +
-      '<p class="section-note">Wrestling-style lineage. The belt starts with the earliest checked season\'s champion, then changes hands every time the reigning holder loses a head-to-head game (regular season or playoff). Ties and byes keep it put. <strong>' + holderName + '</strong> holds it now with ' + holder.defenses + ' straight ' + (holder.defenses === 1 ? 'defense' : 'defenses') + '.</p>' +
-      '<table><thead><tr><th class="num">#</th><th>Holder</th><th>Won</th><th class="num">Reign</th><th>How</th></tr></thead>' +
-      '<tbody>' + beltRows + '</tbody></table>';
-  }
-
-  historyContent.innerHTML = beltTable + recordsTable + h2hTable + ownerIdReferenceHtml();
+historyContent.innerHTML = recordsTable + h2hTable + ownerIdReferenceHtml();
 }
 
 // Covers every fetched season (not just the checked ones), so this stays
@@ -3104,6 +3241,8 @@ function refreshSeasonDependentViews(){
   renderPreview();
   renderReview();
   renderPositions();
+  if (beltView) renderBeltContent();
+  if (recordBookView) renderRecordBookContent();
 }
 
 async function autoLoadHistoryFromCache(){
