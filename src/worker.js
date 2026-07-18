@@ -53,7 +53,7 @@ async function handleEspnProxy(request, url) {
   }
 
   const seasonNum = parseInt(season, 10);
-  const isLegacy = seasonNum < LEGACY_CUTOFF_YEAR;
+  const isLegacy = seasonNum <= LEGACY_CUTOFF_YEAR;
   const views = wantRoster ? VIEWS + '&view=mBoxscore' : VIEWS;
 
   const espnUrl = isLegacy
