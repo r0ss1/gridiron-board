@@ -502,6 +502,21 @@
     margin:0 0 14px;
     line-height:1.55;
   }
+  .belt-current{
+    display:inline-block;
+    font-size:9px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    color:#1a1205;
+    background:var(--amber);
+    border-radius:4px;
+    padding:1px 5px;
+    vertical-align:middle;
+  }
+  .belt-how{
+    font-size:12px;
+    color:var(--ink-dim);
+  }
   .glossary-link{
     color:var(--amber);
     text-decoration:none;
@@ -2443,6 +2458,61 @@ async function loadManualAdjustments(){
 }
 loadManualAdjustments();
 
+// ---- Championship Belt lineage ----
+// Wrestling-title style: one belt travels through the league. It is first
+// awarded to the champion of the earliest checked season, then changes hands
+// every time the reigning holder LOSES a head-to-head game (regular season or
+// playoff). A tie or a week the holder doesn't play = belt retained. Games are
+// walked strictly in chronological order (year, then matchupPeriodId). Owner
+// identity is resolved per season so the belt survives renames/re-registers.
+// Returns an ordered list of reigns: { owner, wonYear, wonWeek, wonFrom,
+// wonHow, defenses } plus a trailing { current:true } flag on the last reign.
+function championshipBeltReigns(checked){
+  const seasons = checked.slice().sort((a,b) => a - b);
+  if (!seasons.length) return null;
+
+  // Seed the belt with the first season that actually has a champion.
+  let holder = null, seedYear = null;
+  for (const year of seasons){
+    const data = history.data[year];
+    const placements = seasonPlacements(data);
+    if (!placements) continue;
+    if (MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons.includes(year)) continue;
+    const ownerById = idToOwnerKeyMap(data.teams || []);
+    const champOwner = ownerById[placements.champion];
+    if (champOwner) { holder = champOwner; seedYear = year; break; }
+  }
+  if (!holder) return null;
+
+  const reigns = [{ owner: holder, wonYear: seedYear, wonWeek: null, wonFrom: null, wonHow: 'crowned', defenses: 0 }];
+
+  seasons.forEach(year => {
+    const data = history.data[year];
+    const ownerById = idToOwnerKeyMap(data.teams || []);
+    const games = (data.schedule || [])
+      .filter(g => g.winner && g.winner !== 'UNDECIDED' && g.home && g.away)
+      .slice()
+      .sort((a,b) => (a.matchupPeriodId||0) - (b.matchupPeriodId||0));
+    games.forEach(g => {
+      const homeOwner = ownerById[g.home.teamId];
+      const awayOwner = ownerById[g.away.teamId];
+      if (!homeOwner || !awayOwner) return;
+      if (homeOwner !== holder && awayOwner !== holder) return;
+      if (g.winner === 'TIE') return; // belt retained on a tie
+      const winnerOwner = g.winner === 'HOME' ? homeOwner : awayOwner;
+      if (winnerOwner === holder) { reigns[reigns.length-1].defenses++; return; }
+      // Holder lost: belt changes hands.
+      const isPlayoff = g.playoffTierType && g.playoffTierType !== 'NONE';
+      reigns.push({ owner: winnerOwner, wonYear: year, wonWeek: g.matchupPeriodId || null,
+        wonFrom: holder, wonHow: isPlayoff ? 'playoff' : 'regular', defenses: 0 });
+      holder = winnerOwner;
+    });
+  });
+
+  if (reigns.length) reigns[reigns.length-1].current = true;
+  return reigns;
+}
+
 function renderHistoryContent(){
   if (!history.loadedSeasons.length) { historyContent.innerHTML = ''; return; }
 
@@ -2568,7 +2638,40 @@ function renderHistoryContent(){
       '<div class="h2h-scroll"><table class="h2h"><thead><tr>' + header + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
     : '';
 
-  historyContent.innerHTML = recordsTable + h2hTable + ownerIdReferenceHtml();
+  // ---- Championship Belt timeline ----
+  const beltReigns = championshipBeltReigns(checked);
+  let beltTable = '';
+  if (beltReigns && beltReigns.length) {
+    const beltRows = beltReigns.map((r, i) => {
+      const who = escapeHtml(names[r.owner] || ('Team ' + r.owner));
+      let when, how;
+      if (r.wonHow === 'crowned') {
+        when = r.wonYear + ' champion';
+        how = 'Belt created — awarded to the earliest checked season\'s champion.';
+      } else {
+        when = r.wonYear + (r.wonWeek ? ' &middot; Wk ' + r.wonWeek : '');
+        const from = escapeHtml(names[r.wonFrom] || ('Team ' + r.wonFrom));
+        how = 'Took it from ' + from + ' (' + (r.wonHow === 'playoff' ? 'playoff' : 'regular-season') + ' win).';
+      }
+      const defenses = r.defenses === 1 ? '1 defense' : (r.defenses + ' defenses');
+      const badge = r.current ? '<span class="belt-current">CURRENT HOLDER</span>' : '';
+      return '<tr>' +
+        '<td class="num">' + (i + 1) + '</td>' +
+        '<td class="team-name">' + who + ' ' + badge + '</td>' +
+        '<td>' + when + '</td>' +
+        '<td class="num">' + defenses + '</td>' +
+        '<td class="belt-how">' + how + '</td>' +
+        '</tr>';
+    }).join('');
+    const holder = beltReigns[beltReigns.length - 1];
+    const holderName = escapeHtml(names[holder.owner] || ('Team ' + holder.owner));
+    beltTable = '<h2 class="section-title">\uD83C\uDFC6 Championship Belt</h2>' +
+      '<p class="section-note">Wrestling-style lineage. The belt starts with the earliest checked season\'s champion, then changes hands every time the reigning holder loses a head-to-head game (regular season or playoff). Ties and byes keep it put. <strong>' + holderName + '</strong> holds it now with ' + holder.defenses + ' straight ' + (holder.defenses === 1 ? 'defense' : 'defenses') + '.</p>' +
+      '<table><thead><tr><th class="num">#</th><th>Holder</th><th>Won</th><th class="num">Reign</th><th>How</th></tr></thead>' +
+      '<tbody>' + beltRows + '</tbody></table>';
+  }
+
+  historyContent.innerHTML = beltTable + recordsTable + h2hTable + ownerIdReferenceHtml();
 }
 
 // Covers every fetched season (not just the checked ones), so this stays
