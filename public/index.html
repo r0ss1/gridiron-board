@@ -103,6 +103,15 @@
   .year-chips button:last-child{ border-right:0; }
   .year-chips button:hover{ color:var(--ink); }
   .year-chips button.on{ background:var(--amber); color:#1a1a1a; }
+  .season-bulk{ display:inline-flex; align-items:center; gap:4px; margin-top:5px; }
+  .season-bulk-btn{
+    appearance:none; border:0; background:none; padding:0; cursor:pointer;
+    font-family:'JetBrains Mono', monospace; font-size:11px; font-weight:600;
+    color:var(--ink-dim); text-transform:uppercase; letter-spacing:.03em;
+    transition:color .12s;
+  }
+  .season-bulk-btn:hover{ color:var(--amber); }
+  .season-bulk-sep{ color:var(--line); font-size:11px; }
   .sel-sm{ font-size:12px; padding:6px 8px; }
   .btn-icon-sm{ padding:6px 9px; font-size:13px; line-height:1; }
   .visually-hidden{
@@ -594,6 +603,11 @@
         <label for="viewSeason">Season</label>
         <div id="seasonChips" class="year-chips" role="tablist" aria-label="Season"></div>
         <select id="viewSeason" class="visually-hidden" tabindex="-1" aria-hidden="true"></select>
+        <div class="season-bulk">
+          <button type="button" id="seasonSelectAll" class="season-bulk-btn">Select all</button>
+          <span class="season-bulk-sep" aria-hidden="true">/</span>
+          <button type="button" id="seasonDeselectAll" class="season-bulk-btn">Deselect all</button>
+        </div>
       </div>
       <div class="fieldC">
         <label for="viewWeek">Week</label>
@@ -887,6 +901,30 @@ function renderSeasonChips(sorted){
         activateNewestChecked();
       }
     });
+  });
+}
+
+function wireSeasonBulkButtons(){
+  const selAll = document.getElementById("seasonSelectAll");
+  const deselAll = document.getElementById("seasonDeselectAll");
+  if (selAll) selAll.addEventListener("click", () => {
+    history.loadedSeasons.forEach(y => { if (history.data[y]) history.checkedSeasons.add(y); });
+    if (!history.checkedSeasons.size && history.loadedSeasons.length) {
+      history.checkedSeasons.add(history.loadedSeasons[history.loadedSeasons.length - 1]);
+    }
+    const sorted = [...new Set([...history.loadedSeasons])].sort((a, b) => b - a);
+    renderSeasonChips(sorted);
+    activateNewestChecked();
+    refreshSeasonDependentViews();
+  });
+  if (deselAll) deselAll.addEventListener("click", () => {
+    const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
+    if (!checked.length) return;
+    history.checkedSeasons = new Set([checked[0]]);
+    const sorted = [...new Set([...history.loadedSeasons])].sort((a, b) => b - a);
+    renderSeasonChips(sorted);
+    activateNewestChecked();
+    refreshSeasonDependentViews();
   });
 }
 
@@ -1748,12 +1786,12 @@ function renderAwardsSingleSeason(){
   awardsView.innerHTML = note + section;
 }
 
+const AWARDS_HEADER = '<h2 class="section-title">Awards <button type="button" class="award-count-btn" onclick="openAwardGlossary()" title="What does each award mean?">Award Glossary</button></h2>';
+
 function renderAwardsMultiSeason(){
   const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => b - a);
-  const picker = renderSeasonPicker();
-
   if (!years.length) {
-    awardsView.innerHTML = picker + '<div class="status">Select at least one season above.</div>';
+    awardsView.innerHTML = '<div class="status">Select at least one season above.</div>';
     return;
   }
 
@@ -1761,15 +1799,8 @@ function renderAwardsMultiSeason(){
     renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], history.data[y].settings || {}, true)
   ).join('');
 
-  awardsView.innerHTML = picker + TRADE_AWARDS_NOTE + sections;
+  awardsView.innerHTML = AWARDS_HEADER + TRADE_AWARDS_NOTE + sections;
 
-  awardsView.querySelectorAll('.season-chip input').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const year = parseInt(cb.dataset.year, 10);
-      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
-      refreshSeasonDependentViews();
-    });
-  });
 }
 
 const TRADE_AWARDS_NOTE = '<p class="section-note">Trade Machine reflects how many trades each team made — ESPN\'s API only exposes that count, not who traded with whom, when, or which players, so there\'s no "who won the trade" evaluation here.</p>';
@@ -1786,7 +1817,7 @@ function renderAwardsSection(year, teams, schedule, settings, showHeading){
   }
 
   const cards = awards.map(a =>
-    '<div class="award-card">' +
+    '<div class="award-card" role="button" tabindex="0" style="cursor:pointer;" onclick="openAwardGlossary()">' +
       '<div class="award-emoji">' + a.emoji + '</div>' +
       '<div>' +
         '<div class="award-title">' + escapeHtml(a.title) + '</div>' +
@@ -2648,6 +2679,7 @@ function closeAwardGlossary(){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
+  wireSeasonBulkButtons();
   var closeBtn = document.getElementById('awardModalClose');
   if (closeBtn) closeBtn.addEventListener('click', closeAwardGlossary);
   var backdrop = document.getElementById('awardModal');
@@ -2798,7 +2830,6 @@ function buildManagerProfile(key, seasonsData){
 }
 
 function renderProfile(){
-  if (multiSeasonGuard(profileContent, 'Manager profiles')) return;
   const seasonsData = profileSeasonsData();
   if (!seasonsData.length) {
     profileContent.innerHTML = '<div class="status">Load a league first.</div>';
