@@ -277,7 +277,11 @@
     grid-template-columns:1fr auto 1fr;
     align-items:center;
     gap:14px;
+    color:inherit;
+    text-decoration:none;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
+  .matchup:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,.18);}
   .side{display:flex; flex-direction:column; gap:3px;}
   .side.right{text-align:right; align-items:flex-end;}
   .side .nm{font-weight:600; font-size:13px;}
@@ -323,7 +327,12 @@
     border-radius:var(--radius);
     padding:16px 18px;
     margin-bottom:12px;
+    display:block;
+    color:inherit;
+    text-decoration:none;
+    transition:transform .12s ease, box-shadow .12s ease;
   }
+  .pr-matchup:hover{transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,.18);}
   .pr-matchup-teams{
     display:flex;
     justify-content:space-between;
@@ -493,6 +502,26 @@
     margin:0 0 14px;
     line-height:1.55;
   }
+  .glossary-link{
+    color:var(--amber);
+    text-decoration:none;
+    border-bottom:1px dotted var(--amber);
+    transition:opacity 0.15s ease;
+  }
+  .glossary-link:hover{ opacity:0.75; }
+  .footnotes{
+    margin:14px 0 0;
+    padding-top:12px;
+    border-top:1px solid var(--line);
+  }
+  .footnotes p{
+    font-size:12px;
+    color:var(--ink-dim);
+    margin:0 0 8px;
+    line-height:1.55;
+  }
+  .footnotes p:last-child{margin-bottom:0;}
+  .footnotes strong{color:var(--ink);}
   table.h2h{font-size:11px;}
   table.h2h th, table.h2h td{padding:9px 10px; white-space:nowrap;}
   table.h2h th.rowhead, table.h2h td.rowhead{
@@ -989,6 +1018,7 @@ function applySeasonToState(year){
   renderAwards();
   renderProfile();
   if (history.loadedSeasons.length) renderHistoryContent();
+  renderPositions();
 }
 
 async function selectSeason(year, forceLive){
@@ -1136,8 +1166,19 @@ function renderStandings(){
   standingsView.innerHTML = state.teams.length ? (
     '<table data-sortable><thead><tr>' +
     '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">Power</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table>'
+    '</tr></thead><tbody>' + rows + '</tbody></table>' +
+    '<div class="footnotes">' +
+      '<p><strong>All-Play</strong> &mdash; your win percentage as if you played every other team every week. Strips out schedule luck; a high all-play with a low record means you faced tough opponents.</p>' +
+      '<p><strong>vs Median</strong> &mdash; your record if each week you were graded against the league-wide median score instead of your actual opponent. A win means you outscored half the league that week.</p>' +
+      '<p><strong>Power</strong> &mdash; a score that rewards consistent week-to-week scoring, not just total points. Higher is better and less swingy than raw PF.</p>' +
+    '</div>'
   ) : '';
+}
+
+function espnMatchupUrl(year, week){
+  return 'https://fantasy.espn.com/football/league/scoreboard?leagueId=' +
+    encodeURIComponent(LEAGUE_ID) + '&seasonId=' + encodeURIComponent(year) +
+    '&matchupPeriodId=' + encodeURIComponent(week);
 }
 
 function renderMatchups(){
@@ -1162,7 +1203,8 @@ function renderMatchups(){
     const awayPts = away.totalPoints ?? 0;
     const homeWin = homePts > awayPts;
     const awayWin = awayPts > homePts;
-    return '<div class="matchup">' +
+    const mUrl = espnMatchupUrl(state.seasonYear, week);
+    return '<a class="matchup" href="' + mUrl + '" target="_blank" rel="noopener" title="View this matchup on ESPN">' +
       '<div class="side ' + (homeWin?'win':(awayWin?'lose':'')) + '">' +
         '<span class="nm">' + escapeHtml(homeTeam ? teamDisplayName(homeTeam) : 'TBD') + '</span>' +
         '<span class="pts">' + homePts.toFixed(1) + '</span>' +
@@ -1172,7 +1214,7 @@ function renderMatchups(){
         '<span class="nm">' + escapeHtml(awayTeam ? teamDisplayName(awayTeam) : 'TBD') + '</span>' +
         '<span class="pts">' + awayPts.toFixed(1) + '</span>' +
       '</div>' +
-    '</div>';
+    '</a>';
   }).join('');
 }
 
@@ -1429,7 +1471,8 @@ function renderReview(){
     }
 
     const homeWin = homePts > awayPts, awayWin = awayPts > homePts;
-    return '<div class="pr-matchup">' +
+    const mUrl = espnMatchupUrl(state.seasonYear, priorWeek);
+    return '<a class="pr-matchup" href="' + mUrl + '" target="_blank" rel="noopener" title="View this matchup on ESPN">' +
       '<div class="pr-matchup-teams">' +
         '<span class="' + (homeWin ? 'winner-name' : '') + '">' + escapeHtml(homeCtx.name) + '</span>' +
         '<span class="vs-sep">vs</span>' +
@@ -1437,7 +1480,7 @@ function renderReview(){
       '</div>' +
       '<div class="pr-matchup-result">' + homePts.toFixed(1) + ' – ' + awayPts.toFixed(1) + '</div>' +
       '<div class="pr-matchup-banter">' + escapeHtml(buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam)) + '</div>' +
-      '</div>';
+      '</a>';
   }).join('');
 
   const tile = (value, label) => '<div class="stat-tile"><div class="stat-tile-value">' + value + '</div><div class="stat-tile-label">' + label + '</div></div>';
@@ -2487,7 +2530,7 @@ function renderHistoryContent(){
     }).join('');
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
-    '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week, instead of just their actual opponent — a look at output separate from schedule luck. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
+    '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week — output separate from schedule luck. Championships, top-3, and toilet bowl come from each season\'s final bracket. DQ reflects manual adjustments (e.g. a vacated championship): the top-3 finish stays, only the championship credit moves to the DQ column.</p>' +
     '<table data-sortable><thead><tr><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
@@ -2803,12 +2846,14 @@ function buildManagerProfile(key, seasonsData){
 
   if (!managerName) return null;
 
-  let toughest = null, easiest = null;
-  Object.values(h2h).filter(r => (r.w + r.l + r.t) >= 2).forEach(r => {
+  let toughest = null, easiest = null, balanced = null;
+  Object.values(h2h).filter(r => (r.w + r.l + r.t) >= 5).forEach(r => {
     const gp = r.w + r.l + r.t;
     const pct = (r.w + r.t * 0.5) / gp;
     if (!toughest || pct < toughest.pct) toughest = { ...r, pct };
     if (!easiest || pct > easiest.pct) easiest = { ...r, pct };
+    const balDist = Math.abs(pct - 0.5);
+    if (!balanced || balDist < balanced.balDist || (balDist === balanced.balDist && gp > (balanced.w + balanced.l + balanced.t))) balanced = { ...r, pct, balDist };
   });
 
   const careerGp = careerW + careerL + careerT;
@@ -2824,7 +2869,7 @@ function buildManagerProfile(key, seasonsData){
     apPct: apGp ? (apW + apT * 0.5) / apGp : null,
     champCount, top3Count, playoffCount, toiletCount, dqCount,
     bestSeason, worstSeason, highGame, lowGame,
-    toughest, easiest,
+    toughest, easiest, balanced,
     awardTally,
   };
 }
@@ -2902,10 +2947,10 @@ function renderProfileCard(key){
     '<div class="profile-pair-name">' + escapeHtml(r.name) + '</div>' +
     '<div class="profile-pair-detail">' + r.w + '-' + r.l + (r.t ? '-' + r.t : '') + '</div>' +
     '</div>';
-  const rivalGrid = (p.toughest || p.easiest)
+  const rivalGrid = (p.toughest || p.easiest || p.balanced)
     ? '<h2 class="section-title">Rivalries</h2>' +
-      '<p class="section-note">Based on head-to-head record (min. 2 games played against them).</p>' +
-      '<div class="profile-pair-grid">' + rivalCard('Toughest opponent', p.toughest) + rivalCard('Easiest opponent', p.easiest) + '</div>'
+      '<p class="section-note">Based on head-to-head record (min. 5 games played against them).</p>' +
+      '<div class="profile-pair-grid">' + rivalCard('Toughest opponent', p.toughest) + rivalCard('Easiest opponent', p.easiest) + rivalCard('Most balanced rivalry', p.balanced) + '</div>'
     : '';
 
   const badges = ALL_AWARD_TYPES.map(type => {
@@ -2926,10 +2971,10 @@ function renderProfileCard(key){
   const badgeCase = '<h2 class="section-title">Award case ' +
     '<button type="button" class="award-count-btn" onclick="openAwardGlossary()" title="What does each award mean?">' + earnedCount + ' / ' + totalCount + '</button>' +
     '</h2>' +
-    '<p class="section-note">Every award this manager has ever won, tallied across every fetched season — dimmed ones haven\'t been earned yet.</p>' +
+    '<p class="section-note">Every award this manager has ever won, tallied across every fetched season — dimmed ones haven\'t been earned yet. ' + '<a href="#" class="glossary-link" onclick="openAwardGlossary(); return false;">Click here for the awards glossary.</a></p>' +
     '<div class="badge-grid">' + badges + '</div>';
 
-  profileContent.innerHTML = header + badgeCase + statGrid + seasonGrid + gameGrid + rivalGrid;
+  profileContent.innerHTML = header + badgeCase + statGrid + rivalGrid + seasonGrid + gameGrid;
 }
 
 profileManagerSelect.addEventListener('change', () => renderProfileCard(profileManagerSelect.value));
@@ -2992,10 +3037,12 @@ async function autoLoadHistoryFromCache(){
     if (history.data[latestLikelySeason]) {
       history.checkedSeasons = new Set([latestLikelySeason]);
       populateSeasonSelect();
-      activateNewestChecked();
       refreshSeasonDependentViews();
     }
   }
+  // Always push the newest checked season into state so Standings/Matchups
+  // render immediately on load - not just after a manual season pick.
+  activateNewestChecked();
 })();
 
 // --- Generic client-side table sorter (Task 9) --------------------------
