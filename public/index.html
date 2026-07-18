@@ -504,6 +504,80 @@
     margin-top:36px;
   }
 
+  /* Award glossary modal */
+  .award-count-btn{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    margin-left:10px;
+    padding:2px 9px;
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:999px;
+    color:var(--amber);
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    font-weight:700;
+    cursor:pointer;
+    vertical-align:middle;
+    transition:background .15s, border-color .15s;
+  }
+  .award-count-btn:hover{ background:var(--line); border-color:var(--amber); }
+  .modal-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.62);
+    display:none;
+    align-items:flex-start;
+    justify-content:center;
+    padding:40px 16px;
+    z-index:1000;
+    overflow-y:auto;
+  }
+  .modal-backdrop.open{ display:flex; }
+  .modal-panel{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    max-width:560px;
+    width:100%;
+    box-shadow:0 18px 48px rgba(0,0,0,0.45);
+  }
+  .modal-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:16px 18px;
+    border-bottom:1px solid var(--line);
+    position:sticky;
+    top:0;
+    background:var(--surface);
+    border-radius:var(--radius) var(--radius) 0 0;
+  }
+  .modal-head h2{ margin:0; font-family:'Inter', sans-serif; font-size:16px; }
+  .modal-close{
+    background:none;
+    border:none;
+    color:var(--ink-dim);
+    font-size:22px;
+    line-height:1;
+    cursor:pointer;
+    padding:0 4px;
+  }
+  .modal-close:hover{ color:var(--ink); }
+  .modal-body{ padding:8px 18px 18px; }
+  .glossary-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+  }
+  .glossary-row:last-child{ border-bottom:none; }
+  .glossary-emoji{ font-size:18px; line-height:1.3; flex:0 0 auto; }
+  .glossary-text{ flex:1; }
+  .glossary-title{ font-weight:700; font-size:13px; }
+  .glossary-desc{ color:var(--ink-dim); font-size:12px; margin-top:2px; }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 </style>
 </head>
@@ -570,6 +644,16 @@
   </div>
 
   <footer>Data from ESPN's public fantasy API · not affiliated with ESPN</footer>
+</div>
+
+<div class="modal-backdrop" id="awardModal" role="dialog" aria-modal="true" aria-labelledby="awardModalTitle">
+  <div class="modal-panel">
+    <div class="modal-head">
+      <h2 id="awardModalTitle">Award glossary</h2>
+      <button type="button" class="modal-close" id="awardModalClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="awardModalBody"></div>
+  </div>
 </div>
 
 <script>
@@ -782,15 +866,15 @@ function renderSeasonChips(sorted){
   const strip = document.getElementById('seasonChips');
   if (!strip) return;
   strip.innerHTML = sorted.map(y => {
-    const checked = history.checkedSeasons.has(y) ? ' checked' : '';
-    return '<label class="season-chip" data-year="' + y + '">'
-      + '<input type="checkbox" value="' + y + '"' + checked + '>'
-      + '<span>' + y + '</span></label>';
+    const on = history.checkedSeasons.has(y) ? ' on' : '';
+    return '<button type="button" class="year-chip' + on + '" data-year="' + y + '"'
+      + ' aria-pressed="' + (on ? 'true' : 'false') + '">' + y + '</button>';
   }).join('');
-  strip.querySelectorAll('input[type=checkbox]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const yr = parseInt(cb.value, 10);
-      if (cb.checked) {
+  strip.querySelectorAll('button.year-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const yr = parseInt(btn.dataset.year, 10);
+      const isOn = history.checkedSeasons.has(yr);
+      if (!isOn) {
         if (history.data[yr]) {
           history.checkedSeasons.add(yr);
           activateNewestChecked();
@@ -798,10 +882,7 @@ function renderSeasonChips(sorted){
           selectSeason(yr, false);
         }
       } else {
-        if (history.checkedSeasons.size <= 1) {
-          cb.checked = true;
-          return;
-        }
+        if (history.checkedSeasons.size <= 1) return;
         history.checkedSeasons.delete(yr);
         activateNewestChecked();
       }
@@ -1009,13 +1090,13 @@ function renderStandings(){
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
-      '<td class="num">' + (function(){ var m = medianRec[t.id] || {wins:0,losses:0,ties:0}; return [m.wins||0, m.losses||0, m.ties||0].join('-'); })() + '</td>' +
+      '<td class="num">' + (function(){ var m = medianRec[t.id] || {wins:0,losses:0,ties:0}; return [m.wins||0, m.losses||0].join('-'); })() + '</td>' +
       '<td class="num">' + (powerByTeam[t.id] && powerByTeam[t.id].length ? powerScore(powerByTeam[t.id]).toFixed(1) : '—') + '</td>' +
       '</tr>';
   }).join('');
 
   standingsView.innerHTML = state.teams.length ? (
-    '<table><thead><tr>' +
+    '<table data-sortable><thead><tr>' +
     '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">Power</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>'
   ) : '';
@@ -1426,7 +1507,7 @@ async function renderPositions(){
   const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
   const seasons = checked.length ? checked.slice().sort((a, b) => a - b) : [state.seasonYear];
   const aggregated = seasons.length > 1;
-  const picker = renderSeasonPicker();
+  const picker = '';  // in-view picker removed; header chips drive season selection
 
   // Owner-keyed accumulator so identity is stable across seasons.
   const acc = {};        // ownerKey -> { QB:0, RB:0, ... }
@@ -1506,7 +1587,7 @@ async function renderPositions(){
     '<p class="section-note">Total points scored by each team\'s STARTED players at each position, ' + noteScope + '. ' +
     'FLEX/superflex starts count toward the player\'s actual position, not as a separate column.' +
     (aggregated ? ' Position rank badges reflect all-time totals.' : '') + '</p>' +
-    '<div class="h2h-scroll"><table><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>';
+    '<div class="h2h-scroll"><table data-sortable><thead><tr>' + header + '</tr></thead><tbody>' + body + '</tbody></table></div>';
 
   wirePositionsPicker();
 }
@@ -2304,7 +2385,7 @@ function renderHistoryContent(){
 
   // ---- All-time records ----
   const agg = {}; // teamId -> stats
-  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0, apW:0, apL:0, apT:0 });
+  const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0, apW:0, apL:0, apT:0, medW:0, medL:0 });
 
   checked.forEach(year => {
     const data = history.data[year];
@@ -2321,10 +2402,13 @@ function renderHistoryContent(){
     });
 
     const allPlay = computeAllPlayRecords(teams, data.schedule || []);
+    const medRec = computeMedianRecords(teams, data.schedule || []);
     teams.forEach(t => {
       const s = ensure(resolvedOwnerKey(t));
       const ap = allPlay[t.id];
       if (ap) { s.apW += ap.wins; s.apL += ap.losses; s.apT += ap.ties; }
+      const mr = medRec[t.id];
+      if (mr) { s.medW += (mr.wins||0) + (mr.ties||0); s.medL += mr.losses||0; }
     });
 
     const placements = seasonPlacements(data);
@@ -2362,6 +2446,7 @@ function renderHistoryContent(){
       '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
       '<td class="num">' + (powerByOwner[id] !== undefined ? powerByOwner[id].toFixed(1) : '-') + '</td>' +
       '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
+      '<td class="num">' + s.medW + '-' + s.medL + '</td>' +
       '<td class="num">' + s.championships + '</td>' +
       '<td class="num">' + s.top3 + '</td>' +
       '<td class="num">' + s.playoffs + '</td>' +
@@ -2372,7 +2457,7 @@ function renderHistoryContent(){
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
     '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week, instead of just their actual opponent — a look at output separate from schedule luck. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
-    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
+    '<table data-sortable><thead><tr><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
   // ---- Head-to-head matrix ----
@@ -2409,15 +2494,7 @@ function renderHistoryContent(){
       '<div class="h2h-scroll"><table class="h2h"><thead><tr>' + header + '</tr></thead><tbody>' + bodyRows + '</tbody></table></div>'
     : '';
 
-  historyContent.innerHTML = renderSeasonPicker() + recordsTable + h2hTable + ownerIdReferenceHtml();
-
-  historyContent.querySelectorAll('.season-chip input').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const year = parseInt(cb.dataset.year, 10);
-      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
-      refreshSeasonDependentViews();
-    });
-  });
+  historyContent.innerHTML = recordsTable + h2hTable + ownerIdReferenceHtml();
 }
 
 // Covers every fetched season (not just the checked ones), so this stays
@@ -2503,6 +2580,84 @@ const ALL_AWARD_TYPES = [
   { emoji: '🚪', title: 'Revolving Door' },
   { emoji: '💰', title: 'High Roller' },
 ];
+
+// Static descriptions for the award glossary modal (Task 3/4).
+// Keyed by award title; emoji + ordering come from ALL_AWARD_TYPES.
+const AWARD_GLOSSARY = {
+  'Blowtorch': 'Highest single-week score',
+  'Ice Cold': 'Lowest single-week score',
+  'Mercy Rule': 'Biggest margin of victory',
+  'Nail-Biter': 'Closest final margin',
+  'Heartbreaker': 'Highest score in a loss',
+  'Lucky Escape': 'Lowest score in a win',
+  'Best Record': 'Best regular-season record',
+  'Worst Record': 'Worst regular-season record',
+  'Hot Streak': 'Longest win streak',
+  'The Skid': 'Longest losing streak',
+  'Steady Eddy': 'Most consistent scorer week to week',
+  'Boom or Bust': 'Least consistent scorer week to week',
+  'The Machine': 'Most total points scored',
+  'Offense Optional': 'Fewest total points scored',
+  'Murderers\' Row': 'Toughest schedule faced',
+  'Easy Slate': 'Softest schedule faced',
+  'Snake-Bitten': 'Highest scorer to miss the playoffs',
+  'Paper Champion': 'Won it without leading the league in points',
+  'Giant Killer': 'Won it all as a low playoff seed',
+  'Most Improved': 'Biggest win% jump vs. the previous season',
+  'Biggest Fall-Off': 'Biggest win% drop vs. the previous season',
+  'Trade Machine': 'Most trades made',
+  'Waiver Wire Warrior': 'Most waiver / free-agent pickups',
+  'Set It and Forget It': 'Fewest waiver / free-agent pickups',
+  'Overachiever': 'Won more than the scoreboard says they should have',
+  'Underachiever': 'Scored better than their record shows',
+  'Bubble Team': 'First team left out of the playoffs',
+  'Snuck In': 'Grabbed the last playoff spot',
+  'Tide Turner': 'Biggest week-over-week point jump',
+  'Wet Blanket': 'Biggest week-over-week point drop',
+  'Clutch': 'Best record in games decided by 5 pts or less',
+  'Choke Artist': 'Worst record in games decided by 5 pts or less',
+  'Fast Starter': 'Best record over the opening stretch of the season',
+  'Slow Starter': 'Worst record over the opening stretch of the season',
+  'The Closer': 'Best record over the closing stretch of the season',
+  'Revolving Door': 'Most roster drops',
+  'High Roller': 'Most aggressive roster manager',
+};
+
+function openAwardGlossary(){
+  var body = document.getElementById('awardModalBody');
+  if (body){
+    var rows = ALL_AWARD_TYPES.map(function(t){
+      var desc = AWARD_GLOSSARY[t.title] || '';
+      return '<div class="glossary-row">' +
+        '<span class="glossary-emoji">' + t.emoji + '</span>' +
+        '<div class="glossary-text">' +
+          '<div class="glossary-title">' + t.title + '</div>' +
+          '<div class="glossary-desc">' + desc + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    body.innerHTML = rows;
+  }
+  var m = document.getElementById('awardModal');
+  if (m) m.classList.add('open');
+}
+
+function closeAwardGlossary(){
+  var m = document.getElementById('awardModal');
+  if (m) m.classList.remove('open');
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  var closeBtn = document.getElementById('awardModalClose');
+  if (closeBtn) closeBtn.addEventListener('click', closeAwardGlossary);
+  var backdrop = document.getElementById('awardModal');
+  if (backdrop) backdrop.addEventListener('click', function(e){
+    if (e.target === backdrop) closeAwardGlossary();
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closeAwardGlossary();
+  });
+});
 
 // Every fetched season, oldest first, regardless of the History/Power
 // Rankings/Awards checked-seasons picker — falls back to whatever single
@@ -2735,7 +2890,11 @@ function renderProfileCard(key){
       '<span class="badge-emoji">' + type.emoji + '</span>' +
       '<div class="badge-title">' + escapeHtml(type.title) + '</div></div>';
   }).join('');
-  const badgeCase = '<h2 class="section-title">Award case</h2>' +
+  const earnedCount = ALL_AWARD_TYPES.reduce(function(n, t){ return n + (p.awardTally[t.title] ? 1 : 0); }, 0);
+  const totalCount = ALL_AWARD_TYPES.length;
+  const badgeCase = '<h2 class="section-title">Award case ' +
+    '<button type="button" class="award-count-btn" onclick="openAwardGlossary()" title="What does each award mean?">' + earnedCount + ' / ' + totalCount + '</button>' +
+    '</h2>' +
     '<p class="section-note">Every award this manager has ever won, tallied across every fetched season — dimmed ones haven\'t been earned yet.</p>' +
     '<div class="badge-grid">' + badges + '</div>';
 
@@ -2808,6 +2967,99 @@ async function autoLoadHistoryFromCache(){
   }
 })();
 
+// --- Generic client-side table sorter (Task 9) --------------------------
+// Opt-in: only <table data-sortable> tables get sortable headers.
+// Numeric columns are auto-detected via class="num". Records like 12-4 /
+// 12-4-0 and percentages are parsed sensibly; '-' / blank sort last.
+(function () {
+  function cellText(td) { return (td ? (td.textContent || '') : '').trim(); }
+
+  function toSortValue(text, numeric) {
+    var t = text.trim();
+    if (t === '' || t === '-' || t === '\u2013' || t === '\u2014') {
+      return { empty: true, n: 0, s: '' };
+    }
+    if (numeric) {
+      // Win-loss(-tie) record -> win pct, tiebreak by games played.
+      var rec = t.match(/^(\d+)-(\d+)(?:-(\d+))?\$/);
+      if (rec) {
+        var w = +rec[1], l = +rec[2], ti = rec[3] ? +rec[3] : 0;
+        var g = w + l + ti;
+        var pct = g ? (w + ti / 2) / g : 0;
+        return { empty: false, n: pct * 1000 + g / 100000, s: t };
+      }
+      // Strip everything except number-ish chars (handles %, commas, +).
+      var num = parseFloat(t.replace(/[^0-9.\-]/g, ''));
+      if (!isNaN(num)) return { empty: false, n: num, s: t };
+      return { empty: false, n: NaN, s: t.toLowerCase() };
+    }
+    return { empty: false, n: NaN, s: t.toLowerCase() };
+  }
+
+  function compare(a, b, numeric, dir) {
+    // Empties always sink to the bottom regardless of direction.
+    if (a.empty && b.empty) return 0;
+    if (a.empty) return 1;
+    if (b.empty) return -1; // empties last
+    var res;
+    if (numeric && !isNaN(a.n) && !isNaN(b.n)) {
+      res = a.n - b.n;
+    } else {
+      res = a.s < b.s ? -1 : (a.s > b.s ? 1 : 0);
+    }
+    return dir === 'desc' ? -res : res;
+  }
+
+  function sortTable(table, thIndex, dir) {
+    var head = table.tHead;
+    if (!head || !head.rows.length) return;
+    var headRow = head.rows[head.rows.length - 1];
+    var th = headRow.cells[thIndex];
+    if (!th) return;
+    var numeric = th.classList.contains('num');
+    var body = table.tBodies[0];
+    if (!body) return;
+    var rows = Array.prototype.slice.call(body.rows);
+    var decorated = rows.map(function (row, i) {
+      var td = row.cells[thIndex];
+      return { row: row, i: i, v: toSortValue(cellText(td), numeric) };
+    });
+    decorated.sort(function (x, y) {
+      var c = compare(x.v, y.v, numeric, dir);
+      return c !== 0 ? c : x.i - y.i; // stable
+    });
+    decorated.forEach(function (d) { body.appendChild(d.row); });
+
+    // Update header arrow indicators.
+    for (var k = 0; k < headRow.cells.length; k++) {
+      var c = headRow.cells[k];
+      c.removeAttribute('data-sort-dir');
+      var base = c.getAttribute('data-label');
+      if (base !== null) c.textContent = base;
+    }
+    if (th.getAttribute('data-label') === null) {
+      th.setAttribute('data-label', th.textContent);
+    }
+    th.setAttribute('data-sort-dir', dir);
+    th.textContent = th.getAttribute('data-label') + (dir === 'asc' ? ' \u2191' : ' \u2193');
+  }
+
+  // Event delegation: works even after tables are re-rendered.
+  document.addEventListener('click', function (e) {
+    var th = e.target.closest ? e.target.closest('th') : null;
+    if (!th) return;
+    var table = th.closest ? th.closest('table[data-sortable]') : null;
+    if (!table) return;
+    var head = table.tHead;
+    if (!head || !head.rows.length) return;
+    var headRow = head.rows[head.rows.length - 1];
+    var thIndex = Array.prototype.indexOf.call(headRow.cells, th);
+    if (thIndex < 0) return;
+    var cur = th.getAttribute('data-sort-dir');
+    var dir = cur === 'asc' ? 'desc' : 'asc';
+    sortTable(table, thIndex, dir);
+  });
+})();
 // Register the service worker so the app can be installed and work offline
 // once it's hosted somewhere (this no-ops harmlessly inside a sandboxed preview).
 if ('serviceWorker' in navigator) {
