@@ -87,6 +87,7 @@
   }
   .controls-compact{ align-items:center; gap:12px; }
   .fieldC{ display:flex; flex-direction:column; gap:5px; }
+  .label-spacer{ display:block; font-size:10px; line-height:1.2; min-height:12px; }
   .fieldC label{
     font-family:'JetBrains Mono', monospace;
     font-size:10px; letter-spacing:.07em;
@@ -275,32 +276,6 @@
   .side.win .pts{color:var(--win);}
   .side.lose .pts{color:var(--ink-dim);}
   .vs{font-family:'Oswald', sans-serif; color:var(--ink-dim); font-size:11px;}
-
-  /* Power rankings */
-  .chart-wrap{
-    background:var(--surface);
-    border-radius:var(--radius);
-    padding:18px 16px 14px;
-    margin-bottom:16px;
-    overflow-x:auto;
-  }
-  .chart-wrap svg{display:block; min-width:520px;}
-  .legend{
-    display:flex;
-    flex-wrap:wrap;
-    gap:8px 16px;
-    margin-top:14px;
-    font-family:'Inter', sans-serif;
-    font-size:11px;
-    color:var(--ink-dim);
-  }
-  .legend-item{display:flex; align-items:center; gap:6px;}
-  .legend-swatch{width:9px; height:9px; border-radius:50%; flex:none;}
-  .power-score{font-family:'JetBrains Mono', monospace;}
-  .trend{font-family:'JetBrains Mono', monospace; font-size:12px;}
-  .trend.up{color:var(--win);}
-  .trend.down{color:var(--loss);}
-  .trend.flat{color:var(--ink-dim);}
 
   /* Preview / Review */
   .placeholder-banner{
@@ -550,7 +525,10 @@
         <label for="viewWeek">Week</label>
         <select id="viewWeek" class="sel-sm" style="min-width:78px;"></select>
       </div>
-      <button type="button" id="refreshBtn" class="btn btn-ghost btn-icon-sm" title="Pull fresh data for this season" aria-label="Refresh">↻ Refresh</button>
+      <div class="fieldC">
+        <span class="label-spacer" aria-hidden="true"></span>
+        <button type="button" id="refreshBtn" class="btn btn-ghost btn-icon-sm" title="Pull fresh data for this season" aria-label="Refresh">↻ Refresh</button>
+      </div>
     </div>
   </div>
 </header>
@@ -562,7 +540,6 @@
     <button data-tab="preview">Preview</button>
     <button data-tab="review">Review</button>
     <button data-tab="positions">Positions</button>
-    <button data-tab="power">Power Rankings</button>
     <button data-tab="awards">Awards</button>
     <button data-tab="profile">Profile</button>
     <button data-tab="history">History</button>
@@ -574,7 +551,6 @@
   <div id="previewView" style="display:none;"></div>
   <div id="reviewView" style="display:none;"></div>
   <div id="positionsView" style="display:none;"></div>
-  <div id="powerView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -587,15 +563,6 @@
   </div>
   <div id="historyView" style="display:none;">
     <div class="controls" style="margin-top:0;">
-      <div class="field">
-        <label for="histFrom">From season</label>
-        <input id="histFrom" inputmode="numeric">
-      </div>
-      <div class="field">
-        <label for="histTo">To season</label>
-        <input id="histTo" inputmode="numeric">
-      </div>
-      <button class="btn btn-primary" id="histLoadBtn">Fetch history</button>
       <button type="button" id="histDownloadBtn" class="btn btn-ghost">Download cache file</button>
     </div>
     <div id="historyStatus" class="status"></div>
@@ -619,15 +586,11 @@ const matchupsView = document.getElementById('matchupsView');
 const previewView = document.getElementById('previewView');
 const reviewView = document.getElementById('reviewView');
 const positionsView = document.getElementById('positionsView');
-const powerView = document.getElementById('powerView');
 const awardsView = document.getElementById('awardsView');
 const profileView = document.getElementById('profileView');
 const profileManagerSelect = document.getElementById('profileManagerSelect');
 const profileContent = document.getElementById('profileContent');
 const historyView = document.getElementById('historyView');
-const histFromInput = document.getElementById('histFrom');
-const histToInput = document.getElementById('histTo');
-const histLoadBtn = document.getElementById('histLoadBtn');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -648,9 +611,10 @@ const latestLikelySeason = now.getMonth() + 1 >= seasonInProgressCutoffMonth
 // (see the proxy function) — this floor is just a sane default range, not
 // a hard limit. Type any earlier year in "From season" if your league goes
 // back further.
-const HISTORY_DEFAULT_LOOKBACK = 9;
-histToInput.value = latestLikelySeason;
-histFromInput.value = latestLikelySeason - HISTORY_DEFAULT_LOOKBACK;
+// Earliest season this league existed. Header chips always show the full
+// range LEAGUE_FIRST_SEASON..latestLikelySeason; uncached older seasons are
+// fetched on demand when their chip is checked.
+const LEAGUE_FIRST_SEASON = 2016;
 
 // ---------------------------------------------------------------
 // Rename any team here — keys are the owner's ESPN member ID
@@ -685,7 +649,6 @@ function setTab(name){
   reviewView.style.display = name === 'review' ? '' : 'none';
   positionsView.style.display = name === 'positions' ? '' : 'none';
   if (name === 'positions') renderPositions();
-  powerView.style.display = name === 'power' ? '' : 'none';
   awardsView.style.display = name === 'awards' ? '' : 'none';
   profileView.style.display = name === 'profile' ? '' : 'none';
   historyView.style.display = name === 'history' ? '' : 'none';
@@ -704,7 +667,7 @@ function ownerKey(t){
 let OWNER_ALIASES = {};
 
 // This is the identity actually used for grouping/display everywhere
-// (teamDisplayName, History, Power Rankings all-time, Awards year-over-
+// (teamDisplayName, History all-time, Awards year-over-
 // year) — raw ownerKey() is still used on its own only by the Owner ID
 // reference table, since that table's job is to show the raw, pre-alias
 // GUIDs so you know what to put into owner-aliases.json in the first place.
@@ -764,7 +727,6 @@ async function loadTeamNameOverrides(){
   }
 
   if (state.teams.length) { renderStandings(); renderMatchups(); }
-  renderPowerRankings();
   renderAwards();
   renderProfile();
   if (history.loadedSeasons.length) renderHistoryContent();
@@ -790,7 +752,6 @@ async function loadOwnerAliases(){
   if (history.loadedSeasons.length) {
     refreshSeasonDependentViews();
   } else {
-    renderPowerRankings();
     renderAwards();
   }
   renderProfile();
@@ -801,8 +762,11 @@ loadOwnerAliases();
 // plus the current likely season even if nothing's been loaded for it yet
 // (selecting it triggers a live fetch the first time).
 function populateSeasonSelect(){
+  // Always show the full league range so never-loaded older seasons still
+  // appear as (unchecked) chips the user can fetch on demand.
   const years = new Set(history.loadedSeasons);
   years.add(latestLikelySeason);
+  for (let y = LEAGUE_FIRST_SEASON; y <= latestLikelySeason; y++) years.add(y);
   const sorted = [...years].sort((a, b) => b - a);
 
   const prev = viewSeasonSelect.value ? parseInt(viewSeasonSelect.value, 10) : state.seasonYear;
@@ -817,24 +781,51 @@ function populateSeasonSelect(){
 function renderSeasonChips(sorted){
   const strip = document.getElementById('seasonChips');
   if (!strip) return;
-  const current = parseInt(viewSeasonSelect.value, 10);
-  strip.innerHTML = sorted.map(y =>
-    '<button type="button" role="tab" data-year="' + y + '"'
-    + (y === current ? ' class="on" aria-selected="true"' : ' aria-selected="false"')
-    + '>' + y + '</button>'
-  ).join('');
-  strip.querySelectorAll('button').forEach(b => {
-    b.addEventListener('click', () => {
-      const yr = parseInt(b.dataset.year, 10);
-      viewSeasonSelect.value = yr;
-      strip.querySelectorAll('button').forEach(x => {
-        const on = x === b;
-        x.classList.toggle('on', on);
-        x.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      selectSeason(yr, false);
+  strip.innerHTML = sorted.map(y => {
+    const checked = history.checkedSeasons.has(y) ? ' checked' : '';
+    return '<label class="season-chip" data-year="' + y + '">'
+      + '<input type="checkbox" value="' + y + '"' + checked + '>'
+      + '<span>' + y + '</span></label>';
+  }).join('');
+  strip.querySelectorAll('input[type=checkbox]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const yr = parseInt(cb.value, 10);
+      if (cb.checked) {
+        if (history.data[yr]) {
+          history.checkedSeasons.add(yr);
+          activateNewestChecked();
+        } else {
+          selectSeason(yr, false);
+        }
+      } else {
+        if (history.checkedSeasons.size <= 1) {
+          cb.checked = true;
+          return;
+        }
+        history.checkedSeasons.delete(yr);
+        activateNewestChecked();
+      }
     });
   });
+}
+
+function activateNewestChecked(){
+  const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
+  if (!checked.length) return;
+  const newest = checked[0];
+  if (viewSeasonSelect) viewSeasonSelect.value = newest;
+  applySeasonToState(newest);
+}
+
+// Single-season views can only show one season at a time. When the header
+// multi-select has more than one season checked, grey the view out with a
+// prompt instead of silently showing just the newest.
+function multiSeasonGuard(viewEl, label){
+  if (history.checkedSeasons && history.checkedSeasons.size > 1){
+    viewEl.innerHTML = '<div class="status multi-season-notice">' + escapeHtml(label) + ' shows one season at a time. You have ' + history.checkedSeasons.size + ' seasons selected. Uncheck all but one in the header to view this tab.</div>';
+    return true;
+  }
+  return false;
 }
 
 // Weeks available for the currently loaded season's schedule — includes
@@ -852,6 +843,35 @@ function populateWeekSelect(){
 // Cache-first: uses whatever's already in history.data unless forceLive is
 // set (the Refresh button), in which case it bypasses both the in-memory
 // and static-file cache and pulls straight from ESPN.
+function applySeasonToState(year){
+  const data = history.data[year];
+  if (!data) return;
+
+  state.teams = data.teams || [];
+  state.schedule = data.schedule || [];
+  state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
+  state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
+  state.seasonYear = year;
+  state.settings = data.settings || {};
+  state.members = data.members || [];
+
+  leagueTitle.textContent = state.leagueName;
+  weekChip.innerHTML = state.currentWeek
+    ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
+    : state.teams.length + ' teams';
+
+  populateSeasonSelect();
+  populateWeekSelect();
+
+  renderStandings();
+  renderMatchups();
+  renderPreview();
+  renderReview();
+  renderAwards();
+  renderProfile();
+  if (history.loadedSeasons.length) renderHistoryContent();
+}
+
 async function selectSeason(year, forceLive){
   refreshBtn.disabled = true;
   statusArea.innerHTML = '<div class="status">Loading ' + year + (forceLive ? ' (live)' : '') + '…</div>';
@@ -881,30 +901,7 @@ async function selectSeason(year, forceLive){
   }
   history.checkedSeasons.add(year);
 
-  state.teams = data.teams || [];
-  state.schedule = data.schedule || [];
-  state.currentWeek = (data.status && data.status.currentMatchupPeriod) || null;
-  state.leagueName = (data.settings && data.settings.name) || 'Gridiron Board';
-  state.seasonYear = year;
-  state.settings = data.settings || {};
-  state.members = data.members || [];
-
-  leagueTitle.textContent = state.leagueName;
-  weekChip.innerHTML = state.currentWeek
-    ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
-    : state.teams.length + ' teams';
-
-  populateSeasonSelect();
-  populateWeekSelect();
-
-  renderStandings();
-  renderMatchups();
-  renderPreview();
-  renderReview();
-  renderPowerRankings();
-  renderAwards();
-  renderProfile();
-  if (history.loadedSeasons.length) renderHistoryContent();
+  activateNewestChecked();
 
   statusArea.innerHTML = '';
   refreshBtn.disabled = false;
@@ -956,8 +953,43 @@ function allPlayPct(rec){
   return gp ? (rec.wins + rec.ties * 0.5) / gp : null;
 }
 
+// Wins vs league median: each completed week, a team beats the median
+// of all scores that week => a win; below => a loss; exactly at the
+// median (even team counts) => counts as a tie/half.
+function computeMedianRecords(teams, schedule){
+  const records = {};
+  teams.forEach(t => { records[t.id] = { wins: 0, losses: 0, ties: 0 }; });
+
+  const byWeek = {};
+  (schedule || []).forEach(g => {
+    if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+    const w = g.matchupPeriodId;
+    (byWeek[w] = byWeek[w] || []).push({ teamId: g.home.teamId, points: g.home.totalPoints ?? 0 });
+    byWeek[w].push({ teamId: g.away.teamId, points: g.away.totalPoints ?? 0 });
+  });
+
+  Object.values(byWeek).forEach(entries => {
+    const pts = entries.map(e => e.points).sort((a, b) => a - b);
+    const n = pts.length;
+    if (!n) return;
+    const median = n % 2 ? pts[(n - 1) / 2] : (pts[n / 2 - 1] + pts[n / 2]) / 2;
+    entries.forEach(e => {
+      const rec = records[e.teamId];
+      if (!rec) return;
+      if (e.points > median) rec.wins++;
+      else if (e.points < median) rec.losses++;
+      else rec.ties++;
+    });
+  });
+
+  return records;
+}
+
 function renderStandings(){
+  if (multiSeasonGuard(standingsView, 'Standings')) return;
   const allPlay = computeAllPlayRecords(state.teams, state.schedule);
+  const powerByTeam = weeklyScoresByTeam();
+  const medianRec = computeMedianRecords(state.teams, state.schedule);
 
   const sorted = [...state.teams].sort((a, b) => {
     const ra = a.record?.overall || {};
@@ -977,17 +1009,20 @@ function renderStandings(){
       '<td class="num">' + (r.pointsFor ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (r.pointsAgainst ?? 0).toFixed(1) + '</td>' +
       '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
+      '<td class="num">' + (function(){ var m = medianRec[t.id] || {wins:0,losses:0,ties:0}; return [m.wins||0, m.losses||0, m.ties||0].join('-'); })() + '</td>' +
+      '<td class="num">' + (powerByTeam[t.id] && powerByTeam[t.id].length ? powerScore(powerByTeam[t.id]).toFixed(1) : '—') + '</td>' +
       '</tr>';
   }).join('');
 
   standingsView.innerHTML = state.teams.length ? (
     '<table><thead><tr>' +
-    '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th><th class="num">All-Play</th>' +
+    '<th></th><th>Team</th><th class="num">Record</th><th class="num">PF</th><th class="num">PA</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">Power</th>' +
     '</tr></thead><tbody>' + rows + '</tbody></table>'
   ) : '';
 }
 
 function renderMatchups(){
+  if (multiSeasonGuard(matchupsView, 'Matchups')) return;
   const teamsById = {};
   state.teams.forEach(t => teamsById[t.id] = t);
 
@@ -1138,29 +1173,49 @@ function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam){
   const winnerName = homePts > awayPts ? homeCtx.name : awayCtx.name;
   const loserName = homePts > awayPts ? awayCtx.name : homeCtx.name;
 
+  const combined = homePts + awayPts;
   if (g.winner === 'TIE') {
-    lines.push(homeCtx.name + ' and ' + awayCtx.name + ' tied — the fantasy gods couldn\'t decide either.');
+    lines.push(homeCtx.name + ' and ' + awayCtx.name + ' played to a ' + homePts.toFixed(1) + '-all stalemate — somewhere a fantasy god shrugged.');
+  } else if (margin < 3) {
+    lines.push(winnerName + ' survived by a hair, ' + margin.toFixed(1) + ' pts, and ' + loserName + ' will be replaying that bench lineup all week.');
   } else if (margin < 5) {
-    lines.push(winnerName + ' escaped with a ' + margin.toFixed(1) + '-pt nail-biter over ' + loserName + '.');
+    lines.push(winnerName + ' edged ' + loserName + ' in a ' + margin.toFixed(1) + '-pt nail-biter — heart, meet mouth.');
+  } else if (margin > 60) {
+    lines.push(winnerName + ' didn\'t beat ' + loserName + ', they filed a police report: ' + Math.max(homePts, awayPts).toFixed(1) + '-' + Math.min(homePts, awayPts).toFixed(1) + '.');
   } else if (margin > 40) {
-    lines.push(winnerName + ' put on a clinic, beating ' + loserName + ' by ' + margin.toFixed(1) + '.');
+    lines.push(winnerName + ' put on a clinic, dismantling ' + loserName + ' by ' + margin.toFixed(1) + '.');
   } else {
     lines.push(winnerName + ' handled ' + loserName + ', ' + Math.max(homePts, awayPts).toFixed(1) + '-' + Math.min(homePts, awayPts).toFixed(1) + '.');
   }
 
+  if (combined >= 300) {
+    lines.push('Combined ' + combined.toFixed(1) + ' pts — an absolute shootout.');
+  } else if (combined <= 150 && g.winner !== 'TIE') {
+    lines.push('Combined just ' + combined.toFixed(1) + ' pts — a slugfest nobody wanted to watch.');
+  }
+
   const winCtx = homePts > awayPts ? homeCtx : awayCtx;
   const loseCtx = homePts > awayPts ? awayCtx : homeCtx;
-  if (winCtx.streakLen >= 3 && winCtx.streakType === 'W') lines.push(winCtx.name + ' has won ' + winCtx.streakLen + ' straight.');
-  if (loseCtx.streakLen >= 3 && loseCtx.streakType === 'L') lines.push(loseCtx.name + ' is now on a ' + loseCtx.streakLen + '-game slide.');
+  if (winCtx.streakLen >= 5 && winCtx.streakType === 'W') lines.push(winCtx.name + ' has won ' + winCtx.streakLen + ' in a row — somebody check if the rest of the league still has a pulse.');
+  else if (winCtx.streakLen >= 3 && winCtx.streakType === 'W') lines.push(winCtx.name + ' is rolling: ' + winCtx.streakLen + ' straight.');
+  if (loseCtx.streakLen >= 5 && loseCtx.streakType === 'L') lines.push(loseCtx.name + ' has now dropped ' + loseCtx.streakLen + ' straight — at this point it\'s a lifestyle.');
+  else if (loseCtx.streakLen >= 3 && loseCtx.streakType === 'L') lines.push(loseCtx.name + ' is mired in a ' + loseCtx.streakLen + '-game slide.');
 
   if (byTeam) {
     const winRank = scoringRank(byTeam, winCtx.team.id);
     const loseRank = scoringRank(byTeam, loseCtx.team.id);
+    const teamCount = Object.keys(byTeam).length;
     const winPts = Math.max(homePts, awayPts), losePts = Math.min(homePts, awayPts);
-    if (winRank === 1) lines.push(winCtx.name + ' remains the league\'s top-scoring team.');
-    if (loseRank === 1) lines.push(loseCtx.name + ' put up the most points on the season but still took the loss.');
-    if (winCtx.avgPoints !== null && winPts >= winCtx.avgPoints + 20) {
+    if (winRank === 1) lines.push(winCtx.name + ' remains the league\'s top-scoring team — the rich get richer.');
+    if (loseRank === 1) lines.push(loseCtx.name + ' scored the most points on the season and STILL lost. Fantasy football, everybody.');
+    if (teamCount >= 4 && loseRank === teamCount) lines.push(loseCtx.name + ' is dead last in scoring and this didn\'t help.');
+    if (teamCount >= 4 && loseRank <= 3 && winRank > loseRank) lines.push(loseCtx.name + ' is a top-3 scorer who just got upset by a lower seed. Ouch.');
+    if (winCtx.avgPoints !== null && winPts >= winCtx.avgPoints + 30) {
+      lines.push(winCtx.name + ' erupted for ' + (winPts - winCtx.avgPoints).toFixed(1) + ' pts above their average — peaked at the right time.');
+    } else if (winCtx.avgPoints !== null && winPts >= winCtx.avgPoints + 20) {
       lines.push(winCtx.name + ' torched their season average by ' + (winPts - winCtx.avgPoints).toFixed(1) + ' pts.');
+    } else if (loseCtx.avgPoints !== null && losePts <= loseCtx.avgPoints - 30) {
+      lines.push(loseCtx.name + ' no-showed by ' + (loseCtx.avgPoints - losePts).toFixed(1) + ' pts below their average. Rough week to sit the studs.');
     } else if (loseCtx.avgPoints !== null && losePts <= loseCtx.avgPoints - 20) {
       lines.push(loseCtx.name + ' fell ' + (loseCtx.avgPoints - losePts).toFixed(1) + ' pts short of their usual output.');
     }
@@ -1170,6 +1225,7 @@ function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam){
 }
 
 function renderPreview(){
+  if (multiSeasonGuard(previewView, 'Preview')) return;
   if (!state.teams.length) { previewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const banner = '<div class="placeholder-banner">Player projections and a "projected vs actual" breakdown aren\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything below (matchups, records, streaks, scoring context) is real and recomputes fresh every time you open this tab.</div>';
@@ -1218,6 +1274,7 @@ function renderPreview(){
 }
 
 function renderReview(){
+  if (multiSeasonGuard(reviewView, 'Review')) return;
   if (!state.teams.length) { reviewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const banner = '<div class="placeholder-banner">"Projected vs. actual" isn\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything else (results, margins, streak context, banter) is real and recomputes fresh every time you open this tab.</div>';
@@ -1545,97 +1602,6 @@ function colorForIndex(i, total){
   return `hsl(${hue} 65% 62%)`;
 }
 
-function renderPowerRankings(){
-  if (history.loadedSeasons.length) {
-    renderPowerRankingsMultiSeason();
-  } else {
-    renderPowerRankingsSingleSeason();
-  }
-}
-
-function renderPowerRankingsSingleSeason(){
-  const byTeam = weeklyScoresByTeam();
-  const allWeeks = [...new Set(state.schedule
-    .filter(g => g.winner && g.winner !== 'UNDECIDED')
-    .map(g => g.matchupPeriodId))].sort((a, b) => a - b);
-
-  const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock all-time / select-years power rankings here too.</p>';
-
-  if (!allWeeks.length) {
-    powerView.innerHTML = note + '<div class="status">No completed weeks yet — power rankings show up once week 1 finishes.</div>';
-    return;
-  }
-
-  const ranked = state.teams.map(t => ({ id: t.id, name: teamDisplayName(t), score: powerScore(byTeam[t.id]) }))
-    .filter(r => r.score !== null)
-    .sort((a, b) => b.score - a.score);
-
-  const prevWeek = allWeeks[allWeeks.length - 1];
-  const rankedPrev = state.teams.map(t => {
-    const trimmed = byTeam[t.id].filter(w => w.week < prevWeek);
-    return { id: t.id, score: powerScore(trimmed) };
-  }).filter(r => r.score !== null).sort((a, b) => b.score - a.score);
-
-  const table = buildPowerTable(ranked, rankedPrev);
-  const teamList = state.teams.map(t => ({ id: t.id, name: teamDisplayName(t) }));
-  const chart = renderPointsTrendChart(byTeam, allWeeks, teamList, []);
-
-  powerView.innerHTML = note + chart + table;
-}
-
-function renderPowerRankingsMultiSeason(){
-  const years = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a, b) => a - b);
-  const picker = renderSeasonPicker();
-
-  if (!years.length) {
-    powerView.innerHTML = picker + '<div class="status">Select at least one season above.</div>';
-    return;
-  }
-
-  const { byTeam, teamsMeta, seasonBoundaries, totalPoints } = weeklyScoresAcrossSeasons(years);
-
-  if (!totalPoints) {
-    powerView.innerHTML = picker + '<div class="status">No completed weeks in the selected season(s).</div>';
-    return;
-  }
-
-  // All-time ranking = win% (60%) blended with scoring output (40%, normalized
-  // across the field) — NOT the same recency-weighted formula as the
-  // single-season view. A "last 2 games" bias makes sense for gauging
-  // current form within one season, but across multiple completed seasons
-  // it let two hot recent weeks outweigh years of a losing record, which
-  // produced rankings that didn't match the actual standings. This version
-  // is anchored to wins first, same as the standings are.
-  const ranked = rankAllTime(years, byTeam, teamsMeta);
-
-  // "Trend" = how the ranking would've looked without the most recently
-  // checked season, so it still shows movement without reintroducing a
-  // recency-dominated score.
-  let rankedPrev = [];
-  if (years.length > 1) {
-    const prevYears = years.slice(0, -1);
-    const prevData = weeklyScoresAcrossSeasons(prevYears);
-    rankedPrev = rankAllTime(prevYears, prevData.byTeam, prevData.teamsMeta);
-  }
-
-  const table = buildPowerTable(ranked, rankedPrev);
-  const teamIds = Object.keys(teamsMeta);
-  const teamList = teamIds.map(id => ({ id, name: teamDisplayName(teamsMeta[id]) }));
-  const chart = renderPointsTrendChart(byTeam, null, teamList, seasonBoundaries, totalPoints);
-
-  powerView.innerHTML = picker +
-    '<p class="section-note">All-time score blends win% (60%) with average points scored (40%, normalized against the field) — not the recent-form weighting used for a single season.</p>' +
-    chart + table;
-
-  powerView.querySelectorAll('.season-chip input').forEach(cb => {
-    cb.addEventListener('change', () => {
-      const year = parseInt(cb.dataset.year, 10);
-      if (cb.checked) history.checkedSeasons.add(year); else history.checkedSeasons.delete(year);
-      refreshSeasonDependentViews();
-    });
-  });
-}
-
 // Sums wins/losses/ties directly from each season's team record (reliable,
 // same field the Standings tab uses) rather than re-deriving them from
 // schedule results.
@@ -1675,88 +1641,6 @@ function rankAllTime(years, byTeam, teamsMeta){
   return metrics
     .map(m => ({ id: m.id, name: m.name, score: (m.winPct * 0.6 + normPts(m.avgPts) * 0.4) * 100 }))
     .sort((a, b) => b.score - a.score);
-}
-
-function buildPowerTable(ranked, rankedPrev){
-  const prevPosition = {};
-  rankedPrev.forEach((r, i) => prevPosition[r.id] = i);
-
-  const rows = ranked.map((r, i) => {
-    const prevIdx = prevPosition[r.id];
-    let trendHtml = '<span class="trend flat">–</span>';
-    if (prevIdx !== undefined) {
-      const diff = prevIdx - i; // positive = moved up
-      if (diff > 0) trendHtml = '<span class="trend up">▲ ' + diff + '</span>';
-      else if (diff < 0) trendHtml = '<span class="trend down">▼ ' + Math.abs(diff) + '</span>';
-    }
-    return '<tr>' +
-      '<td class="rank">' + (i + 1) + '</td>' +
-      '<td class="team-name">' + escapeHtml(r.name) + '</td>' +
-      '<td class="num power-score">' + r.score.toFixed(1) + '</td>' +
-      '<td class="num">' + trendHtml + '</td>' +
-      '</tr>';
-  }).join('');
-
-  return '<table><thead><tr>' +
-    '<th></th><th>Team</th><th class="num">Power score</th><th class="num">Trend</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table>';
-}
-
-// allWeeks: single-season mode (array of week numbers), pass null for multi-season.
-// seasonBoundaries/totalPoints: multi-season mode only.
-function renderPointsTrendChart(byTeam, allWeeks, teamList, seasonBoundaries, totalPoints){
-  const width = 640, height = 260, padL = 40, padR = 12, padT = 12, padB = 28;
-  const plotW = width - padL - padR, plotH = height - padT - padB;
-  const multi = allWeeks === null;
-
-  let minPts = Infinity, maxPts = -Infinity;
-  teamList.forEach(t => (byTeam[t.id] || []).forEach(w => {
-    minPts = Math.min(minPts, w.points);
-    maxPts = Math.max(maxPts, w.points);
-  }));
-  if (!isFinite(minPts)) { minPts = 0; maxPts = 100; }
-  const pad = (maxPts - minPts) * 0.1 || 10;
-  minPts -= pad; maxPts += pad;
-
-  const xSpan = multi ? Math.max(totalPoints - 1, 1) : Math.max(allWeeks.length - 1, 1);
-  const xFor = multi
-    ? idx => padL + (idx / xSpan) * plotW
-    : week => padL + ((week - allWeeks[0]) / xSpan) * plotW;
-  const yFor = pts => padT + plotH - ((pts - minPts) / (maxPts - minPts)) * plotH;
-
-  const gridLines = multi
-    ? seasonBoundaries.map(b =>
-        `<line x1="${xFor(b.idx)}" y1="${padT}" x2="${xFor(b.idx)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
-        `<text x="${xFor(b.idx)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">${b.year}</text>`
-      ).join('')
-    : allWeeks.map(w =>
-        `<line x1="${xFor(w)}" y1="${padT}" x2="${xFor(w)}" y2="${padT + plotH}" stroke="#20402C" stroke-width="1"/>` +
-        `<text x="${xFor(w)}" y="${height - 8}" fill="#B9C2BC" font-size="9" font-family="JetBrains Mono, monospace" text-anchor="middle">W${w}</text>`
-      ).join('');
-
-  const paths = teamList.map((t, i) => {
-    const weeks = byTeam[t.id] || [];
-    if (weeks.length < 1) return '';
-    const color = colorForIndex(i, teamList.length);
-    const xOf = w => multi ? xFor(w.idx) : xFor(w.week);
-    const d = weeks.map((w, idx) => (idx === 0 ? 'M' : 'L') + xOf(w).toFixed(1) + ',' + yFor(w.points).toFixed(1)).join(' ');
-    const dots = weeks.map(w =>
-      `<circle cx="${xOf(w).toFixed(1)}" cy="${yFor(w.points).toFixed(1)}" r="2.5" fill="${color}"/>`
-    ).join('');
-    return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>` + dots;
-  }).join('');
-
-  const legend = teamList.map((t, i) =>
-    '<span class="legend-item"><span class="legend-swatch" style="background:' + colorForIndex(i, teamList.length) + '"></span>' +
-    escapeHtml(t.name) + '</span>'
-  ).join('');
-
-  return '<div class="chart-wrap">' +
-    `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Weekly points by team">` +
-    gridLines + paths +
-    '</svg>' +
-    '<div class="legend">' + legend + '</div>' +
-    '</div>';
 }
 
 // ---------------------------------------------------------------
@@ -2272,48 +2156,6 @@ async function fetchHistorySeason(leagueId, season, forceLive){
   }
 }
 
-async function loadHistory(){
-  const leagueId = LEAGUE_ID;
-  const from = parseInt(histFromInput.value, 10);
-  const to = parseInt(histToInput.value, 10);
-  if (!leagueId || !from || !to || from > to) {
-    historyStatus.textContent = 'Check your league ID and season range.';
-    return;
-  }
-
-  histLoadBtn.disabled = true;
-  history.data = {};
-  history.loadedSeasons = [];
-  const failures = []; // { year, reason }
-  let cacheHits = 0;
-
-  for (let year = from; year <= to; year++) {
-    historyStatus.textContent = 'Loading ' + year + '… (' + (year - from + 1) + '/' + (to - from + 1) + ')';
-    const result = await fetchHistorySeason(leagueId, year);
-    if (result.ok) {
-      history.data[year] = result.data;
-      history.loadedSeasons.push(year);
-      if (result.fromCache) cacheHits++;
-    } else {
-      failures.push({ year, reason: result.reason });
-    }
-  }
-
-  history.loadedSeasons.sort((a, b) => a - b);
-  history.checkedSeasons = new Set(history.loadedSeasons);
-
-  let statusMsg = history.loadedSeasons.length
-    ? 'Loaded ' + history.loadedSeasons.length + ' season(s)' + (cacheHits ? ' (' + cacheHits + ' from cache file)' : '') + '.'
-    : 'No seasons found in that range for this league ID.';
-  if (failures.length) {
-    statusMsg += ' Skipped: ' + failures.map(f => f.year + ' (' + f.reason + ')').join('; ') + '.';
-  }
-  historyStatus.textContent = statusMsg;
-
-  histLoadBtn.disabled = false;
-  refreshSeasonDependentViews();
-}
-
 async function downloadHistoryCache(){
   histDownloadBtn.disabled = true;
   histDownloadBtn.textContent = 'Preparing…';
@@ -2362,28 +2204,24 @@ function renderSeasonPicker(){
 // the top bracket slot all the way through, so the best-seeded pair is the
 // actual toilet bowl game rather than a lower consolation-ladder rung.
 function toiletBowlChampion(data){
-  const teams = data.teams || [];
   const schedule = data.schedule || [];
 
-  const consolationGames = schedule.filter(g =>
-    g.playoffTierType && g.playoffTierType !== 'NONE' && g.playoffTierType !== 'WINNERS_BRACKET' &&
+  // Toilet bowl = winner of the losers-consolation-ladder FINAL (top of the
+  // losers ladder). Restrict to LOSERS_CONSOLATION_LADDER, take the final week,
+  // then pick the lowest matchup id (ESPN orders the ladder championship first).
+  const ladderGames = schedule.filter(g =>
+    g.playoffTierType === 'LOSERS_CONSOLATION_LADDER' &&
     g.winner && g.winner !== 'UNDECIDED' && g.home && g.away
   );
-  if (!consolationGames.length) return null;
+  if (!ladderGames.length) return null;
 
-  const finalWeek = Math.max(...consolationGames.map(g => g.matchupPeriodId));
-  const finalGames = consolationGames.filter(g => g.matchupPeriodId === finalWeek);
+  const finalWeek = Math.max(...ladderGames.map(g => g.matchupPeriodId));
+  const finalGames = ladderGames
+    .filter(g => g.matchupPeriodId === finalWeek)
+    .sort((a, b) => (a.id || 0) - (b.id || 0));
   if (!finalGames.length) return null;
 
-  const seedById = {};
-  teams.forEach(t => seedById[t.id] = t.playoffSeed || 999);
-
-  let best = finalGames[0], bestSeedSum = Infinity;
-  finalGames.forEach(g => {
-    const sum = (seedById[g.home.teamId] || 999) + (seedById[g.away.teamId] || 999);
-    if (sum < bestSeedSum) { bestSeedSum = sum; best = g; }
-  });
-
+  const best = finalGames[0];
   return best.winner === 'HOME' ? best.home.teamId : best.away.teamId;
 }
 
@@ -2456,6 +2294,14 @@ function renderHistoryContent(){
   const names = historyTeamNames();
   const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
 
+  // Power score per owner, joined into the records table below. Same
+  // wins-anchored ranking the standings Power column uses, so the two agree.
+  const powerByOwner = {};
+  {
+    const pd = weeklyScoresAcrossSeasons(checked);
+    rankAllTime(checked, pd.byTeam, pd.teamsMeta).forEach(r => { powerByOwner[r.id] = r.score; });
+  }
+
   // ---- All-time records ----
   const agg = {}; // teamId -> stats
   const ensure = id => agg[id] || (agg[id] = { w:0, l:0, t:0, championships:0, top3:0, playoffs:0, toiletBowl:0, dq:0, apW:0, apL:0, apT:0 });
@@ -2514,6 +2360,7 @@ function renderHistoryContent(){
       return '<tr>' +
       '<td class="team-name">' + escapeHtml(names[id] || ('Team ' + id)) + '</td>' +
       '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
+      '<td class="num">' + (powerByOwner[id] !== undefined ? powerByOwner[id].toFixed(1) : '-') + '</td>' +
       '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
       '<td class="num">' + s.championships + '</td>' +
       '<td class="num">' + s.top3 + '</td>' +
@@ -2525,7 +2372,7 @@ function renderHistoryContent(){
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
     '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week, instead of just their actual opponent — a look at output separate from schedule luck. Championships, top-3, and toilet bowl are all read directly from each season\'s final bracket games rather than a summary field, since ESPN doesn\'t populate that consistently for every league. DQ reflects manual adjustments in data/manual-adjustments.json (e.g. a vacated championship) — the top-3 finish for that season is left as-is, only the championship credit moves to the DQ column.</p>' +
-    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">All-Play</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
+    '<table><thead><tr><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
   // ---- Head-to-head matrix ----
@@ -2607,7 +2454,7 @@ function ownerIdReferenceHtml(){
 
 // ---------------------------------------------------------------
 // Team Profile — a single manager's whole career in one place. Reuses the
-// same computation helpers as History/Power Rankings/Awards (all-play
+// same computation helpers as History/Awards (all-play
 // records, season placements, toilet bowl detection, per-season awards)
 // rather than re-deriving that logic, so it stays consistent with what
 // those tabs show. Always looks at every fetched season (not the
@@ -2796,6 +2643,7 @@ function buildManagerProfile(key, seasonsData){
 }
 
 function renderProfile(){
+  if (multiSeasonGuard(profileContent, 'Manager profiles')) return;
   const seasonsData = profileSeasonsData();
   if (!seasonsData.length) {
     profileContent.innerHTML = '<div class="status">Load a league first.</div>';
@@ -2904,16 +2752,14 @@ function escapeHtml(s){
 viewSeasonSelect.addEventListener('change', () => selectSeason(parseInt(viewSeasonSelect.value, 10), false));
 viewWeekSelect.addEventListener('change', () => { renderMatchups(); renderPreview(); renderReview(); });
 refreshBtn.addEventListener('click', () => selectSeason(parseInt(viewSeasonSelect.value, 10), true));
-histLoadBtn.addEventListener('click', loadHistory);
 histDownloadBtn.addEventListener('click', downloadHistoryCache);
 
-// Keeps the History/Power Rankings/Awards/Profile tabs in sync with
+// Keeps the History/Awards/Profile tabs in sync with
 // whatever's been fetched, and keeps the Season dropdown in the header in
 // sync too — e.g. after a bulk History fetch pulls in years that weren't
 // there before.
 function refreshSeasonDependentViews(){
   renderHistoryContent();
-  renderPowerRankings();
   renderAwards();
   renderProfile();
   populateSeasonSelect();
@@ -2933,7 +2779,7 @@ async function autoLoadHistoryFromCache(){
 
   history.data = cache;
   history.loadedSeasons = years;
-  history.checkedSeasons = new Set(years);
+  history.checkedSeasons = new Set([years[years.length - 1]]); // default: newest season only
 
   historyStatus.textContent = 'Loaded ' + years.length + ' season(s) from the cache file.';
   refreshSeasonDependentViews();
@@ -2945,7 +2791,21 @@ async function autoLoadHistoryFromCache(){
 (async function startup(){
   await autoLoadHistoryFromCache();
   populateSeasonSelect();
-  await selectSeason(latestLikelySeason, false);
+  // Cache-first default: if the cache already gave us the newest season,
+  // trust that single-checked default (2f). Only fetch live when the
+  // newest league season isn't cached yet, so we don't end up with two
+  // checked seasons (which would grey out single-season views on load).
+  if (!history.loadedSeasons.includes(latestLikelySeason)) {
+    await selectSeason(latestLikelySeason, false);
+    // selectSeason ADDS to checkedSeasons; force the single-newest default
+    // so we never start with two checked (which greys single-season views).
+    if (history.data[latestLikelySeason]) {
+      history.checkedSeasons = new Set([latestLikelySeason]);
+      populateSeasonSelect();
+      activateNewestChecked();
+      refreshSeasonDependentViews();
+    }
+  }
 })();
 
 // Register the service worker so the app can be installed and work offline
