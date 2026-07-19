@@ -792,11 +792,14 @@
 #eloView .elo-table th, #eloView .elo-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid rgba(128,128,128,0.2); }
 #eloView .elo-table th { font-weight: 600; opacity: 0.75; white-space: nowrap; }
 #eloView .elo-table tbody tr:hover { background: rgba(128,128,128,0.08); }
-#eloView .elo-num { text-align: right; font-variant-numeric: tabular-nums; }
-#eloView .elo-peak { white-space: nowrap; opacity: 0.85; font-variant-numeric: tabular-nums; }
+#eloView .elo-num { text-align: right; font-variant-numeric: tabular-nums; font-family:'JetBrains Mono', monospace; }
+#eloView .elo-peak { white-space: nowrap; opacity: 0.85; font-variant-numeric: tabular-nums; font-family:'JetBrains Mono', monospace; }
 #eloView .elo-trend { width: 130px; }
 #eloView .elo-spark { display: block; color: #4a90d9; }
 #eloView .status { padding: 16px; opacity: 0.7; }
+.draft-chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; letter-spacing:0.03em; line-height:1.4; }
+.draft-chip-steal { background:rgba(46,125,50,0.15); color:#2e7d32; }
+.draft-chip-bust { background:rgba(198,40,40,0.15); color:#c62828; }
 </style>
 </head>
 <body>
@@ -1083,8 +1086,8 @@ async function renderDraftBody(){
     const rank = info.positionalRanking != null ? (info.pos + info.positionalRanking) : '\u2014';
     let tag = '';
     if (g.delta != null){
-      if (g.delta >= 8) tag = ' <span style="color:#2e7d32;font-weight:600;">STEAL</span>';
-      else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) tag = ' <span style="color:#c62828;font-weight:600;">BUST</span>';
+      if (g.delta >= 8) tag = ' <span class="draft-chip draft-chip-steal">STEAL</span>';
+      else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) tag = ' <span class="draft-chip draft-chip-bust">BUST</span>';
     }
     return '<tr><td>' + (pk.overallPickNumber||'') + '</td><td>' + escapeHtml(info.fullName)
          + '</td><td>' + info.pos + '</td><td>' + escapeHtml(who) + '</td><td>' + rank + tag + '</td></tr>';
@@ -1096,11 +1099,26 @@ async function renderDraftBody(){
   const gByPlayer = {};
   graded.forEach(g => { gByPlayer[g.pk.playerId + ':' + g.pk.overallPickNumber] = g; });
 
+  // Count steals & busts drafted by each owner (same thresholds as pick tags)
+  const ownerTally = {};
+  graded.forEach(g => {
+    if (g.delta == null) return;
+    const info = g.info;
+    const who = tmap[g.pk.teamId] || ('Team ' + g.pk.teamId);
+    const rec = ownerTally[who] || (ownerTally[who] = { steals: 0, busts: 0 });
+    if (g.delta >= 8) rec.steals++;
+    else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) rec.busts++;
+  });
+  const tallyRows = Object.keys(ownerTally)
+    .map(who => ({ who: who, steals: ownerTally[who].steals, busts: ownerTally[who].busts }))
+    .sort((a,b)=> (b.steals - b.busts) - (a.steals - a.busts) || b.steals - a.steals);
+
   let html = '';
-  html += '<h3>Steals</h3><table class="data"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th><th>End Rank</th></tr></thead><tbody>'
-        + steals.map(pickRow).join('') + '</tbody></table>';
-  html += '<h3>Busts</h3><table class="data"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th><th>End Rank</th></tr></thead><tbody>'
-        + busts.map(pickRow).join('') + '</tbody></table>';
+  html += '<h3>Steals &amp; Busts by Owner</h3><table class="data"><thead><tr><th>Owner</th><th>Steals</th><th>Busts</th></tr></thead><tbody>'
+        + tallyRows.map(r => '<tr><td>' + escapeHtml(r.who)
+            + '</td><td>' + (r.steals ? '<span class="draft-chip draft-chip-steal">' + r.steals + '</span>' : '\u2014')
+            + '</td><td>' + (r.busts ? '<span class="draft-chip draft-chip-bust">' + r.busts + '</span>' : '\u2014')
+            + '</td></tr>').join('') + '</tbody></table>';
 
   html += '<h3>Full Draft Board</h3>';
   Object.keys(rounds).map(Number).sort((a,b)=>a-b).forEach(rd => {
@@ -1359,6 +1377,10 @@ function applySeasonToState(year){
   renderProfile();
   if (history.loadedSeasons.length) renderHistoryContent();
   renderPositions();
+  if (beltView) renderBeltContent();
+  if (recordBookView) renderRecordBookContent();
+  if (milestonesView) renderMilestonesContent();
+  if (eloView) renderEloContent();
 }
 
 async function selectSeason(year, forceLive){
