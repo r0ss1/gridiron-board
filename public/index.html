@@ -36,14 +36,14 @@
     font-family:'Inter', sans-serif;
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
-    padding-bottom:56px;
+    padding-bottom:3.5rem;
   }
-  .wrap{max-width:760px;margin:0 auto;padding:0 20px;}
+  .wrap{max-width:760px;margin:0 auto;padding:0 var(--sp-xl);}
   a{color:inherit;}
 
   /* Header */
   header.board{
-    padding:28px 0 20px;
+    padding:1.5rem 0 var(--sp-xl);
     border-bottom:1px solid var(--line);
   }
   .eyebrow{
@@ -57,7 +57,7 @@
     font-family:'Oswald', sans-serif;
     font-weight:600;
     font-size:clamp(26px, 6vw, 36px);
-    margin:2px 0 4px;
+    margin:var(--sp-xs) 0 var(--sp-xs);
     letter-spacing:.01em;
     line-height:1.05;
   }
@@ -75,7 +75,7 @@
     align-items:flex-end;
     gap:8px;
     flex-wrap:wrap;
-    margin-top:20px;
+    margin-top:var(--sp-xl);
   }
   .field{display:flex; flex-direction:column; gap:5px;}
   .field label{
@@ -97,23 +97,19 @@
   .year-chips button{
     appearance:none; border:0; background:var(--surface); color:var(--ink-dim);
     font-family:var(--font-mono); font-size:var(--fs-sm); font-weight:600;
-    padding:6px 11px; cursor:pointer; border-right:1px solid var(--line);
+    padding:var(--sp-sm) var(--sp-md); cursor:pointer; border-right:1px solid var(--line);
     transition:background .12s, color .12s;
   }
   .year-chips button:last-child{ border-right:0; }
   .year-chips button:hover{ color:var(--ink); }
   .year-chips button.on{ background:var(--amber); color:#1a1a1a; }
-  .season-bulk{ display:inline-flex; align-items:center; gap:4px; margin-top:5px; }
-  .season-bulk-btn{
     appearance:none; border:0; background:none; padding:0; cursor:pointer;
     font-family:var(--font-mono); font-size:var(--fs-sm); font-weight:600;
     color:var(--ink-dim); text-transform:uppercase; letter-spacing:.03em;
     transition:color .12s;
   }
-  .season-bulk-btn:hover{ color:var(--amber); }
-  .season-bulk-sep{ color:var(--line); font-size:var(--fs-sm); }
-  .sel-sm{ font-size:var(--fs-sm); padding:6px 8px; }
-  .btn-icon-sm{ padding:6px 9px; font-size:var(--fs-base); line-height:1; }
+  .sel-sm{ font-size:var(--fs-sm); padding:var(--sp-sm) var(--sp-md); }
+  .btn-icon-sm{ padding:var(--sp-sm) var(--sp-md); font-size:var(--fs-base); line-height:1; }
   .visually-hidden{
     position:absolute !important; width:1px; height:1px; padding:0; margin:-1px;
     overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
@@ -124,7 +120,7 @@
     color:var(--ink);
     font-family:'Inter', sans-serif;
     font-size:var(--fs-base);
-    padding:9px 11px;
+    padding:var(--sp-md) var(--sp-md);
     border-radius:8px;
     min-width:110px;
     height:38px;
@@ -141,7 +137,7 @@
     align-items:center;
     justify-content:center;
     height:38px;
-    padding:0 18px;
+    padding:0 var(--sp-xl);
     border-radius:8px;
     font-family:'Inter', sans-serif;
     font-weight:600;
@@ -164,64 +160,153 @@
 
   /* Tabs */
   .tabs-wrap{
-    margin:20px 0 14px;
+    margin:var(--sp-xl) 0 var(--sp-lg);
   }
-  .tab-row{
+  .tab-grid{
     display:flex;
-    gap:4px;
-    overflow-x:auto;
-    scrollbar-width:none;
-    padding-bottom:6px;
-    border-bottom:1px solid var(--line);
-    position:relative;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:4px 0;
   }
-  .tab-row::-webkit-scrollbar{display:none;}
-  .tab-row::after{
-    content:'';
-    position:sticky;
-    right:0;
-    top:0;
-    bottom:0;
-    width:28px;
-    flex-shrink:0;
-    background:linear-gradient(to left, var(--bg) 0%, transparent 100%);
-    pointer-events:none;
-    margin-left:-28px;
-  }
-  .tab-row:last-child{ border-bottom:none; }
-    .tab-row button{
-    background:none;
-    border:none;
+  .tab-grid button{
+    background:var(--surface);
+    border:1px solid var(--line);
     color:var(--ink-dim);
     font-family:'Oswald', sans-serif;
-    font-size:var(--fs-base);
+    font-size:var(--fs-sm);
     letter-spacing:.01em;
-    padding:9px 1px 11px;
+    padding:5px 12px;
     cursor:pointer;
-    border-bottom:2px solid transparent;
+    border-radius:6px;
     white-space:nowrap;
-    flex:none;
+    transition:all .15s;
   }
-  .tab-row button.active{color:var(--ink); border-bottom-color:var(--amber);}
+  .tab-grid button:hover{border-color:var(--ink-dim); color:var(--ink);}
+  .tab-grid button.active{
+    background:var(--amber); color:#1a1a1a;
+    border-color:var(--amber); font-weight:500;
+  }
+  .tab-divider{
+    width:1px; height:24px; background:var(--line);
+    align-self:center; margin:0 4px;
+  }
+
+  /* Context bar — adapts per active tab */
+  .context-bar{
+    margin-top:var(--sp-lg);
+    padding:10px 0;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    flex-wrap:wrap;
+    align-items:center;
+    gap:10px;
+    min-height:40px;
+    animation:ctxFadeIn .2s ease;
+  }
+  .context-bar.empty{
+    border-bottom:none; min-height:0; padding:4px 0;
+  }
+  @keyframes ctxFadeIn{
+    from{opacity:0;transform:translateY(-4px)}
+    to{opacity:1;transform:translateY(0)}
+  }
+  .ctx-label{
+    font-family:'Inter',sans-serif;
+    font-size:var(--fs-xs); font-weight:600;
+    color:var(--ink-dim); text-transform:uppercase;
+    letter-spacing:.06em; margin-right:2px;
+  }
+  .ctx-years{
+    display:flex; flex-wrap:wrap; gap:4px; align-items:center;
+  }
+  .ctx-years button{
+    background:var(--surface); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Oswald',sans-serif; font-size:var(--fs-sm);
+    padding:4px 10px; cursor:pointer; border-radius:4px;
+    white-space:nowrap; transition:all .15s;
+  }
+  .ctx-years button:hover{border-color:var(--ink-dim); color:var(--ink);}
+  .ctx-years button.active{
+    background:var(--amber); color:#1a1a1a; border-color:var(--amber); font-weight:500;
+  }
+  .ctx-years.multi button{
+    padding-left:20px; position:relative;
+  }
+  .ctx-years.multi button::before{
+    content:''; position:absolute; left:6px; top:50%; transform:translateY(-50%);
+    width:10px; height:10px; border-radius:2px;
+    border:1.5px solid var(--ink-dim); transition:all .15s;
+  }
+  .ctx-years.multi button.active::before{
+    background:var(--amber); border-color:var(--amber);
+    box-shadow:inset 0 0 0 1.5px #1a1a1a;
+  }
+  .ctx-years.multi button.active{
+    background:rgba(206,184,136,.15); color:var(--ink); border-color:var(--amber);
+  }
+  .ctx-bulk{
+    display:flex; gap:4px; align-items:center; margin-left:4px;
+  }
+  .ctx-bulk button{
+    background:none; border:none; color:var(--ink-dim);
+    font-family:'Inter',sans-serif; font-size:var(--fs-xs);
+    cursor:pointer; text-decoration:underline; padding:2px 4px;
+  }
+  .ctx-bulk button:hover{color:var(--ink);}
+  .ctx-bulk .sep{color:var(--line); font-size:var(--fs-xs);}
+  .ctx-sep{
+    width:1px; height:20px; background:var(--line); margin:0 6px;
+  }
+  .ctx-weeks{
+    display:flex; gap:3px; align-items:center; flex-wrap:wrap;
+  }
+  .ctx-weeks button{
+    background:none; border:1px solid transparent; color:var(--ink-dim);
+    font-family:'Inter',sans-serif; font-size:var(--fs-xs); font-weight:500;
+    padding:3px 7px; cursor:pointer; border-radius:10px;
+    white-space:nowrap; transition:all .15s;
+    min-width:24px; text-align:center;
+  }
+  .ctx-weeks button:hover{color:var(--ink); border-color:var(--line);}
+  .ctx-weeks button.active{
+    background:var(--amber); color:#1a1a1a; border-color:var(--amber); font-weight:600;
+  }
+  .ctx-weeks .week-sep{
+    width:1px; height:14px; background:var(--line); margin:0 3px;
+  }
+  .ctx-info{
+    font-family:'Inter',sans-serif; font-size:var(--fs-sm);
+    color:var(--ink-dim); font-style:italic;
+  }
+  .ctx-info strong{color:var(--ink); font-weight:500; font-style:normal;}
+  .ctx-refresh{
+    margin-left:auto;
+  }
+  .ctx-refresh button{
+    background:none; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Inter',sans-serif; font-size:var(--fs-xs);
+    padding:4px 10px; cursor:pointer; border-radius:4px; transition:all .15s;
+  }
+  .ctx-refresh button:hover{border-color:var(--ink-dim); color:var(--ink);}
 
   /* Status / errors */
   .status{
     font-family:'Inter', sans-serif;
     color:var(--ink-dim);
-    padding:16px 0;
+    padding:var(--sp-xl) 0;
   }
   .error{
     background:var(--surface);
     border-left:3px solid var(--loss);
     border-radius:0 8px 8px 0;
-    padding:14px 16px;
+    padding:var(--sp-lg) var(--sp-xl);
     line-height:1.55;
     color:var(--ink);
   }
   .error strong{color:var(--loss);}
 
   /* Standings table */
-  table{width:100%; border-collapse:collapse; margin-bottom:28px;}
+  table{width:100%; border-collapse:collapse; margin-bottom:1.5rem;}
   thead th{
     text-align:left;
     font-family:var(--font-mono);
@@ -229,17 +314,17 @@
     letter-spacing:.07em;
     text-transform:uppercase;
     color:var(--ink-dim);
-    padding:0 10px 10px;
+    padding:0 var(--sp-md) var(--sp-md);
     font-weight:500;
   }
   thead th.num, td.num{text-align:right;}
   tbody td{
-    padding:13px 10px;
+    padding:var(--sp-lg) var(--sp-md);
     border-top:1px solid var(--line);
   }
   tbody tr:first-child td{border-top:none;}
   .rank{font-family:var(--font-mono); color:var(--ink-dim); width:26px;}
-  .team-name{font-weight:600;}
+  .team-name{font-weight:600; font-family:'Inter', sans-serif;}
   .team-id{font-family:var(--font-mono); font-weight:400; font-size:var(--fs-sm); color:var(--ink-dim);}
   .owner-key{
     display:block;
@@ -248,21 +333,21 @@
     font-size:var(--fs-xs);
     color:var(--ink-dim);
     word-break:break-all;
-    margin-top:2px;
+    margin-top:var(--sp-xs);
     -webkit-user-select:text;
     user-select:text;
   }
   td.num{font-family:var(--font-mono);}
-  .pos-rank{display:inline-block; margin-left:5px; font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--ink-dim); vertical-align:middle;}
+  .pos-rank{display:inline-block; margin-left:var(--sp-sm); font-family:var(--font-mono); font-size:var(--fs-xs); color:var(--ink-dim); vertical-align:middle;}
   .pos-rank.top{color:var(--amber); font-weight:700;}
 
-  .owner-ref{margin:20px 0 30px;}
+  .owner-ref{margin:var(--sp-xl) 0 1.5rem;}
   .owner-ref summary{
     cursor:pointer;
     font-family:'Oswald', sans-serif;
     font-size:var(--fs-base);
     color:var(--ink-dim);
-    padding:10px 0;
+    padding:var(--sp-md) 0;
     list-style:none;
   }
   .owner-ref summary::-webkit-details-marker{display:none;}
@@ -270,7 +355,7 @@
   .owner-ref[open] summary::before{content:'▾ ';}
   .owner-ref summary:hover{color:var(--ink);}
   .owner-ref table{font-size:var(--fs-sm);}
-  .owner-ref td, .owner-ref th{padding:7px 9px;}
+  .owner-ref td, .owner-ref th{padding:var(--sp-sm) var(--sp-md);}
   .owner-ref .oid{
     font-family:var(--font-mono);
     word-break:break-all;
@@ -284,8 +369,8 @@
   .matchup{
     background:var(--surface);
     border-radius:var(--radius);
-    padding:16px 18px;
-    margin-bottom:10px;
+    padding:var(--sp-xl) var(--sp-xl);
+    margin-bottom:var(--sp-md);
     display:grid;
     grid-template-columns:1fr auto 1fr;
     align-items:center;
@@ -308,11 +393,11 @@
     background:var(--surface);
     border-left:3px solid var(--amber);
     border-radius:0 8px 8px 0;
-    padding:12px 14px;
+    padding:var(--sp-lg) var(--sp-lg);
     font-size:var(--fs-sm);
     color:var(--ink-dim);
     line-height:1.55;
-    margin-bottom:18px;
+    margin-bottom:var(--sp-xl);
   }
   .spotlight-card{
     background:linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
@@ -331,15 +416,15 @@
     font-family:'Oswald', sans-serif;
     font-weight:600;
     font-size:var(--fs-xl);
-    margin:6px 0 8px;
+    margin:var(--sp-sm) 0 var(--sp-md);
   }
   .spotlight-banter{font-size:var(--fs-base); line-height:1.55; color:var(--ink);}
 
   .pr-matchup{
     background:var(--surface);
     border-radius:var(--radius);
-    padding:16px 18px;
-    margin-bottom:12px;
+    padding:var(--sp-xl) var(--sp-xl);
+    margin-bottom:var(--sp-lg);
     display:block;
     color:inherit;
     text-decoration:none;
@@ -353,12 +438,12 @@
     font-family:'Oswald', sans-serif;
     font-weight:600;
     font-size:var(--fs-md);
-    margin-bottom:4px;
+    margin-bottom:var(--sp-xs);
   }
-  .pr-matchup-teams .vs-sep{color:var(--ink-dim); font-family:'Inter', sans-serif; font-weight:400; font-size:var(--fs-sm); margin:0 6px;}
+  .pr-matchup-teams .vs-sep{color:var(--ink-dim); font-family:'Inter', sans-serif; font-weight:400; font-size:var(--fs-sm); margin:0 var(--sp-sm);}
   .pr-matchup-sub{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--ink-dim); margin-bottom:var(--sp-md);}
   .pr-matchup-banter{font-size:var(--fs-base); line-height:1.55; color:var(--ink); margin-top:var(--sp-md);}
-  .pr-matchup-result{font-family:var(--font-mono); font-size:var(--fs-base); margin-top:2px;}
+  .pr-matchup-result{font-family:var(--font-mono); font-size:var(--fs-base); margin-top:var(--sp-xs);}
   .winner-name{color:var(--win); font-weight:700;}
 
   /* Awards */
@@ -366,12 +451,12 @@
     display:grid;
     grid-template-columns:1fr;
     gap:10px;
-    margin-bottom:20px;
+    margin-bottom:var(--sp-xl);
   }
   .award-card{
     background:var(--surface);
     border-radius:var(--radius);
-    padding:16px 18px;
+    padding:var(--sp-xl) var(--sp-xl);
     display:grid;
     grid-template-columns:auto 1fr;
     gap:14px;
@@ -384,21 +469,21 @@
     font-size:var(--fs-lg);
     letter-spacing:.01em;
   }
-  .award-desc{font-size:var(--fs-sm); color:var(--ink-dim); margin-top:1px;}
-  .award-winner{font-weight:600; font-size:var(--fs-base); margin-top:6px;}
+  .award-desc{font-size:var(--fs-sm); color:var(--ink-dim); margin-top:var(--sp-xs);}
+  .award-winner{font-weight:600; font-size:var(--fs-base); margin-top:var(--sp-sm);}
   .award-detail{
     font-family:var(--font-mono);
     font-size:var(--fs-sm);
     color:var(--ink-dim);
-    margin-top:2px;
+    margin-top:var(--sp-xs);
   }
 
   /* Profile */
   .profile-header{
     background:linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
     border-radius:var(--radius);
-    padding:22px 20px;
-    margin:16px 0 20px;
+    padding:1.5rem var(--sp-xl);
+    margin:var(--sp-xl) 0 var(--sp-xl);
   }
   .profile-name{
     font-family:'Oswald', sans-serif;
@@ -406,13 +491,13 @@
     font-size:var(--fs-xxl);
     letter-spacing:.01em;
   }
-  .profile-sub{font-size:var(--fs-sm); color:var(--ink-dim); margin-top:2px;}
+  .profile-sub{font-size:var(--fs-sm); color:var(--ink-dim); margin-top:var(--sp-xs);}
   .profile-record{
     font-family:var(--font-mono);
     font-size:var(--fs-xxl);
     font-weight:700;
     color:var(--amber);
-    margin-top:10px;
+    margin-top:var(--sp-md);
   }
   .profile-record-label{font-size:var(--fs-sm); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.06em;}
 
@@ -420,46 +505,46 @@
     display:grid;
     grid-template-columns:repeat(2, 1fr);
     gap:8px;
-    margin-bottom:22px;
+    margin-bottom:1.5rem;
   }
   .stat-tile{
     background:var(--surface);
     border-radius:var(--radius);
-    padding:12px 14px;
+    padding:var(--sp-lg) var(--sp-lg);
   }
   .stat-tile-value{font-family:var(--font-mono); font-size:var(--fs-xl); font-weight:700;}
-  .stat-tile-label{font-size:var(--fs-xs); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; margin-top:2px;}
+  .stat-tile-label{font-size:var(--fs-xs); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; margin-top:var(--sp-xs);}
 
   .profile-pair-grid{
     display:grid;
     grid-template-columns:1fr 1fr;
     gap:10px;
-    margin-bottom:22px;
+    margin-bottom:1.5rem;
   }
   .profile-pair-card{
     background:var(--surface);
     border-radius:var(--radius);
-    padding:14px 14px;
+    padding:var(--sp-lg) var(--sp-lg);
   }
   .profile-pair-label{font-size:var(--fs-xs); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em;}
-  .profile-pair-name{font-weight:600; font-size:var(--fs-base); margin-top:6px;}
-  .profile-pair-detail{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--ink-dim); margin-top:2px;}
+  .profile-pair-name{font-weight:600; font-size:var(--fs-base); margin-top:var(--sp-sm);}
+  .profile-pair-detail{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--ink-dim); margin-top:var(--sp-xs);}
 
   .badge-grid{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(56px, 1fr));
     gap:6px;
-    margin:14px 0 22px;
+    margin:var(--sp-lg) 0 1.5rem;
   }
   .badge-card{
     background:var(--surface);
     border-radius:8px;
-    padding:7px 3px 6px;
+    padding:var(--sp-sm) var(--sp-xs) var(--sp-sm);
     text-align:center;
     position:relative;
   }
   .badge-card.locked{opacity:.32; filter:grayscale(1);}
-  .badge-emoji{font-size:var(--fs-lg); display:block; margin-bottom:3px; line-height:1;}
+  .badge-emoji{font-size:var(--fs-lg); display:block; margin-bottom:var(--sp-xs); line-height:1;}
   .badge-title{
     font-family:'Oswald', sans-serif;
     font-size:var(--fs-xs);
@@ -477,7 +562,7 @@
     font-size:var(--fs-xs);
     font-weight:700;
     border-radius:6px;
-    padding:0px 3px;
+    padding:0 var(--sp-xs);
   }
 
   /* History */
@@ -485,7 +570,7 @@
     display:flex;
     flex-wrap:wrap;
     gap:6px;
-    margin:16px 0 24px;
+    margin:var(--sp-xl) 0 1.5rem;
   }
   .season-chip{
     display:inline-flex;
@@ -493,7 +578,7 @@
     gap:6px;
     background:var(--surface);
     border-radius:20px;
-    padding:6px 12px 6px 9px;
+    padding:var(--sp-sm) var(--sp-lg) var(--sp-sm) var(--sp-md);
     font-family:var(--font-mono);
     font-size:var(--fs-sm);
     color:var(--ink-dim);
@@ -507,44 +592,44 @@
     font-weight:500;
     font-size:var(--fs-lg);
     letter-spacing:.01em;
-    margin:0 0 6px;
+    margin:0 0 var(--sp-sm);
   }
   .section-note{
     font-size:var(--fs-sm);
     color:var(--ink-dim);
-    margin:0 0 14px;
+    margin:0 0 var(--sp-lg);
     line-height:1.55;
   }
   .otd-cards{
     display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
-    gap:10px; margin:0 0 20px;
+    gap:10px; margin:0 0 var(--sp-xl);
   }
   .otd-card{
     background:var(--surface-2); border:1px solid var(--line);
-    border-radius:var(--radius); padding:12px 14px;
+    border-radius:var(--radius); padding:var(--sp-lg) var(--sp-lg);
   }
   .otd-card-label{
     font-family:'Oswald', sans-serif; font-size:var(--fs-sm); font-weight:600;
     letter-spacing:.06em; text-transform:uppercase; color:var(--gold,#d9a441);
-    margin:0 0 6px;
+    margin:0 0 var(--sp-sm);
   }
-  .otd-card-year{ font-size:var(--fs-sm); color:var(--ink-dim); margin:0 0 8px; }
+  .otd-card-year{ font-size:var(--fs-sm); color:var(--ink-dim); margin:0 0 var(--sp-md); }
   .otd-card-line{
     display:flex; justify-content:space-between; gap:8px;
-    font-size:var(--fs-base); padding:2px 0; color:var(--ink-dim);
+    font-size:var(--fs-base); padding:var(--sp-xs) 0; color:var(--ink-dim);
   }
   .otd-card-line.otd-win{ color:var(--ink,#E5E5E5); font-weight:600; }
   .otd-pts{ font-variant-numeric:tabular-nums; }
-  .otd-season{ margin:0 0 14px; }
+  .otd-season{ margin:0 0 var(--sp-lg); }
   .otd-season-year{
     font-family:'Oswald', sans-serif; font-size:var(--fs-base); font-weight:500;
-    color:var(--ink,#E5E5E5); margin:0 0 6px; padding-bottom:3px;
+    color:var(--ink,#E5E5E5); margin:0 0 var(--sp-sm); padding-bottom:var(--sp-xs);
     border-bottom:1px solid var(--line);
   }
   .otd-season-games{ display:flex; flex-direction:column; gap:3px; }
   .otd-game{
     display:flex; align-items:center; gap:8px; flex-wrap:wrap;
-    font-size:var(--fs-sm); color:var(--ink-dim); padding:2px 0;
+    font-size:var(--fs-sm); color:var(--ink-dim); padding:var(--sp-xs) 0;
   }
   .otd-team{ font-variant-numeric:tabular-nums; }
   .otd-team.otd-win{ color:var(--win,#8FBF9F); font-weight:600; }
@@ -552,20 +637,20 @@
   .otd-badge{
     font-size:var(--fs-xs); font-weight:700; letter-spacing:.05em; text-transform:uppercase;
     color:var(--gold,#d9a441); border:1px solid var(--gold,#d9a441);
-    border-radius:4px; padding:1px 5px;
+    border-radius:4px; padding:var(--sp-xs) var(--sp-sm);
   }
   /* What-If Standings */
-  .wi-intro{ color:var(--ink-dim); font-size:var(--fs-sm); margin:0 0 12px; }
+  .wi-intro{ color:var(--ink-dim); font-size:var(--fs-sm); margin:0 0 var(--sp-lg); }
   .wi-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
-  .wi-card{ border:1px solid var(--line,#2a2a2a); border-radius:8px; padding:12px 14px; background:var(--panel,rgba(255,255,255,.02)); }
-  .wi-title{ margin:0 0 2px; font-size:var(--fs-base); }
-  .wi-desc{ margin:0 0 10px; font-size:var(--fs-sm); color:var(--ink-dim); }
+  .wi-card{ border:1px solid var(--line,#2a2a2a); border-radius:8px; padding:var(--sp-lg) var(--sp-lg); background:var(--panel,rgba(255,255,255,.02)); }
+  .wi-title{ margin:0 0 var(--sp-xs); font-size:var(--fs-base); }
+  .wi-desc{ margin:0 0 var(--sp-md); font-size:var(--fs-sm); color:var(--ink-dim); }
   .wi-table{ width:100%; border-collapse:collapse; font-size:var(--fs-sm); }
-  .wi-table th{ text-align:left; font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.04em; color:var(--ink-dim); padding:2px 6px; border-bottom:1px solid var(--line,#2a2a2a); }
-  .wi-table td{ padding:3px 6px; }
-  .wi-rank{ color:var(--ink-dim); width:24px; }
-  .wi-team{ font-weight:600; }
-  .wi-metric{ text-align:right; white-space:nowrap; }
+  .wi-table th{ text-align:left; font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.04em; color:var(--ink-dim); padding:var(--sp-xs) var(--sp-sm); border-bottom:1px solid var(--line,#2a2a2a); }
+  .wi-table td{ padding:var(--sp-xs) var(--sp-sm); }
+  .wi-rank{ color:var(--ink-dim); width:24px; font-family:var(--font-mono); }
+  .wi-team{ font-weight:600; font-family:'Inter', sans-serif; }
+  .wi-metric{ text-align:right; white-space:nowrap; font-family:var(--font-mono); }
   .wi-playoff-line td{ border-bottom:2px solid var(--gold,#d9a441); }
   .wi-delta{ font-size:var(--fs-sm); font-weight:700; }
   .wi-up{ color:#4caf50; }
@@ -579,7 +664,7 @@
     color:#1a1205;
     background:var(--amber);
     border-radius:4px;
-    padding:1px 5px;
+    padding:var(--sp-xs) var(--sp-sm);
     vertical-align:middle;
   }
   .belt-how{
@@ -594,14 +679,14 @@
   }
   .glossary-link:hover{ opacity:0.75; }
   .footnotes{
-    margin:14px 0 0;
-    padding-top:12px;
+    margin:var(--sp-lg) 0 0;
+    padding-top:var(--sp-lg);
     border-top:1px solid var(--line);
   }
   .footnotes p{
     font-size:var(--fs-sm);
     color:var(--ink-dim);
-    margin:0 0 8px;
+    margin:0 0 var(--sp-md);
     line-height:1.55;
   }
   .footnotes p:last-child{margin-bottom:0;}
@@ -616,14 +701,14 @@
     background:var(--bg);
   }
   table.h2h td.diag{color:var(--ink-dim);}
-  .h2h-scroll{overflow-x:auto; margin-bottom:30px; border-radius:var(--radius);}
+  .h2h-scroll{overflow-x:auto; margin-bottom:1.5rem; border-radius:var(--radius);}
 
   footer{
     text-align:center;
     color:var(--ink-dim);
     font-family:'Inter', sans-serif;
     font-size:var(--fs-sm);
-    margin-top:36px;
+    margin-top:2rem;
   }
 
   /* Award glossary modal */
@@ -631,8 +716,8 @@
     display:inline-flex;
     align-items:center;
     gap:5px;
-    margin-left:10px;
-    padding:2px 9px;
+    margin-left:var(--sp-md);
+    padding:var(--sp-xs) var(--sp-md);
     background:var(--surface-2);
     border:1px solid var(--line);
     border-radius:999px;
@@ -652,7 +737,7 @@
     display:none;
     align-items:flex-start;
     justify-content:center;
-    padding:40px 16px;
+    padding:2rem var(--sp-xl);
     z-index:1000;
     overflow-y:auto;
   }
@@ -669,7 +754,7 @@
     display:flex;
     align-items:center;
     justify-content:space-between;
-    padding:16px 18px;
+    padding:var(--sp-xl) var(--sp-xl);
     border-bottom:1px solid var(--line);
     position:sticky;
     top:0;
@@ -684,35 +769,35 @@
     font-size:var(--fs-xl);
     line-height:1;
     cursor:pointer;
-    padding:0 4px;
+    padding:0 var(--sp-xs);
   }
   .modal-close:hover{ color:var(--ink); }
-  .modal-body{ padding:8px 18px 18px; }
+  .modal-body{ padding:var(--sp-md) var(--sp-xl) var(--sp-xl); }
   .glossary-row{
     display:flex;
     align-items:flex-start;
     gap:10px;
-    padding:10px 0;
+    padding:var(--sp-md) 0;
     border-bottom:1px solid var(--line);
   }
   .glossary-row:last-child{ border-bottom:none; }
   .glossary-emoji{ font-size:var(--fs-lg); line-height:1.3; flex:0 0 auto; }
   .glossary-text{ flex:1; }
   .glossary-title{ font-weight:700; font-size:var(--fs-base); }
-  .glossary-desc{ color:var(--ink-dim); font-size:var(--fs-sm); margin-top:2px; }
+  .glossary-desc{ color:var(--ink-dim); font-size:var(--fs-sm); margin-top:var(--sp-xs); }
   .muted{ color:var(--ink-dim); font-weight:400; }
   th.num{ text-align:right; }
   .milestone-highlights{
     display:grid;
     grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
     gap:10px;
-    margin:0 0 16px;
+    margin:0 0 var(--sp-xl);
   }
   .milestone-card{
     background:var(--surface-2);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:10px 12px;
+    padding:var(--sp-md) var(--sp-lg);
   }
   .milestone-card-label{
     font-family:var(--font-mono);
@@ -720,13 +805,13 @@
     letter-spacing:.08em;
     text-transform:uppercase;
     color:var(--amber);
-    margin-bottom:6px;
+    margin-bottom:var(--sp-sm);
   }
   .milestone-card-name{
     font-size:var(--fs-base);
     font-weight:700;
     color:var(--ink);
-    margin-bottom:3px;
+    margin-bottom:var(--sp-xs);
   }
   .milestone-card-detail{
     font-size:var(--fs-sm);
@@ -745,38 +830,38 @@
     letter-spacing:.08em;
     text-transform:uppercase;
     color:var(--ink-dim);
-    margin:14px 2px 6px;
+    margin:var(--sp-lg) var(--sp-xs) var(--sp-sm);
   }
-  .milestone-table tbody td{ padding:8px 10px; }
+  .milestone-table tbody td{ padding:var(--sp-md) var(--sp-md); }
   .milestone-table td.num{ font-family:var(--font-mono); font-size:var(--fs-sm); }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 
   .h2h-select{
     background:var(--surface); color:var(--ink); border:1px solid var(--line, rgba(255,255,255,.12));
-    border-radius:var(--radius); padding:8px 10px; font-size:var(--fs-base); font-family:inherit; width:100%;
+    border-radius:var(--radius); padding:var(--sp-md) var(--sp-md); font-size:var(--fs-base); font-family:inherit; width:100%;
   }
   .h2h-row{
     display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px;
-    padding:9px 12px; border-radius:var(--radius); background:var(--surface); margin-bottom:6px;
+    padding:var(--sp-md) var(--sp-lg); border-radius:var(--radius); background:var(--surface); margin-bottom:var(--sp-sm);
   }
   .h2h-head{ background:transparent; font-weight:700; }
   .h2h-cell-a{ text-align:right; font-family:var(--font-mono); font-size:var(--fs-base); }
   .h2h-cell-b{ text-align:left; font-family:var(--font-mono); font-size:var(--fs-base); }
   .h2h-cell-label{ text-align:center; font-size:var(--fs-xs); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; }
   .h2h-win{ color:var(--accent, #4ade80); font-weight:700; }
-  .h2h-games-title{ font-weight:700; font-size:var(--fs-base); margin:22px 0 8px; }
-  .h2h-game{ padding:7px 12px; margin-bottom:4px; }
+  .h2h-games-title{ font-weight:700; font-size:var(--fs-base); margin:1.5rem 0 var(--sp-md); }
+  .h2h-game{ padding:var(--sp-sm) var(--sp-lg); margin-bottom:var(--sp-xs); }
   .h2h-game .h2h-cell-label{ font-size:var(--fs-sm); text-transform:none; letter-spacing:0; color:var(--ink-dim); }
-  .h2h-game-tag{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.05em; color:var(--accent, #4ade80); margin-left:4px; }
+  .h2h-game-tag{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.05em; color:var(--accent, #4ade80); margin-left:var(--sp-xs); }
   .trash-card{
     background:var(--surface);
     border:1px solid var(--line);
     border-radius:var(--radius);
-    padding:14px 16px;
-    margin-bottom:12px;
+    padding:var(--sp-lg) var(--sp-xl);
+    margin-bottom:var(--sp-lg);
   }
   .trash-head{
-    display:flex; align-items:baseline; gap:10px; margin-bottom:6px;
+    display:flex; align-items:baseline; gap:10px; margin-bottom:var(--sp-sm);
   }
   .trash-rank{
     font-family:var(--font-mono);
@@ -796,25 +881,25 @@
   #draftView{ font-size:var(--fs-sm); }
   #draftView h3{ font-size:var(--fs-lg); }
   #draftView h4{ font-size:var(--fs-base); }
-  #draftView table.data tbody td{ font-size:var(--fs-sm); padding:8px 10px; }
+  #draftView table.data tbody td{ font-size:var(--fs-sm); padding:var(--sp-md) var(--sp-md); }
   #draftView table.data thead th{ font-size:var(--fs-sm); }
 
-#eloView .section-title { font-size:var(--fs-lg); font-weight: 700; margin-bottom: 4px; }
-#eloView .section-note { font-size:var(--fs-sm); opacity: 0.7; margin-bottom: 12px; }
+#eloView .section-title { font-size:var(--fs-lg); font-weight: 700; margin-bottom:var(--sp-xs); }
+#eloView .section-note { font-size:var(--fs-sm); opacity: 0.7; margin-bottom:var(--sp-lg); }
 #eloView .elo-table { width: 100%; border-collapse: collapse; font-size:var(--fs-base); }
-#eloView .elo-table th, #eloView .elo-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid rgba(128,128,128,0.2); }
+#eloView .elo-table th, #eloView .elo-table td { padding:var(--sp-sm) var(--sp-md); text-align: left; border-bottom: 1px solid rgba(128,128,128,0.2); }
 #eloView .elo-table th { font-weight: 600; opacity: 0.75; white-space: nowrap; }
 #eloView .elo-table tbody tr:hover { background: rgba(128,128,128,0.08); }
 #eloView .elo-num { text-align: right; font-variant-numeric: tabular-nums; font-family:var(--font-mono); }
 #eloView .elo-peak { white-space: nowrap; opacity: 0.85; font-variant-numeric: tabular-nums; font-family:var(--font-mono); }
 #eloView .elo-trend { width: 130px; }
 #eloView .elo-spark { display: block; color: #4a90d9; }
-#eloView .status { padding: 16px; opacity: 0.7; }
-.draft-chip { display:inline-block; padding:1px 6px; border-radius:4px; font-size:var(--fs-xs); font-weight:700; letter-spacing:0.04em; line-height:1.3; text-transform:uppercase; }
+#eloView .status { padding:var(--sp-xl); opacity: 0.7; }
+.draft-chip { display:inline-block; padding:var(--sp-xs) var(--sp-sm); border-radius:4px; font-size:var(--fs-xs); font-weight:700; letter-spacing:0.04em; line-height:1.3; text-transform:uppercase; }
 .draft-chip-steal { background:rgba(46,125,50,0.18); color:#2e7d32; }
 .draft-chip-bust { background:rgba(198,40,40,0.18); color:#c62828; }
-.draft-legend {  opacity:0.8; margin:4px 0 14px; line-height:1.6; }
-.draft-legend .draft-chip { margin-right:4px; }
+.draft-legend {  opacity:0.8; margin:var(--sp-xs) 0 var(--sp-lg); line-height:1.6; }
+.draft-legend .draft-chip { margin-right:var(--sp-xs); }
 
 .confidence-bar { display:flex; height:22px; border-radius:4px; overflow:hidden; margin:0.4rem 0; font-size:var(--fs-sm); font-family:var(--font-mono); }
 .conf-home { background:var(--green, #2e7d32); color:#fff; display:flex; align-items:center; justify-content:center; min-width:30px; transition:width 0.3s; }
@@ -832,7 +917,7 @@
 .bracket-round h3 { margin-bottom:0.5rem; }
 .bracket-round { margin-bottom:1.2rem; }
 .bracket-round h3 {  text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.4rem; border-bottom:1px solid var(--line); padding-bottom:0.3rem; }
-.bracket-game { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:0; padding:0.5rem 0.7rem; margin-bottom:3px; background:var(--bg-card); border-radius:6px; border:1px solid var(--line); }
+.bracket-game { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:0; padding:0.5rem 0.7rem; margin-bottom:var(--sp-xs); background:var(--bg-card); border-radius:6px; border:1px solid var(--line); }
 .bracket-game .team-left { text-align:right; }
 .bracket-game .team-right { text-align:left; }
 .bracket-game .winner { font-weight:700; color:var(--amber); }
@@ -854,23 +939,23 @@
 .record-card { background:var(--surface-2, var(--bg-card)); border:1px solid var(--line); border-radius:var(--radius, 8px); padding:0.7rem 0.9rem; margin-bottom:0.6rem; }
 .record-card-title { font-family:'Oswald', sans-serif; font-size:var(--fs-sm); font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--gold, var(--amber)); margin-bottom:0.4rem; }
 .record-card-body table { width:100%; }
-.record-card-body th, .record-card-body td {  padding:3px 6px; }
+.record-card-body th, .record-card-body td {  padding:var(--sp-xs) var(--sp-sm); }
 .record-card-body .num { font-family:var(--font-mono); text-align:right; }
 
-.bracket-bye { padding:0.4rem 0.7rem; margin-bottom:3px; background:var(--bg-card); border-radius:6px; border:1px dashed var(--amber); display:flex; align-items:center; gap:0.5rem; font-size:var(--fs-sm); }
-.bye-label {  text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); background:var(--bg-surface); padding:2px 6px; border-radius:3px; margin-left:auto; }
+.bracket-bye { padding:0.4rem 0.7rem; margin-bottom:var(--sp-xs); background:var(--bg-card); border-radius:6px; border:1px dashed var(--amber); display:flex; align-items:center; gap:0.5rem; font-size:var(--fs-sm); }
+.bye-label {  text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); background:var(--bg-surface); padding:var(--sp-xs) var(--sp-sm); border-radius:3px; margin-left:auto; }
 .bye-seed, .bracket-seed { font-family:var(--font-mono);  color:var(--text-muted); }
 
 .trends-table {  }
-.trends-table th, .trends-table td { padding:4px 6px; white-space:nowrap; }
+.trends-table th, .trends-table td { padding:var(--sp-xs) var(--sp-sm); white-space:nowrap; }
 .trends-table svg { display:inline-block; }
 
 
-.elo-table th, .elo-table td, .trends-table th, .trends-table td { font-size: var(--fs-sm); padding: 5px 7px; }
+.elo-table th, .elo-table td, .trends-table th, .trends-table td { font-size: var(--fs-sm); padding:var(--sp-sm) var(--sp-sm); }
 table .num, td.num { font-family: var(--font-mono); text-align: right; }
 
 /* Tab bar */
-.tab-row button { font-size: var(--fs-sm); padding: var(--sp-sm) var(--sp-md); }
+/* tab-grid styles handled above */
 
 /* Awards */
 .award-card { font-size: var(--fs-sm); padding: 0.5rem 0.6rem; }
@@ -886,9 +971,8 @@ table .num, td.num { font-family: var(--font-mono); text-align: right; }
 .pr-matchup-sub { font-size: var(--fs-sm); font-family: var(--font-mono); }
 .pr-matchup-banter { font-size: var(--fs-base); }
 
-/* Numeric columns get mono (but not name headers in h2h) */
-table td.num, table td:nth-child(n+2) { font-family: var(--font-mono); }
-table td.team-name, table td.rowhead, table.h2h td.rowhead, table.h2h th { font-family: 'Inter', sans-serif; }
+/* Numeric cells get mono + right-align — only via explicit .num class */
+table td.num, table th.num { font-family: var(--font-mono); text-align: right; }
 
 /* Confidence bar */
 .confidence-bar { font-size: var(--fs-xs); font-family: var(--font-mono); height: 20px; }
@@ -896,7 +980,7 @@ table td.team-name, table td.rowhead, table.h2h td.rowhead, table.h2h th { font-
 /* Record book cards */
 .record-card { font-size: var(--fs-sm); }
 .record-card-title { font-size: var(--fs-xs); }
-.record-card-body th, .record-card-body td { font-size: var(--fs-sm); padding: 3px 5px; }
+.record-card-body th, .record-card-body td { font-size: var(--fs-sm); padding:var(--sp-xs) var(--sp-sm); }
 
 /* HOF plaques */
 .hof-year { font-size: var(--fs-xs); }
@@ -937,14 +1021,13 @@ table td.team-name, table td.rowhead, table.h2h td.rowhead, table.h2h th { font-
 .glossary-desc { font-size: var(--fs-sm); }
 
 /* Standings-specific mono for records/points */
-#standingsView td { font-family: var(--font-mono); }
-#standingsView td:first-child { font-family: 'Inter', sans-serif; }
+/* Standings numeric cells handled via .num class */
 
 /* Matchups view scores */
 .matchup-score { font-family: var(--font-mono); }
 
 /* Trends */
-.trends-table td, .trends-table th { font-size: var(--fs-sm); padding: 4px 5px; }
+.trends-table td, .trends-table th { font-size: var(--fs-sm); padding:var(--sp-xs) var(--sp-sm); }
 
 /* ===== TYPOGRAPHY NORMALIZATION ===== */
 :root {
@@ -1014,10 +1097,6 @@ p.section-note { margin-bottom: var(--sp-md); }
 
 td.rank { width: 20px; color: var(--ink-dim); }
 
-/* Ensure team/manager names ALWAYS use Inter, never mono */
-td.team-name, td.rowhead, .tab-row button,
-table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important; }
-
 /* Compact hero cards globally */
 .waiver-hero, [style*="linear-gradient"][style*="amber"] {
   padding: var(--sp-md) var(--sp-lg) !important;
@@ -1037,32 +1116,13 @@ table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important
     <h1 id="leagueTitle">Gridiron Board</h1>
     <span class="week-chip" id="weekChip"></span>
 
-    <div class="controls controls-compact">
-      <div class="fieldC">
-        <label for="viewSeason">Season</label>
-        <div id="seasonChips" class="year-chips" role="tablist" aria-label="Season"></div>
-        <select id="viewSeason" class="visually-hidden" tabindex="-1" aria-hidden="true"></select>
-        <div class="season-bulk">
-          <button type="button" id="seasonSelectAll" class="season-bulk-btn">Select all</button>
-          <span class="season-bulk-sep" aria-hidden="true">/</span>
-          <button type="button" id="seasonDeselectAll" class="season-bulk-btn">Deselect all</button>
-        </div>
-      </div>
-      <div class="fieldC">
-        <label for="viewWeek">Week</label>
-        <select id="viewWeek" class="sel-sm" style="min-width:78px;"></select>
-      </div>
-      <div class="fieldC">
-        <span class="label-spacer" aria-hidden="true"></span>
-        <button type="button" id="refreshBtn" class="btn btn-ghost btn-icon-sm" title="Pull fresh data for this season" aria-label="Refresh">↻ Refresh</button>
-      </div>
-    </div>
+
   </div>
 </header>
 
 <div class="wrap">
   <nav class="tabs-wrap">
-    <div class="tab-row">
+    <div class="tab-grid">
       <button data-tab="standings" class="active">Standings</button>
       <button data-tab="matchups">Matchups</button>
       <button data-tab="preview">Preview</button>
@@ -1071,8 +1131,7 @@ table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important
       <button data-tab="draft">Draft</button>
       <button data-tab="waivers">Waivers</button>
       <button data-tab="bracket">Bracket</button>
-    </div>
-    <div class="tab-row">
+      <span class="tab-divider"></span>
       <button data-tab="awards">Awards</button>
       <button data-tab="profile">Profile</button>
       <button data-tab="history">History</button>
@@ -1083,12 +1142,11 @@ table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important
       <button data-tab="milestones">Milestones</button>
       <button data-tab="otd">On This Day</button>
       <button data-tab="whatif">What-If</button>
-      
-      
-      
       <button data-tab="belt">Belt</button>
     </div>
   </nav>
+
+  <div id="contextBar" class="context-bar"></div>
 
   <div id="statusArea"></div>
   <div id="standingsView"></div>
@@ -1136,9 +1194,11 @@ table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important
 // in the UI. Change it here if you ever repoint this deployment.
 const LEAGUE_ID = '232506';
 
-const viewSeasonSelect = document.getElementById('viewSeason');
-const viewWeekSelect = document.getElementById('viewWeek');
-const refreshBtn = document.getElementById('refreshBtn');
+// Virtual select stand-ins (old DOM elements removed; context bar handles UI)
+const viewSeasonSelect = { value: '', get innerHTML(){ return ''; }, set innerHTML(v){} };
+const viewWeekSelect = { value: '', get innerHTML(){ return ''; }, set innerHTML(v){} };
+const refreshBtn = { disabled: false };
+let activeTabName = 'standings';
 const statusArea = document.getElementById('statusArea');
 const standingsView = document.getElementById('standingsView');
 const matchupsView = document.getElementById('matchupsView');
@@ -1241,8 +1301,171 @@ function setTab(name){
   if (name === 'bracket') renderBracketTab();
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
+  activeTabName = name;
+  updateContextBar();
 }
 document.querySelectorAll('.tabs-wrap button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+// ===== Context Bar =====
+const CTX_TAB_CONFIG = {
+  standings:'season', matchups:'season-week', preview:'season-week', review:'season-week',
+  positions:'season', draft:'season', waivers:'season', bracket:'season', whatif:'season',
+  awards:'multi', h2h:'multi', elo:'multi',
+  profile:'all', history:'all', records:'all', trends:'all',
+  milestones:'all', otd:'all', belt:'all'
+};
+
+function getAvailableYears(){
+  const years = new Set(history.loadedSeasons);
+  years.add(latestLikelySeason);
+  for (let y = LEAGUE_FIRST_SEASON; y <= latestLikelySeason; y++) years.add(y);
+  return [...years].sort((a, b) => a - b);
+}
+
+function getAvailableWeeks(){
+  const weeks = [...new Set(state.schedule.map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+  return weeks;
+}
+
+function getPlayoffStartWeek(){
+  const s = state.settings;
+  const regLen = s?.scheduleSettings?.matchupPeriodCount || 14;
+  return regLen + 1;
+}
+
+function updateContextBar(){
+  const bar = document.getElementById('contextBar');
+  if (!bar) return;
+  const type = CTX_TAB_CONFIG[activeTabName] || 'season';
+  const years = getAvailableYears();
+  const selYear = state.seasonYear || years[years.length - 1];
+  let html = '';
+
+  bar.classList.remove('empty');
+
+  if (type === 'season' || type === 'season-week') {
+    html += '<span class="ctx-label">Season</span>';
+    html += '<div class="ctx-years" id="ctxYears">';
+    years.forEach(y => {
+      const cls = y === selYear ? ' class="active"' : '';
+      html += '<button data-year="'+y+'"'+cls+'>'+y+'</button>';
+    });
+    html += '</div>';
+
+    if (type === 'season-week') {
+      const weeks = getAvailableWeeks();
+      const curWeek = viewWeekSelect.value ? parseInt(viewWeekSelect.value, 10) : (state.currentWeek || weeks[weeks.length-1] || 1);
+      const poStart = getPlayoffStartWeek();
+      html += '<span class="ctx-sep"></span>';
+      html += '<span class="ctx-label">Week</span>';
+      html += '<div class="ctx-weeks" id="ctxWeeks">';
+      let addedSep = false;
+      weeks.forEach(w => {
+        if (w >= poStart && !addedSep) { html += '<span class="week-sep"></span>'; addedSep = true; }
+        const cls = w === curWeek ? ' class="active"' : '';
+        html += '<button data-week="'+w+'"'+cls+'>'+w+'</button>';
+      });
+      html += '</div>';
+    }
+
+    // Refresh button
+    html += '<span class="ctx-refresh"><button id="ctxRefresh" title="Pull fresh data for this season">↻</button></span>';
+  }
+  else if (type === 'multi') {
+    html += '<span class="ctx-label">Seasons</span>';
+    html += '<div class="ctx-years multi" id="ctxYears">';
+    years.forEach(y => {
+      const cls = history.checkedSeasons.has(y) ? ' class="active"' : '';
+      html += '<button data-year="'+y+'"'+cls+'>'+y+'</button>';
+    });
+    html += '</div>';
+    html += '<div class="ctx-bulk">';
+    html += '<button id="ctxBulkAll">All</button>';
+    html += '<span class="sep">/</span>';
+    html += '<button id="ctxBulkNone">None</button>';
+    html += '</div>';
+  }
+  else if (type === 'all') {
+    const n = history.loadedSeasons.length || 0;
+    if (n > 0) {
+      const minY = Math.min(...history.loadedSeasons);
+      const maxY = Math.max(...history.loadedSeasons);
+      html += '<span class="ctx-info">Showing all <strong>'+n+' seasons</strong> ('+minY+'\u2013'+maxY+')</span>';
+    }
+    bar.classList.add('empty');
+  }
+
+  bar.innerHTML = html;
+  wireContextBarEvents(type);
+}
+
+function wireContextBarEvents(type){
+  const bar = document.getElementById('contextBar');
+  if (!bar) return;
+
+  // Year clicks
+  const yearsEl = document.getElementById('ctxYears');
+  if (yearsEl) {
+    yearsEl.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const yr = parseInt(btn.dataset.year, 10);
+        if (type === 'multi') {
+          // Toggle
+          if (history.checkedSeasons.has(yr) && history.checkedSeasons.size > 1) {
+            history.checkedSeasons.delete(yr);
+          } else {
+            if (!history.data[yr]) { selectSeason(yr, false); return; }
+            history.checkedSeasons.add(yr);
+          }
+          activateNewestChecked();
+          refreshSeasonDependentViews();
+          updateContextBar();
+        } else {
+          // Single select
+          if (!history.data[yr]) { selectSeason(yr, false); return; }
+          history.checkedSeasons = new Set([yr]);
+          activateNewestChecked();
+          updateContextBar();
+        }
+      });
+    });
+  }
+
+  // Week clicks
+  const weeksEl = document.getElementById('ctxWeeks');
+  if (weeksEl) {
+    weeksEl.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        viewWeekSelect.value = btn.dataset.week;
+        updateContextBar();
+        renderMatchups(); renderPreview(); renderReview();
+      });
+    });
+  }
+
+  // Bulk controls
+  const bulkAll = document.getElementById('ctxBulkAll');
+  if (bulkAll) bulkAll.addEventListener('click', () => {
+    history.loadedSeasons.forEach(y => { if (history.data[y]) history.checkedSeasons.add(y); });
+    activateNewestChecked();
+    refreshSeasonDependentViews();
+    updateContextBar();
+  });
+  const bulkNone = document.getElementById('ctxBulkNone');
+  if (bulkNone) bulkNone.addEventListener('click', () => {
+    const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
+    history.checkedSeasons = new Set([checked[0] || latestLikelySeason]);
+    activateNewestChecked();
+    refreshSeasonDependentViews();
+    updateContextBar();
+  });
+
+  // Refresh button
+  const refBtn = document.getElementById('ctxRefresh');
+  if (refBtn) refBtn.addEventListener('click', () => {
+    selectSeason(state.seasonYear || parseInt(viewSeasonSelect.value, 10) || latestLikelySeason, true);
+  });
+}
 
 // ---- Draft recap / grades (Task 9) ----
 const DRAFT_MIN_YEAR = 2018;
@@ -1297,27 +1520,16 @@ function gradeDraftPicks(picks, pmap){
 async function renderDraftContent(){
   const view = document.getElementById('draftView');
   if (!view) return;
-  if (!view.dataset.init){
-    view.dataset.init = '1';
-    const years = draftAvailableYears();
-    const defaultYear = years[0] || 2025;
-    view.innerHTML = '<div class="year-chips-row">' +
-      years.map(y => '<button class="year-chip'+(y===defaultYear?' active':'')+'" data-yr="'+y+'">'+y+'</button>').join('') +
-      '</div><div id="draftBody"></div>';
-    view.querySelectorAll('.year-chip').forEach(btn => btn.addEventListener('click', function(){
-      view.querySelectorAll('.year-chip').forEach(b=>b.classList.remove('active'));
-      this.classList.add('active');
-      document.getElementById('draftYearSel').value = this.dataset.yr;
-      renderDraftBody();
-    }));
-    // Hidden select to keep renderDraftBody working (it reads draftYearSel)
+  // Ensure hidden draftYearSel exists (renderDraftBody reads it)
+  if (!document.getElementById('draftYearSel')) {
     const hiddenSel = document.createElement('select');
     hiddenSel.id = 'draftYearSel';
     hiddenSel.style.display = 'none';
-    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.text = y; hiddenSel.add(o); });
-    hiddenSel.value = defaultYear;
     view.prepend(hiddenSel);
   }
+  document.getElementById('draftYearSel').value = state.seasonYear || latestLikelySeason;
+  view.innerHTML = '<div id="draftBody"></div>';
+  if (document.getElementById('draftYearSel').parentNode !== view) view.prepend(document.getElementById('draftYearSel'));
   renderDraftBody();
 }
 
@@ -1603,74 +1815,8 @@ loadOwnerAliases();
 // Every season currently available to pick from: whatever's cached/fetched,
 // plus the current likely season even if nothing's been loaded for it yet
 // (selecting it triggers a live fetch the first time).
-function populateSeasonSelect(){
-  // Always show the full league range so never-loaded older seasons still
-  // appear as (unchecked) chips the user can fetch on demand.
-  const years = new Set(history.loadedSeasons);
-  years.add(latestLikelySeason);
-  for (let y = LEAGUE_FIRST_SEASON; y <= latestLikelySeason; y++) years.add(y);
-  const sorted = [...years].sort((a, b) => b - a);
 
-  const prev = viewSeasonSelect.value ? parseInt(viewSeasonSelect.value, 10) : state.seasonYear;
-  viewSeasonSelect.innerHTML = sorted.map(y => '<option value="' + y + '">' + y + '</option>').join('');
-  viewSeasonSelect.value = sorted.includes(prev) ? prev : sorted[0];
-  renderSeasonChips(sorted);
-}
 
-// Renders the segmented year chips that mirror/drive the hidden #viewSeason
-// select. Clicking a chip sets the select value and calls selectSeason so all
-// existing wiring stays untouched.
-function renderSeasonChips(sorted){
-  const strip = document.getElementById('seasonChips');
-  if (!strip) return;
-  strip.innerHTML = sorted.map(y => {
-    const on = history.checkedSeasons.has(y) ? ' on' : '';
-    return '<button type="button" class="year-chip' + on + '" data-year="' + y + '"'
-      + ' aria-pressed="' + (on ? 'true' : 'false') + '">' + y + '</button>';
-  }).join('');
-  strip.querySelectorAll('button.year-chip').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const yr = parseInt(btn.dataset.year, 10);
-      const isOn = history.checkedSeasons.has(yr);
-      if (!isOn) {
-        if (history.data[yr]) {
-          history.checkedSeasons.add(yr);
-          activateNewestChecked();
-        } else {
-          selectSeason(yr, false);
-        }
-      } else {
-        if (history.checkedSeasons.size <= 1) return;
-        history.checkedSeasons.delete(yr);
-        activateNewestChecked();
-      }
-    });
-  });
-}
-
-function wireSeasonBulkButtons(){
-  const selAll = document.getElementById("seasonSelectAll");
-  const deselAll = document.getElementById("seasonDeselectAll");
-  if (selAll) selAll.addEventListener("click", () => {
-    history.loadedSeasons.forEach(y => { if (history.data[y]) history.checkedSeasons.add(y); });
-    if (!history.checkedSeasons.size && history.loadedSeasons.length) {
-      history.checkedSeasons.add(history.loadedSeasons[history.loadedSeasons.length - 1]);
-    }
-    const sorted = [...new Set([...history.loadedSeasons])].sort((a, b) => b - a);
-    renderSeasonChips(sorted);
-    activateNewestChecked();
-    refreshSeasonDependentViews();
-  });
-  if (deselAll) deselAll.addEventListener("click", () => {
-    const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
-    if (!checked.length) return;
-    history.checkedSeasons = new Set([checked[0]]);
-    const sorted = [...new Set([...history.loadedSeasons])].sort((a, b) => b - a);
-    renderSeasonChips(sorted);
-    activateNewestChecked();
-    refreshSeasonDependentViews();
-  });
-}
 
 function activateNewestChecked(){
   const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
@@ -1680,16 +1826,6 @@ function activateNewestChecked(){
   applySeasonToState(newest);
 }
 
-// Single-season views can only show one season at a time. When the header
-// multi-select has more than one season checked, grey the view out with a
-// prompt instead of silently showing just the newest.
-function multiSeasonGuard(viewEl, label){
-  if (history.checkedSeasons && history.checkedSeasons.size > 1){
-    viewEl.innerHTML = '<div class="status multi-season-notice">' + escapeHtml(label) + ' shows one season at a time. You have ' + history.checkedSeasons.size + ' seasons selected. Uncheck all but one in the header to view this tab.</div>';
-    return true;
-  }
-  return false;
-}
 
 // Weeks available for the currently loaded season's schedule — includes
 // in-progress weeks (not just completed ones) so Matchups can show live
@@ -1723,8 +1859,8 @@ function applySeasonToState(year){
     ? 'Week <strong>' + state.currentWeek + '</strong> · ' + state.teams.length + ' teams'
     : state.teams.length + ' teams';
 
-  populateSeasonSelect();
   populateWeekSelect();
+  updateContextBar();
 
   renderStandings();
   renderMatchups();
@@ -1854,7 +1990,6 @@ function computeMedianRecords(teams, schedule){
 }
 
 function renderStandings(){
-  if (multiSeasonGuard(standingsView, 'Standings')) return;
   const allPlay = computeAllPlayRecords(state.teams, state.schedule);
   const powerByTeam = weeklyScoresByTeam();
   const medianRec = computeMedianRecords(state.teams, state.schedule);
@@ -1901,7 +2036,6 @@ function espnMatchupUrl(year, week){
 }
 
 function renderMatchups(){
-  if (multiSeasonGuard(matchupsView, 'Matchups')) return;
   const teamsById = {};
   state.teams.forEach(t => teamsById[t.id] = t);
 
@@ -2105,7 +2239,6 @@ function buildReviewBanter(g, homeCtx, awayCtx, homePts, awayPts, byTeam){
 }
 
 function renderPreview(){
-  if (multiSeasonGuard(previewView, 'Preview')) return;
   if (!state.teams.length) { previewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const banner = '<div class="placeholder-banner">Player projections and a "projected vs actual" breakdown aren\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything below (matchups, records, streaks, scoring context) is real and recomputes fresh every time you open this tab.</div>';
@@ -2154,7 +2287,6 @@ function renderPreview(){
 }
 
 function renderRecapContent(){
-  if (multiSeasonGuard(recapView, 'Recap Card')) return;
   if (!state.teams.length) { recapView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const { priorWeek } = currentAndPriorWeeks();
@@ -2277,7 +2409,6 @@ function downloadRecapCard(){
 }
 
 ﻿function renderTrashContent(){
-  if (multiSeasonGuard(trashView, 'Trash Talk')) return;
   if (!state.teams.length) { trashView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const ctxs = teamContexts();
@@ -2390,12 +2521,11 @@ function downloadRecapCard(){
 
   trashView.innerHTML =
     '<h2 class="section-title">Trash Talk</h2>' +
-    '<div class="status" style="margin-bottom:12px;">Ranked worst-to-first in disrespect. \uD83C\uDF36\uFE0F NC-17, brought to you by the numbers. All roasts are affectionate. Mostly.</div>' +
+    '<div class="status" style="margin-bottom:var(--sp-lg);">Ranked worst-to-first in disrespect. \uD83C\uDF36\uFE0F NC-17, brought to you by the numbers. All roasts are affectionate. Mostly.</div>' +
     rows;
 }
 
     function renderReview(){
-  if (multiSeasonGuard(reviewView, 'Review')) return;
   if (!state.teams.length) { reviewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
   const banner = '<div class="placeholder-banner">"Projected vs. actual" isn\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything else (results, margins, streak context, banter) is real and recomputes fresh every time you open this tab.</div>';
@@ -2849,7 +2979,27 @@ function renderAwardsMultiSeason(){
     renderAwardsSection(y, history.data[y].teams || [], history.data[y].schedule || [], history.data[y].settings || {}, true)
   ).join('');
 
-  awardsView.innerHTML = AWARDS_HEADER + TRADE_AWARDS_NOTE + sections;
+  // Career awards — shown once, not per-season
+  let careerSection = '';
+  if (years.length >= 3) {
+    const careerAwards = computeCareerAwards() || [];
+    if (careerAwards.length) {
+      const cards = careerAwards.map(a =>
+        '<div class="award-card" role="button" tabindex="0" style="cursor:pointer;" onclick="openAwardGlossary()">' +
+          '<div class="award-emoji">' + a.emoji + '</div>' +
+          '<div>' +
+            '<div class="award-title">' + escapeHtml(a.title) + '</div>' +
+            '<div class="award-desc">' + escapeHtml(a.desc) + '</div>' +
+            '<div class="award-winner">' + escapeHtml(a.winner) + '</div>' +
+            '<div class="award-detail">' + escapeHtml(a.detail) + '</div>' +
+          '</div>' +
+        '</div>'
+      ).join('');
+      careerSection = '<h2 class="section-title">Career / All-Time</h2><div class="award-grid">' + cards + '</div>';
+    }
+  }
+
+  awardsView.innerHTML = AWARDS_HEADER + TRADE_AWARDS_NOTE + sections + careerSection;
   enhanceAwardsWithDraft();
 
 }
@@ -3300,135 +3450,6 @@ function computeAwards(year, teams, schedule, settings){
 
 
 
-  // ---- Career / All-Time Superlatives (from history.data) ----
-  if (history && history.data && Object.keys(history.data).length >= 3) {
-    const allYears = Object.keys(history.data).map(Number).sort();
-    const ownerSeasons = {}; // ownerKey -> [{year, wins, losses, points, highGame, lowGame, madePlayoffs, champion}]
-
-    for (const yr of allYears) {
-      const s = history.data[yr];
-      if (!s || !s.teams) continue;
-      const placements2 = seasonPlacements(s);
-      const champId = placements2?.champion;
-      const runnerUpId = placements2?.runnerUp;
-      (s.teams || []).forEach(t => {
-        const key = resolvedOwnerKey(t);
-        const name = teamDisplayName(t);
-        const rec = t.record?.overall || {};
-        if (!ownerSeasons[key]) ownerSeasons[key] = { name, seasons: [] };
-        const gamesArr = (s.schedule || []).filter(g => g.winner && g.winner !== 'UNDECIDED' && ((g.home && g.home.teamId === t.id) || (g.away && g.away.teamId === t.id)));
-        let highGame = 0, lowGame = 9999;
-        gamesArr.forEach(g => {
-          const pts = (g.home && g.home.teamId === t.id) ? (g.home.totalPoints || 0) : (g.away?.totalPoints || 0);
-          if (pts > highGame) highGame = pts;
-          if (pts < lowGame && pts > 0) lowGame = pts;
-        });
-        ownerSeasons[key].seasons.push({
-          year: yr, wins: rec.wins || 0, losses: rec.losses || 0,
-          points: (rec.wins||0) + (rec.losses||0) > 0 ? gamesArr.reduce((s2, g) => s2 + ((g.home && g.home.teamId === t.id) ? (g.home.totalPoints||0) : (g.away?.totalPoints||0)), 0) : 0,
-          winPct: ((rec.wins||0) + (rec.losses||0)) > 0 ? (rec.wins||0) / ((rec.wins||0) + (rec.losses||0)) : 0,
-          highGame, lowGame: lowGame === 9999 ? 0 : lowGame,
-          champion: t.id === champId,
-          runnerUp: t.id === runnerUpId,
-          madePlayoffs: !!(t.playoffSeed && t.playoffSeed <= (s.settings?.scheduleSettings?.playoffTeamCount || 6)),
-        });
-      });
-    }
-
-    // The Dynasty: best 3-season rolling stretch by win%
-    let bestDynasty = null;
-    Object.entries(ownerSeasons).forEach(([key, data]) => {
-      const ss = data.seasons.sort((a, b) => a.year - b.year);
-      for (let i = 0; i <= ss.length - 3; i++) {
-        const window = ss.slice(i, i + 3);
-        const totalW = window.reduce((s2, x) => s2 + x.wins, 0);
-        const totalG = window.reduce((s2, x) => s2 + x.wins + x.losses, 0);
-        const pct = totalG > 0 ? totalW / totalG : 0;
-        const chips = window.filter(x => x.champion).length;
-        const score = pct + chips * 0.1;
-        if (!bestDynasty || score > bestDynasty.score) bestDynasty = { name: data.name, score, pct, chips, startYear: window[0].year, endYear: window[2].year, totalW, totalL: totalG - totalW };
-      }
-    });
-    if (bestDynasty) {
-      awards.push({ emoji: '\u{1f3f0}', title: 'The Dynasty', desc: 'Best 3-season rolling stretch', winner: bestDynasty.name, detail: bestDynasty.startYear + '-' + bestDynasty.endYear + ': ' + bestDynasty.totalW + '-' + bestDynasty.totalL + ' (' + (bestDynasty.pct*100).toFixed(0) + '%)' + (bestDynasty.chips ? ' + ' + bestDynasty.chips + ' title(s)' : '') });
-    }
-
-    // Bridesmaid: most runner-up finishes without winning
-    let bestBridesmaid = null;
-    Object.entries(ownerSeasons).forEach(([key, data]) => {
-      const chips = data.seasons.filter(s2 => s2.champion).length;
-      const runnerUps = data.seasons.filter(s2 => s2.runnerUp).length;
-      if (runnerUps >= 2 && chips === 0) {
-        if (!bestBridesmaid || runnerUps > bestBridesmaid.count) bestBridesmaid = { name: data.name, count: runnerUps };
-      }
-    });
-    if (bestBridesmaid) {
-      awards.push({ emoji: '\u{1f490}', title: 'Bridesmaid', desc: 'Most runner-up finishes without ever winning it all', winner: bestBridesmaid.name, detail: bestBridesmaid.count + ' runner-up finishes, 0 titles' });
-    }
-
-    // The Wilderness Years: longest drought since last title or playoff berth
-    let longestDrought = null;
-    Object.entries(ownerSeasons).forEach(([key, data]) => {
-      const ss = data.seasons.sort((a, b) => a.year - b.year);
-      let lastPlayoff = null;
-      for (const s2 of ss) { if (s2.madePlayoffs) lastPlayoff = s2.year; }
-      if (lastPlayoff && ss.length >= 3) {
-        const drought = ss[ss.length-1].year - lastPlayoff;
-        if (drought >= 2 && (!longestDrought || drought > longestDrought.drought)) {
-          longestDrought = { name: data.name, drought, lastYear: lastPlayoff };
-        }
-      }
-    });
-    if (longestDrought) {
-      awards.push({ emoji: '\u{1f3dc}\ufe0f', title: 'The Wilderness Years', desc: 'Longest active drought since last playoff berth', winner: longestDrought.name, detail: longestDrought.drought + ' years since ' + longestDrought.lastYear + ' playoffs' });
-    }
-
-    // Century Club: most 150+ point games all-time
-    let bestCentury = null;
-    Object.entries(ownerSeasons).forEach(([key, data]) => {
-      let count = 0;
-      for (const yr of allYears) {
-        const s = history.data[yr];
-        if (!s) continue;
-        const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
-        if (!t) continue;
-        (s.schedule||[]).forEach(g => {
-          if (!g.winner || g.winner === 'UNDECIDED') return;
-          let pts = 0;
-          if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
-          else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
-          if (pts >= 150) count++;
-        });
-      }
-      if (count >= 3 && (!bestCentury || count > bestCentury.count)) bestCentury = { name: data.name, count };
-    });
-    if (bestCentury) {
-      awards.push({ emoji: '\u{1f4af}', title: 'Century Club', desc: 'Most 150+ point games, all-time', winner: bestCentury.name, detail: bestCentury.count + ' games scoring 150+' });
-    }
-
-    // Ice Age: most sub-70 point games all-time
-    let worstIce = null;
-    Object.entries(ownerSeasons).forEach(([key, data]) => {
-      let count = 0;
-      for (const yr of allYears) {
-        const s = history.data[yr];
-        if (!s) continue;
-        const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
-        if (!t) continue;
-        (s.schedule||[]).forEach(g => {
-          if (!g.winner || g.winner === 'UNDECIDED') return;
-          let pts = 0;
-          if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
-          else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
-          if (pts > 0 && pts < 70) count++;
-        });
-      }
-      if (count >= 3 && (!worstIce || count > worstIce.count)) worstIce = { name: data.name, count };
-    });
-    if (worstIce) {
-      awards.push({ emoji: '\u{1f9ca}', title: 'Ice Age', desc: 'Most sub-70 point games, all-time', winner: worstIce.name, detail: worstIce.count + ' games scoring under 70' });
-    }
-  }
 
   // ---- Best Waiver Pickup (precomputed) ----
   const _bpData = (history && history.data && history.data[year])
@@ -3436,6 +3457,142 @@ function computeAwards(year, teams, schedule, settings){
   if (_bpData) {
     const _bpOwner = teamDisplayName({ primaryOwner: _bpData.ownerKey });
     awards.push({ emoji: '💎', title: 'Diamond in the Rough', desc: 'Best waiver/FA pickup (most pts while rostered, min 3 wks)', winner: _bpOwner, detail: _bpData.playerName + ' (Wk ' + _bpData.weekAdded + ', ' + _bpData.totalPoints.toFixed(1) + ' pts, ' + _bpData.weeksRostered + ' wks)', ownerKey: _bpData.ownerKey });
+  }
+
+  return awards;
+}
+
+// Career/all-time awards — computed ONCE across all loaded history, not per-season.
+const CAREER_AWARD_TITLES = new Set(['The Dynasty','Bridesmaid','The Wilderness Years','Century Club','Ice Age']);
+
+function computeCareerAwards(){
+  if (!history || !history.data || Object.keys(history.data).length < 3) return [];
+  const awards = [];
+  const allYears = Object.keys(history.data).map(Number).sort();
+  const ownerSeasons = {};
+
+  for (const yr of allYears) {
+    const s = history.data[yr];
+    if (!s || !s.teams) continue;
+    const placements2 = seasonPlacements(s);
+    const champId = placements2?.champion;
+    const runnerUpId = placements2?.runnerUp;
+    (s.teams || []).forEach(t => {
+      const key = resolvedOwnerKey(t);
+      const name = teamDisplayName(t);
+      const rec = t.record?.overall || {};
+      if (!ownerSeasons[key]) ownerSeasons[key] = { name, seasons: [] };
+      const gamesArr = (s.schedule || []).filter(g => g.winner && g.winner !== 'UNDECIDED' && ((g.home && g.home.teamId === t.id) || (g.away && g.away.teamId === t.id)));
+      let highGame = 0, lowGame = 9999;
+      gamesArr.forEach(g => {
+        const pts = (g.home && g.home.teamId === t.id) ? (g.home.totalPoints || 0) : (g.away?.totalPoints || 0);
+        if (pts > highGame) highGame = pts;
+        if (pts < lowGame && pts > 0) lowGame = pts;
+      });
+      ownerSeasons[key].seasons.push({
+        year: yr, wins: rec.wins || 0, losses: rec.losses || 0,
+        points: (rec.wins||0) + (rec.losses||0) > 0 ? gamesArr.reduce((s2, g) => s2 + ((g.home && g.home.teamId === t.id) ? (g.home.totalPoints||0) : (g.away?.totalPoints||0)), 0) : 0,
+        winPct: ((rec.wins||0) + (rec.losses||0)) > 0 ? (rec.wins||0) / ((rec.wins||0) + (rec.losses||0)) : 0,
+        highGame, lowGame: lowGame === 9999 ? 0 : lowGame,
+        champion: t.id === champId,
+        runnerUp: t.id === runnerUpId,
+        madePlayoffs: !!(t.playoffSeed && t.playoffSeed <= (s.settings?.scheduleSettings?.playoffTeamCount || 6)),
+      });
+    });
+  }
+
+  // The Dynasty: best 3-season rolling stretch by win%
+  let bestDynasty = null;
+  Object.entries(ownerSeasons).forEach(([key, data]) => {
+    const ss = data.seasons.sort((a, b) => a.year - b.year);
+    for (let i = 0; i <= ss.length - 3; i++) {
+      const window = ss.slice(i, i + 3);
+      const totalW = window.reduce((s2, x) => s2 + x.wins, 0);
+      const totalG = window.reduce((s2, x) => s2 + x.wins + x.losses, 0);
+      const pct = totalG > 0 ? totalW / totalG : 0;
+      const chips = window.filter(x => x.champion).length;
+      const score = pct + chips * 0.1;
+      if (!bestDynasty || score > bestDynasty.score) bestDynasty = { name: data.name, score, pct, chips, startYear: window[0].year, endYear: window[2].year, totalW, totalL: totalG - totalW };
+    }
+  });
+  if (bestDynasty) {
+    awards.push({ emoji: '\u{1f3f0}', title: 'The Dynasty', desc: 'Best 3-season rolling stretch', winner: bestDynasty.name, detail: bestDynasty.startYear + '-' + bestDynasty.endYear + ': ' + bestDynasty.totalW + '-' + bestDynasty.totalL + (bestDynasty.chips ? ' (' + bestDynasty.chips + ' title' + (bestDynasty.chips > 1 ? 's' : '') + ')' : '') });
+  }
+
+  // Bridesmaid: most runner-up finishes without winning
+  let bestBridesmaid = null;
+  Object.entries(ownerSeasons).forEach(([key, data]) => {
+    const chips = data.seasons.filter(s2 => s2.champion).length;
+    const runnerUps = data.seasons.filter(s2 => s2.runnerUp).length;
+    if (runnerUps >= 2 && chips === 0) {
+      if (!bestBridesmaid || runnerUps > bestBridesmaid.count) bestBridesmaid = { name: data.name, count: runnerUps };
+    }
+  });
+  if (bestBridesmaid) {
+    awards.push({ emoji: '\u{1f490}', title: 'Bridesmaid', desc: 'Most runner-up finishes without ever winning it all', winner: bestBridesmaid.name, detail: bestBridesmaid.count + ' runner-up finishes, 0 titles' });
+  }
+
+  // The Wilderness Years: longest drought since last title or playoff berth
+  let longestDrought = null;
+  Object.entries(ownerSeasons).forEach(([key, data]) => {
+    const ss = data.seasons.sort((a, b) => a.year - b.year);
+    let lastPlayoff = null;
+    for (const s2 of ss) { if (s2.madePlayoffs) lastPlayoff = s2.year; }
+    if (lastPlayoff && ss.length >= 3) {
+      const drought = ss[ss.length-1].year - lastPlayoff;
+      if (drought >= 2 && (!longestDrought || drought > longestDrought.drought)) {
+        longestDrought = { name: data.name, drought, lastYear: lastPlayoff };
+      }
+    }
+  });
+  if (longestDrought) {
+    awards.push({ emoji: '\u{1f3dc}\ufe0f', title: 'The Wilderness Years', desc: 'Longest active drought since last playoff berth', winner: longestDrought.name, detail: longestDrought.drought + ' years since last playoff appearance (' + longestDrought.lastYear + ')' });
+  }
+
+  // Century Club: most 150+ point games all-time
+  let bestCentury = null;
+  Object.entries(ownerSeasons).forEach(([key, data]) => {
+    let count = 0;
+    for (const yr of allYears) {
+      const s = history.data[yr];
+      if (!s) continue;
+      const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
+      if (!t) continue;
+      (s.schedule||[]).forEach(g => {
+        if (!g.winner || g.winner === 'UNDECIDED') return;
+        let pts = 0;
+        if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
+        else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
+        if (pts >= 150) count++;
+      });
+    }
+    if (count >= 3 && (!bestCentury || count > bestCentury.count)) bestCentury = { name: data.name, count };
+  });
+  if (bestCentury) {
+    awards.push({ emoji: '\u{1f4af}', title: 'Century Club', desc: 'Most 150+ point games, all-time', winner: bestCentury.name, detail: bestCentury.count + ' games scoring 150+' });
+  }
+
+  // Ice Age: most sub-70 point games all-time
+  let worstIce = null;
+  Object.entries(ownerSeasons).forEach(([key, data]) => {
+    let count = 0;
+    for (const yr of allYears) {
+      const s = history.data[yr];
+      if (!s) continue;
+      const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
+      if (!t) continue;
+      (s.schedule||[]).forEach(g => {
+        if (!g.winner || g.winner === 'UNDECIDED') return;
+        let pts = 0;
+        if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
+        else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
+        if (pts > 0 && pts < 70) count++;
+      });
+    }
+    if (count >= 3 && (!worstIce || count > worstIce.count)) worstIce = { name: data.name, count };
+  });
+  if (worstIce) {
+    awards.push({ emoji: '\u{1f9ca}', title: 'Ice Age', desc: 'Most sub-70 point games, all-time', winner: worstIce.name, detail: worstIce.count + ' games scoring under 70' });
   }
 
   return awards;
@@ -4408,7 +4565,6 @@ function closeAwardGlossary(){
 }
 
 document.addEventListener('DOMContentLoaded', function(){
-  wireSeasonBulkButtons();
   var closeBtn = document.getElementById('awardModalClose');
   if (closeBtn) closeBtn.addEventListener('click', closeAwardGlossary);
   var backdrop = document.getElementById('awardModal');
@@ -4528,6 +4684,16 @@ function buildManagerProfile(key, seasonsData){
         rec.years.push(year);
       }
     });
+  });
+
+  // Tally career awards once (not per-season)
+  const careerAwards = computeCareerAwards() || [];
+  careerAwards.forEach(a => {
+    if (typeof a.winner === 'string' && a.winner.includes(managerName)) {
+      const rec = awardTally[a.title] || (awardTally[a.title] = { emoji: a.emoji, count: 0, years: [] });
+      rec.count++;
+      rec.years.push('Career');
+    }
   });
 
   if (!managerName) return null;
@@ -4650,7 +4816,6 @@ function renderOnThisDayContent(){
 }
 
 function renderWhatIfContent(){
-  if (multiSeasonGuard(whatifView, 'What-If Standings')) return;
   const teams = state.teams;
   const n = teams.length;
   const PLAYOFF_LINE = 7;
@@ -4729,7 +4894,7 @@ function renderWhatIfContent(){
     html += '<div class="wi-card">';
     html += '<h3 class="wi-title">' + escapeHtml(mode.title) + '</h3>';
     html += '<p class="wi-desc">' + escapeHtml(mode.desc) + '</p>';
-    html += '<table class="wi-table"><thead><tr><th>#</th><th>Team</th><th>' + escapeHtml(mode.metricLabel) + '</th><th>\u0394</th></tr></thead><tbody>';
+    html += '<table class="wi-table"><thead><tr><th>#</th><th>Team</th><th class="num">' + escapeHtml(mode.metricLabel) + '</th><th class="num">\u0394</th></tr></thead><tbody>';
     ordered.forEach((t, i) => {
       const rank = i + 1;
       const lineClass = rank === PLAYOFF_LINE ? ' wi-playoff-line' : '';
@@ -5087,9 +5252,10 @@ function renderProfileCard(key){
   const badges = ALL_AWARD_TYPES.map(type => {
     const won = p.awardTally[type.title];
     if (won) {
-      const recentYear = Math.max(...won.years);
-      return '<div class="badge-card" title="' + escapeHtml(type.title) + ' — won ' + won.count + 'x, most recently ' + recentYear + '">' +
-        '<span class="badge-count">×' + won.count + '</span>' +
+      const numericYears = won.years.filter(y => typeof y === 'number');
+      const recentLabel = numericYears.length ? Math.max(...numericYears) : 'Career';
+      return '<div class="badge-card" title="' + escapeHtml(type.title) + ' — won ' + won.count + 'x' + (numericYears.length ? ', most recently ' + recentLabel : '') + '">' +
+        '<span class="badge-count">' + (CAREER_AWARD_TITLES.has(type.title) ? '✓' : '×' + won.count) + '</span>' +
         '<span class="badge-emoji">' + type.emoji + '</span>' +
         '<div class="badge-title">' + escapeHtml(type.title) + '</div></div>';
     }
@@ -5115,9 +5281,7 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-viewSeasonSelect.addEventListener('change', () => selectSeason(parseInt(viewSeasonSelect.value, 10), false));
-viewWeekSelect.addEventListener('change', () => { renderMatchups(); renderPreview(); renderReview(); });
-refreshBtn.addEventListener('click', () => selectSeason(parseInt(viewSeasonSelect.value, 10), true));
+// Context bar handles season/week/refresh interactions now.
 histDownloadBtn.addEventListener('click', downloadHistoryCache);
 
 // Keeps the History/Awards/Profile tabs in sync with
@@ -5128,7 +5292,7 @@ function refreshSeasonDependentViews(){
   renderHistoryContent();
   renderAwards();
   renderProfile();
-  populateSeasonSelect();
+  updateContextBar();
   renderPreview();
   renderReview();
   renderPositions();
@@ -5160,7 +5324,7 @@ async function autoLoadHistoryFromCache(){
 // even on the very first load, not just on later dropdown changes.
 (async function startup(){
   await autoLoadHistoryFromCache();
-  populateSeasonSelect();
+  updateContextBar();
   // Cache-first default: if the cache already gave us the newest season,
   // trust that single-checked default (2f). Only fetch live when the
   // newest league season isn't cached yet, so we don't end up with two
@@ -5171,7 +5335,7 @@ async function autoLoadHistoryFromCache(){
     // so we never start with two checked (which greys single-season views).
     if (history.data[latestLikelySeason]) {
       history.checkedSeasons = new Set([latestLikelySeason]);
-      populateSeasonSelect();
+      updateContextBar();
       refreshSeasonDependentViews();
     }
   }
@@ -5302,15 +5466,8 @@ async function renderWaiversTab(){
     waiversView.innerHTML = '<div class="status">\u{1f48e} No waiver wire data available yet. Run the precompute script.</div>';
     return;
   }
-  const cur = seasons[0];
-  waiversView.innerHTML = '<div class="year-chips-row">' +
-    seasons.map(yr=>'<button class="year-chip'+(yr===cur?' active':'')+'" data-yr="'+yr+'">'+yr+'</button>').join('') +
-    '<button class="year-chip" data-yr="all-time">All-Time</button></div><div id="waiversDisplay"></div>';
-  waiversView.querySelectorAll('.year-chip').forEach(btn => btn.addEventListener('click', function(){
-    waiversView.querySelectorAll('.year-chip').forEach(b=>b.classList.remove('active'));
-    this.classList.add('active');
-    renderWaiversSeason(this.dataset.yr);
-  }));
+  const cur = String(state.seasonYear || seasons[0]);
+  waiversView.innerHTML = '<div id="waiversDisplay"></div>';
   renderWaiversSeason(cur);
 }
 
@@ -5322,22 +5479,22 @@ function renderWaiversSeason(val){
   const o = bp.overall;
   const oName = teamDisplayName({ primaryOwner: o.ownerKey });
   const ppw = (o.totalPoints / o.weeksRostered).toFixed(1);
-  let html = '<div style="text-align:center;padding:1rem 1rem 0.8rem;margin-bottom:1rem;background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:10px;">';
-  html += '<div style="margin-bottom:0.2rem;">\u{1f3c6}</div>';
+  let html = '<div style="text-align:center;padding:var(--sp-lg);margin-bottom:var(--sp-lg);background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:10px;">';
+  html += '<div style="margin-bottom:var(--sp-xs);">\u{1f3c6}</div>';
   html += '<div style="text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
-  html += '<div style="font-weight:700;margin:0.3rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
-  html += '<div style="color:var(--text-muted);margin-bottom:0.5rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
-  html += '<div style="display:flex;justify-content:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.3rem;">';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+o.totalPoints+' pts</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+o.weeksRostered+' wks</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+ppw+' pts/wk</span>';
+  html += '<div style="font-weight:700;margin:var(--sp-sm) 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
+  html += '<div style="color:var(--text-muted);margin-bottom:var(--sp-md);">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
+  html += '<div style="display:flex;justify-content:center;gap:var(--sp-md);flex-wrap:wrap;margin-bottom:var(--sp-sm);">';
+  html += '<span style="background:var(--bg-surface);padding:var(--sp-xs) var(--sp-md);border-radius:4px;font-family:var(--font-mono);">'+o.totalPoints+' pts</span>';
+  html += '<span style="background:var(--bg-surface);padding:var(--sp-xs) var(--sp-md);border-radius:4px;font-family:var(--font-mono);">'+o.weeksRostered+' wks</span>';
+  html += '<span style="background:var(--bg-surface);padding:var(--sp-xs) var(--sp-md);border-radius:4px;font-family:var(--font-mono);">'+ppw+' pts/wk</span>';
   html += '</div></div>';
-  html += '<h3>\u{1f4ca} All Teams \u2014 Best Pickups</h3>';
+  html += '<h3>All Teams \u2014 Best Pickups</h3>';
   html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
   for (const p of bp.perTeam) {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'—')+'</td><td style="font-family:var(--font-mono)">'+p.weekAdded+'</td><td style="font-family:var(--font-mono)"><strong>'+p.totalPoints+'</strong></td><td style="font-family:var(--font-mono)">'+p.weeksRostered+'</td><td style="font-family:var(--font-mono)">'+pw+'</td></tr>';
+    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'—')+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
   }
   html += '</tbody></table>';
   display.innerHTML = html;
@@ -5353,12 +5510,12 @@ function renderWaiversAllTime(display){
   }
   all.sort((a,b)=>b.totalPoints-a.totalPoints);
   const top = all.slice(0, 15);
-  let html = '<h3>\u{1f3c5} All-Time Best Waiver Pickups</h3><p style="color:var(--text-muted);">Top 15 across all seasons (min 3 weeks rostered)</p>';
+  let html = '<h3>All-Time Best Waiver Pickups</h3><p style="color:var(--text-muted);">Top 15 across all seasons (min 3 weeks rostered)</p>';
   html += '<table class="data"><thead><tr><th>#</th><th>Year</th><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
   top.forEach((p,i) => {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'\u2014')+'</td><td style="font-family:var(--font-mono)">'+p.weekAdded+'</td><td style="font-family:var(--font-mono)"><strong>'+p.totalPoints+'</strong></td><td style="font-family:var(--font-mono)">'+p.weeksRostered+'</td><td style="font-family:var(--font-mono)">'+pw+'</td></tr>';
+    html += '<tr><td class="num">'+(i+1)+'</td><td class="num">'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td class="num">'+(p.posLabel||'\u2014')+'</td><td class="num">'+p.weekAdded+'</td><td class="num"><strong>'+p.totalPoints+'</strong></td><td class="num">'+p.weeksRostered+'</td><td class="num">'+pw+'</td></tr>';
   });
   html += '</tbody></table>';
   display.innerHTML = html;
@@ -5378,7 +5535,7 @@ async function renderHofTab(){
   }
   const years = Object.keys(history.data).map(Number).sort((a,b)=>b-a);
   const vacated = (typeof MANUAL_ADJUSTMENTS !== 'undefined' && MANUAL_ADJUSTMENTS?.vacatedChampionshipSeasons) || [];
-  let html = '<h2 class="section-title">\u{1f3c6} Hall of Fame</h2><p style="color:var(--text-muted);margin-bottom:1rem;">Every champion in league history</p><div class="hof-grid">';
+  let html = '<h2 class="section-title">Hall of Fame</h2><p style="color:var(--text-muted);margin-bottom:var(--sp-lg);">Every champion in league history</p><div class="hof-grid">';
   for (const yr of years) {
     const s = history.data[yr];
     if (!s || !s.teams) continue;
@@ -5414,11 +5571,8 @@ async function renderBracketTab(){
     if (latestYear) data = history.data[latestYear];
   }
   if (!data || !data.schedule) { bracketView.innerHTML = '<div class="status">No schedule data available.</div>'; return; }
-  const allYears = Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a);
-  const pickerHtml = allYears.length > 1 ? '<select id="bracketYearPicker" class="season-picker">' + allYears.map(y=>'<option value="'+y+'">'+y+'</option>').join('') + '</select>' : '';
-  bracketView.innerHTML = '<h2 class="section-title">\u{1f3c0} Playoff Bracket</h2>' + pickerHtml + '<div id="bracketDisplay"></div>';
-  if (allYears.length > 1) document.getElementById('bracketYearPicker').addEventListener('change', function(){ renderBracketForYear(+this.value); });
-  renderBracketForYear(allYears[0] || state.seasonYear);
+  bracketView.innerHTML = '<h2 class="section-title">Playoff Bracket</h2><div id="bracketDisplay"></div>';
+  renderBracketForYear(state.seasonYear || Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a)[0]);
 }
 
 function renderBracketForYear(year){
@@ -5483,7 +5637,7 @@ async function renderCeremonyTab(){
   const allYears = Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a);
   if (!allYears.length) { ceremonyView.innerHTML = '<div class="status">No history data.</div>'; return; }
   const pickerHtml = '<select id="ceremonyYearPicker" class="season-picker">' + allYears.map(y=>'<option value="'+y+'">'+y+'</option>').join('') + '</select>';
-  ceremonyView.innerHTML = '<h2 class="section-title">\u{1f3ac} Awards Ceremony</h2>' + pickerHtml + '<div id="ceremonyDisplay"></div>';
+  ceremonyView.innerHTML = '<h2 class="section-title">Awards Ceremony</h2>' + pickerHtml + '<div id="ceremonyDisplay"></div>';
   document.getElementById('ceremonyYearPicker').addEventListener('change', function(){ renderCeremonyForYear(+this.value); });
   renderCeremonyForYear(allYears[0]);
 }
@@ -5577,7 +5731,7 @@ async function renderTrendsTab(){
     return bLast - aLast;
   });
 
-  const yearLabels = allYears.map(y => '<th style="font-family:var(--font-mono);">' + String(y).slice(2) + '</th>').join('');
+  const yearLabels = allYears.map(y => '<th class="num">' + String(y).slice(2) + '</th>').join('');
 
   let html = '<h2 class="section-title">Season-over-Season Trends</h2>';
   html += '<p class="section-note">' + allYears.length + ' seasons (' + allYears[0] + '\u2013' + allYears[allYears.length-1] + ')</p>';
@@ -5589,8 +5743,8 @@ async function renderTrendsTab(){
     const validPcts = pcts.filter(v=>v!==null);
     const spark = trendSparkline(validPcts, 'var(--amber, #d9a441)', 80, 22);
     const curr = validPcts.length ? (validPcts[validPcts.length-1]*100).toFixed(0)+'%' : '\u2014';
-    const cells = pcts.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
-    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+    const cells = pcts.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
+    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
@@ -5601,8 +5755,8 @@ async function renderTrendsTab(){
     const validPts = pts.filter(v=>v!==null);
     const spark = trendSparkline(validPts, '#4fc3f7', 80, 22);
     const curr = validPts.length ? validPts[validPts.length-1].toFixed(1) : '\u2014';
-    const cells = pts.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
-    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+    const cells = pts.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
+    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
@@ -5615,8 +5769,8 @@ async function renderTrendsTab(){
     const inverted = validFins.map(v => 13 - v);
     const spark = trendSparkline(inverted, '#81c784', 80, 22);
     const curr = validFins.length ? '#' + validFins[validFins.length-1] : '\u2014';
-    const cells = fins.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
-    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+    const cells = fins.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
+    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
