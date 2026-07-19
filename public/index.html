@@ -34,6 +34,7 @@
     background:var(--bg);
     color:var(--ink);
     font-family:'Inter', sans-serif;
+    font-size:13px;
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
     padding-bottom:56px;
@@ -831,6 +832,17 @@
 .ceremony-award-title { font-weight:600; min-width:140px; }
 .ceremony-award-winner { color:var(--amber); }
 .ceremony-award-detail { color:var(--text-muted); font-size:0.85rem; margin-left:auto; }
+
+/* Compact global overrides */
+h2.section-title { font-size: 1.1rem; margin: 0.8rem 0 0.4rem; }
+h3 { font-size: 0.95rem; margin: 0.7rem 0 0.3rem; }
+table.data th, table.data td { padding: 6px 8px; font-size: 0.82rem; }
+.award-card { padding: 0.6rem; }
+.award-emoji { font-size: 1.3rem; }
+.pr-matchup { padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; }
+.badge-card { padding: 0.5rem; }
+.badge-emoji { font-size: 1.2rem; }
+nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
 </style>
 </head>
 <body>
@@ -4144,6 +4156,21 @@ const AWARD_GLOSSARY = {
   'The Closer': 'Best record over the closing stretch of the season',
   'Revolving Door': 'Most roster drops',
   'High Roller': 'Most aggressive roster manager',
+  'Diamond in the Rough': 'Best waiver/FA pickup of the season (most total pts while rostered, min 3 wks, excludes QBs)',
+  'The Bellwether': 'Most games decided within a tight margin (always in competitive, nail-biter-adjacent matchups)',
+  'Human Rollercoaster': 'Most alternating W/L results all season (never back-to-back same result)',
+  'The Wall': 'Lowest points allowed (opponents quietly underperformed against them)',
+  'Point Diff MVP': 'Best PF minus PA gap, independent of actual win-loss record',
+  'Anti-Value': 'Worst point differential despite a winning record (won ugly, repeatedly)',
+  'Checked Out': 'Biggest scoring drop-off after being eliminated from playoffs',
+  'Sandbagger': 'Biggest scoring surge after elimination (suspicious late-season heater)',
+  'Revenge Game': 'Lost to an opponent, then beat them back later the same season',
+  'The Grudge Match': 'Single matchup with the highest combined score from both teams',
+  'The Dynasty': 'Best 3-season rolling stretch by win% and championships',
+  'Bridesmaid': 'Most runner-up finishes without ever winning it all',
+  'The Wilderness Years': 'Longest active drought since last playoff berth',
+  'Century Club': 'Most 150+ point games, all-time',
+  'Ice Age': 'Most sub-70 point games, all-time',
 };
 
 function openAwardGlossary(){
@@ -5085,18 +5112,18 @@ function renderWaiversSeason(val){
   html += '<div style="font-size:2.5rem;">\u{1f3c6}</div>';
   html += '<div style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
   html += '<div style="font-size:1.6rem;font-weight:700;margin:0.5rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
-  html += '<div style="color:var(--text-muted);margin-bottom:0.75rem;">Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
+  html += '<div style="color:var(--text-muted);margin-bottom:0.75rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
   html += '<div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;">';
   html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.totalPoints+' pts</span>';
   html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.weeksRostered+' wks</span>';
   html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+ppw+' pts/wk</span>';
   html += '</div></div>';
   html += '<h3>\u{1f4ca} All Teams \u2014 Best Pickups</h3>';
-  html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
   for (const p of bp.perTeam) {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'—')+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
   }
   html += '</tbody></table>';
   display.innerHTML = html;
@@ -5113,11 +5140,11 @@ function renderWaiversAllTime(display){
   all.sort((a,b)=>b.totalPoints-a.totalPoints);
   const top = all.slice(0, 15);
   let html = '<h3>\u{1f3c5} All-Time Best Waiver Pickups</h3><p style="color:var(--text-muted);font-size:0.85rem;">Top 15 across all seasons (min 3 weeks rostered)</p>';
-  html += '<table class="data"><thead><tr><th>#</th><th>Year</th><th>Manager</th><th>Player</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Year</th><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
   top.forEach((p,i) => {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'\u2014')+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
   });
   html += '</tbody></table>';
   display.innerHTML = html;
