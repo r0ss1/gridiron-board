@@ -1063,6 +1063,84 @@ async function renderDraftContent(){
   renderDraftBody();
 }
 
+// Reusable: compute draft superlatives (data-only) for a given year.
+// Returns { supl: [{emoji,title,desc,winner,detail}], tmap } or null if no draft data.
+// Reuses fetchDraftData cache, so calling from multiple tabs is cheap.
+async function computeDraftSuperlatives(year){
+  const data = await fetchDraftData(year);
+  if (!data || !data.draftDetail || !Array.isArray(data.draftDetail.picks) || !data.draftDetail.picks.length) return null;
+  const pmap = buildDraftPlayerMap(data);
+  const tmap = draftTeamNameMap(data);
+  const graded = gradeDraftPicks(data.draftDetail.picks, pmap);
+  const rated = graded.filter(g => g.delta != null);
+  const ownerTally = {};
+  graded.forEach(g => {
+    if (g.delta == null) return;
+    const info = g.info;
+    const who = tmap[g.pk.teamId] || ('Team ' + g.pk.teamId);
+    const rec = ownerTally[who] || (ownerTally[who] = { steals: 0, busts: 0 });
+    if (g.delta >= 8) rec.steals++;
+    else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) rec.busts++;
+  });
+  const tallyRows = Object.keys(ownerTally)
+    .map(who => ({ who: who, steals: ownerTally[who].steals, busts: ownerTally[who].busts }))
+    .sort((a,b)=> (b.steals - b.busts) - (a.steals - a.busts) || b.steals - a.steals);
+
+  const supl = [];
+  const isKD = info => info.posId === 5 || info.posId === 16;
+  if (rated.length){
+    const g = rated.slice().sort((a,b)=> b.delta - a.delta)[0];
+    if (g && g.delta >= 8){
+      supl.push({emoji:'\ud83c\udfc6', title:'Heist of the Draft', desc:'Biggest single-pick steal',
+        winner: g.info.fullName + ' (' + g.info.pos + ')',
+        detail: (tmap[g.pk.teamId]||('Team '+g.pk.teamId)) + ' \u00b7 pick ' + (g.pk.overallPickNumber||'?') + ' \u00b7 +' + g.delta + ' spots'});
+    }
+  }
+  {
+    const pool = rated.filter(g => !isKD(g.info));
+    const g = pool.slice().sort((a,b)=> a.delta - b.delta)[0];
+    if (g && g.delta <= -8){
+      supl.push({emoji:'\ud83e\udd26', title:'Reach of the Draft', desc:'Biggest single-pick bust',
+        winner: g.info.fullName + ' (' + g.info.pos + ')',
+        detail: (tmap[g.pk.teamId]||('Team '+g.pk.teamId)) + ' \u00b7 pick ' + (g.pk.overallPickNumber||'?') + ' \u00b7 ' + g.delta + ' spots'});
+    }
+  }
+  const ownerStats = {};
+  rated.forEach(g => {
+    const who = tmap[g.pk.teamId] || ('Team ' + g.pk.teamId);
+    const st = ownerStats[who] || (ownerStats[who] = {sumAbs:0, n:0});
+    st.sumAbs += Math.abs(g.delta); st.n++;
+  });
+  if (tallyRows.length){
+    const r = tallyRows[0];
+    if ((r.steals - r.busts) > 0)
+      supl.push({emoji:'\ud83e\udde0', title:'Best Drafter', desc:'Best net steals minus busts',
+        winner: r.who, detail: '+' + (r.steals - r.busts) + ' net \u00b7 ' + r.steals + ' steals, ' + r.busts + ' busts'});
+  }
+  {
+    const bob = tallyRows.slice().sort((a,b)=> (b.steals+b.busts) - (a.steals+a.busts))[0];
+    if (bob && (bob.steals + bob.busts) > 0)
+      supl.push({emoji:'\ud83c\udfa2', title:'Boom or Bust', desc:'Most steals and busts combined',
+        winner: bob.who, detail: (bob.steals + bob.busts) + ' swings \u00b7 ' + bob.steals + ' steals, ' + bob.busts + ' busts'});
+  }
+  {
+    const cand = Object.keys(ownerStats).map(w => ({who:w, avg: ownerStats[w].sumAbs/ownerStats[w].n, n: ownerStats[w].n}))
+      .filter(o => o.n >= 4).sort((a,b)=> a.avg - b.avg)[0];
+    if (cand)
+      supl.push({emoji:'\ud83c\udfaf', title:'Mr. Consistent', desc:'Smallest average draft-vs-finish gap',
+        winner: cand.who, detail: cand.avg.toFixed(1) + ' avg spots off \u00b7 ' + cand.n + ' picks'});
+  }
+  {
+    const early = rated.filter(g => !isKD(g.info) && (g.pk.roundId === 1 || g.pk.roundId === 2));
+    const g = early.slice().sort((a,b)=> a.delta - b.delta)[0];
+    if (g && g.delta <= -5)
+      supl.push({emoji:'\ud83d\udcb8', title:'Early Round Whiff', desc:'Biggest Round 1-2 bust',
+        winner: g.info.fullName + ' (' + g.info.pos + ')',
+        detail: (tmap[g.pk.teamId]||('Team '+g.pk.teamId)) + ' \u00b7 R' + g.pk.roundId + ' pick ' + (g.pk.overallPickNumber||'?') + ' \u00b7 ' + g.delta + ' spots'});
+  }
+  return { supl: supl, tmap: tmap };
+}
+
 async function renderDraftBody(){
   const body = document.getElementById('draftBody');
   const year = document.getElementById('draftYearSel').value;
@@ -1120,6 +1198,21 @@ async function renderDraftBody(){
         + '<span class="draft-chip draft-chip-steal">Steal</span> drafted &ge; 8 spots below where the player finished at their position. '
         + '<span class="draft-chip draft-chip-bust">Bust</span> drafted &ge; 8 spots above their final position rank (kickers &amp; defenses excluded).'
         + '</p>';
+
+  // ---- Draft Superlatives (computed via shared helper; render below) ----
+  const _dsl = await computeDraftSuperlatives(year);
+  const supl = (_dsl && _dsl.supl) || [];
+  if (supl.length){
+    html += '<h3>Draft Superlatives</h3><div class="award-grid">'
+      + supl.map(a => '<div class="award-card">'
+          + '<div class="award-emoji">' + a.emoji + '</div><div>'
+          + '<div class="award-title">' + escapeHtml(a.title) + '</div>'
+          + '<div class="award-desc">' + escapeHtml(a.desc) + '</div>'
+          + '<div class="award-winner">' + escapeHtml(a.winner) + '</div>'
+          + '<div class="award-detail">' + escapeHtml(a.detail) + '</div>'
+          + '</div></div>').join('')
+      + '</div>';
+  }
   html += '<h3>Steals &amp; Busts by Owner</h3><table class="data"><thead><tr><th>Owner</th><th>Steals</th><th>Busts</th></tr></thead><tbody>'
         + tallyRows.map(r => '<tr><td>' + escapeHtml(r.who)
             + '</td><td>' + (r.steals ? '<span class="draft-chip draft-chip-steal">' + r.steals + '</span>' : '\u2014')
@@ -2444,6 +2537,36 @@ function renderAwards(){
   }
 }
 
+async function enhanceAwardsWithDraft(){
+  // Progressive enhancement: prepend draft superlative cards into each
+  // season's award grid. Fire-and-forget; never blocks the awards render
+  // and silently no-ops when a season has no draft data.
+  const grids = awardsView.querySelectorAll('.award-grid[data-year]');
+  for (const grid of grids){
+    if (grid.dataset.draftEnhanced) continue;
+    grid.dataset.draftEnhanced = '1';
+    const year = Number(grid.getAttribute('data-year'));
+    if (!year) continue;
+    let dsl = null;
+    try { dsl = await computeDraftSuperlatives(year); } catch(e){ dsl = null; }
+    if (!dsl || !dsl.supl || !dsl.supl.length) continue;
+    // Guard against stale renders: grid may have been replaced while awaiting.
+    if (!awardsView.contains(grid)) continue;
+    const cards = dsl.supl.map(a =>
+      '<div class="award-card award-card-draft" role="button" tabindex="0" style="cursor:pointer;" onclick="setTab(\'draft\')">' +
+        '<div class="award-emoji">' + a.emoji + '</div>' +
+        '<div>' +
+          '<div class="award-title">' + escapeHtml(a.title) + '</div>' +
+          '<div class="award-desc">' + escapeHtml(a.desc) + '</div>' +
+          '<div class="award-winner">' + escapeHtml(a.winner) + '</div>' +
+          '<div class="award-detail">' + escapeHtml(a.detail) + '</div>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+    grid.insertAdjacentHTML('afterbegin', cards);
+  }
+}
+
 function renderAwardsSingleSeason(){
   const note = '<p class="section-note">Showing the current season only. Fetch history on the History tab to unlock awards for past seasons too.</p>' + TRADE_AWARDS_NOTE;
   if (!state.teams.length) {
@@ -2452,6 +2575,7 @@ function renderAwardsSingleSeason(){
   }
   const section = renderAwardsSection(state.seasonYear, state.teams, state.schedule, state.settings, false);
   awardsView.innerHTML = note + section;
+  enhanceAwardsWithDraft();
 }
 
 const AWARDS_HEADER = '<h2 class="section-title">Awards <button type="button" class="award-count-btn" onclick="openAwardGlossary()" title="What does each award mean?">Award Glossary</button></h2>';
@@ -2468,6 +2592,7 @@ function renderAwardsMultiSeason(){
   ).join('');
 
   awardsView.innerHTML = AWARDS_HEADER + TRADE_AWARDS_NOTE + sections;
+  enhanceAwardsWithDraft();
 
 }
 
@@ -2496,7 +2621,7 @@ function renderAwardsSection(year, teams, schedule, settings, showHeading){
     '</div>'
   ).join('');
 
-  return heading + '<div class="award-grid">' + cards + '</div>';
+  return heading + '<div class="award-grid" data-year="' + year + '">' + cards + '</div>';
 }
 
 // Flattens one season's {teams, schedule} into:
