@@ -1082,8 +1082,8 @@ async function computeDraftSuperlatives(year){
     const info = g.info;
     const who = tmap[g.pk.teamId] || ('Team ' + g.pk.teamId);
     const rec = ownerTally[who] || (ownerTally[who] = { steals: 0, busts: 0 });
-    if (g.delta >= 8) rec.steals++;
-    else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) rec.busts++;
+    if (g.delta >= 15) rec.steals++;
+    else if (g.delta <= -15 && info.posId !== 5 && info.posId !== 16) rec.busts++;
   });
   const tallyRows = Object.keys(ownerTally)
     .map(who => ({ who: who, steals: ownerTally[who].steals, busts: ownerTally[who].busts }))
@@ -1169,8 +1169,8 @@ async function renderDraftBody(){
     const rank = info.positionalRanking != null ? (info.pos + info.positionalRanking) : '\u2014';
     let tag = '';
     if (g.delta != null){
-      if (g.delta >= 8) tag = ' <span class="draft-chip draft-chip-steal">STEAL</span>';
-      else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) tag = ' <span class="draft-chip draft-chip-bust">BUST</span>';
+      if (g.delta >= 15) tag = ' <span class="draft-chip draft-chip-steal">STEAL</span>';
+      else if (g.delta <= -15 && info.posId !== 5 && info.posId !== 16) tag = ' <span class="draft-chip draft-chip-bust">BUST</span>';
     }
     return '<tr><td>' + (pk.overallPickNumber||'') + '</td><td>' + escapeHtml(info.fullName)
          + '</td><td>' + info.pos + '</td><td>' + escapeHtml(who) + '</td><td>' + rank + tag + '</td></tr>';
@@ -1189,8 +1189,8 @@ async function renderDraftBody(){
     const info = g.info;
     const who = tmap[g.pk.teamId] || ('Team ' + g.pk.teamId);
     const rec = ownerTally[who] || (ownerTally[who] = { steals: 0, busts: 0 });
-    if (g.delta >= 8) rec.steals++;
-    else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) rec.busts++;
+    if (g.delta >= 15) rec.steals++;
+    else if (g.delta <= -15 && info.posId !== 5 && info.posId !== 16) rec.busts++;
   });
   const tallyRows = Object.keys(ownerTally)
     .map(who => ({ who: who, steals: ownerTally[who].steals, busts: ownerTally[who].busts }))
@@ -1198,8 +1198,8 @@ async function renderDraftBody(){
 
   let html = '';
   html += '<p class="draft-legend">'
-        + '<span class="draft-chip draft-chip-steal">Steal</span> drafted &ge; 8 spots below where the player finished at their position. '
-        + '<span class="draft-chip draft-chip-bust">Bust</span> drafted &ge; 8 spots above their final position rank (kickers &amp; defenses excluded).'
+        + '<span class="draft-chip draft-chip-steal">Steal</span> drafted &ge; 15 spots below where the player finished at their position. '
+        + '<span class="draft-chip draft-chip-bust">Bust</span> drafted &ge; 15 spots above their final position rank (kickers &amp; defenses excluded).'
         + '</p>';
 
   // ---- Draft Superlatives (computed via shared helper; render below) ----
@@ -2931,8 +2931,249 @@ function computeAwards(year, teams, schedule, settings){
     }
   }
 
+
+  // ---- Bellwether, Rollercoaster, Wall, Point Diff, Anti-Value ----
+  if (teamTotals.length) {
+    // The Bellwether: most games within 10-pt margin
+    const tightMargin = 10;
+    const bellwetherCounts = {};
+    teamGames.forEach(g => {
+      const m = Math.abs(g.points - g.oppPoints);
+      if (m <= tightMargin) bellwetherCounts[g.teamId] = (bellwetherCounts[g.teamId] || { name: g.name, count: 0, teamId: g.teamId }), bellwetherCounts[g.teamId].count++;
+    });
+    const bellCandidates = Object.values(bellwetherCounts).filter(t => t.count >= 3);
+    if (bellCandidates.length) {
+      const bell = bellCandidates.reduce((a, b) => b.count > a.count ? b : a);
+      awards.push({ emoji: '\u{1f514}', title: 'The Bellwether', desc: 'Most games decided within ' + tightMargin + ' pts (always in competitive matchups)', winner: bell.name, detail: bell.count + ' nail-biter games' });
+    }
+
+    // Human Rollercoaster: most alternating W/L results
+    let bestAlternating = null;
+    Object.values(byTeamWeeks).forEach(t => {
+      let alternations = 0;
+      for (let i = 1; i < t.rows.length; i++) {
+        if (t.rows[i].result !== t.rows[i-1].result && t.rows[i].result !== 'T' && t.rows[i-1].result !== 'T') alternations++;
+      }
+      if (!bestAlternating || alternations > bestAlternating.count) bestAlternating = { name: t.name, count: alternations, total: t.rows.length - 1 };
+    });
+    if (bestAlternating && bestAlternating.count >= 4) {
+      awards.push({ emoji: '\u{1f3a2}', title: 'Human Rollercoaster', desc: 'Most alternating W/L results (never back-to-back same result)', winner: bestAlternating.name, detail: bestAlternating.count + '/' + bestAlternating.total + ' weeks alternated' });
+    }
+
+    // The Wall: lowest points allowed (opponents underperformed)
+    const wall = teamTotals.reduce((a, b) => b.oppPoints < a.oppPoints ? b : a);
+    awards.push({ emoji: '\u{1f9f1}', title: 'The Wall', desc: 'Lowest total points allowed (opponents quietly underperformed)', winner: wall.name, detail: wall.oppPoints.toFixed(1) + ' PA (' + wall.avgOppPoints.toFixed(1) + ' avg)' });
+
+    // Point Differential MVP
+    const diffStats = teamTotals.map(t => ({ ...t, diff: t.points - t.oppPoints }));
+    const diffMvp = diffStats.reduce((a, b) => b.diff > a.diff ? b : a);
+    awards.push({ emoji: '\u{1f4cf}', title: 'Point Diff MVP', desc: 'Best PF minus PA gap, independent of record', winner: diffMvp.name, detail: (diffMvp.diff > 0 ? '+' : '') + diffMvp.diff.toFixed(1) + ' differential' });
+
+    // Anti-Value: worst point differential among teams with winning records
+    const antiCandidates = diffStats.filter(t => {
+      const rec = seasonRecords.find(r => r.teamId === t.teamId);
+      return rec && rec.winPct >= 0.5;
+    });
+    if (antiCandidates.length) {
+      const anti = antiCandidates.reduce((a, b) => b.diff < a.diff ? b : a);
+      if (anti.diff < 20) {
+        const antiRec = seasonRecords.find(r => r.teamId === anti.teamId);
+        awards.push({ emoji: '\u{1f921}', title: 'Anti-Value', desc: 'Worst point differential despite a winning record (won ugly)', winner: anti.name, detail: (anti.diff > 0 ? '+' : '') + anti.diff.toFixed(1) + ' diff with ' + antiRec.wins + '-' + antiRec.losses + ' record' });
+      }
+    }
+  }
+
+  // ---- Checked Out / Sandbagger (post-elimination scoring changes) ----
+  const playoffSpotsForElim = settings?.scheduleSettings?.playoffTeamCount || 0;
+  if (playoffSpotsForElim && seasonRecords.length && Object.keys(byTeamWeeks).length) {
+    const eliminatedTeams = seasonRecords.filter(r => !r.madePlayoffs);
+    const regWeeksSorted = [...new Set(schedule.filter(g => (!g.playoffTierType || g.playoffTierType === 'NONE') && g.winner && g.winner !== 'UNDECIDED').map(g => g.matchupPeriodId))].sort((a, b) => a - b);
+    const elimWeek = Math.max(1, regWeeksSorted.length - 3); // rough "eliminated by" cutoff: last 3 weeks
+    let biggestDrop2 = null, biggestSurge = null;
+    eliminatedTeams.forEach(r => {
+      const tw = byTeamWeeks[r.teamId];
+      if (!tw) return;
+      const before = tw.rows.filter(g => g.week <= elimWeek);
+      const after = tw.rows.filter(g => g.week > elimWeek);
+      if (before.length < 3 || after.length < 2) return;
+      const avgBefore = before.reduce((s, g) => s + g.points, 0) / before.length;
+      const avgAfter = after.reduce((s, g) => s + g.points, 0) / after.length;
+      const delta = avgAfter - avgBefore;
+      if (!biggestDrop2 || delta < biggestDrop2.delta) biggestDrop2 = { name: tw.name, delta, avgBefore, avgAfter };
+      if (!biggestSurge || delta > biggestSurge.delta) biggestSurge = { name: tw.name, delta, avgBefore, avgAfter };
+    });
+    if (biggestDrop2 && biggestDrop2.delta < -10) {
+      awards.push({ emoji: '\u{1f6cb}\ufe0f', title: 'Checked Out', desc: 'Biggest scoring drop after being eliminated', winner: biggestDrop2.name, detail: biggestDrop2.avgBefore.toFixed(1) + ' avg \u2192 ' + biggestDrop2.avgAfter.toFixed(1) + ' avg (' + biggestDrop2.delta.toFixed(1) + ')' });
+    }
+    if (biggestSurge && biggestSurge.delta > 10) {
+      awards.push({ emoji: '\u{1f9d0}', title: 'Sandbagger', desc: 'Biggest scoring surge after elimination (suspicious late heater)', winner: biggestSurge.name, detail: biggestSurge.avgBefore.toFixed(1) + ' avg \u2192 ' + biggestSurge.avgAfter.toFixed(1) + ' avg (+' + biggestSurge.delta.toFixed(1) + ')' });
+    }
+  }
+
+  // ---- Revenge Game ----
+  const revengeMap = {};
+  teamGames.forEach(g => {
+    const key = g.teamId + '-' + g.oppName;
+    if (!revengeMap[key]) revengeMap[key] = [];
+    revengeMap[key].push(g);
+  });
+  let bestRevenge = null;
+  Object.values(revengeMap).forEach(matchups => {
+    matchups.sort((a, b) => a.week - b.week);
+    for (let i = 1; i < matchups.length; i++) {
+      if (matchups[i-1].result === 'L' && matchups[i].result === 'W') {
+        const swing = matchups[i].points - matchups[i-1].points;
+        if (!bestRevenge || swing > bestRevenge.swing) {
+          bestRevenge = { name: matchups[i].name, oppName: matchups[i].oppName, swing, week1: matchups[i-1].week, week2: matchups[i].week, pts: matchups[i].points };
+        }
+      }
+    }
+  });
+  if (bestRevenge) {
+    awards.push({ emoji: '\u{1f525}', title: 'Revenge Game', desc: 'Lost then beat the same opponent later in the season', winner: bestRevenge.name, detail: 'Beat ' + bestRevenge.oppName + ' in Wk ' + bestRevenge.week2 + ' (' + bestRevenge.pts.toFixed(1) + ' pts) after losing Wk ' + bestRevenge.week1 });
+  }
+
+  // ---- The Grudge Match: highest combined score ----
+  if (games.length) {
+    const grudge = games.reduce((a, b) => (b.homePts + b.awayPts) > (a.homePts + a.awayPts) ? b : a);
+    const combinedPts = grudge.homePts + grudge.awayPts;
+    awards.push({ emoji: '\u{1f4a5}', title: 'The Grudge Match', desc: 'Highest combined score from both teams in a single matchup', winner: grudge.homeName + ' vs ' + grudge.awayName, detail: combinedPts.toFixed(1) + ' combined pts (Week ' + grudge.week + ')' });
+  }
+
   // ---- Roster activity (trades, waivers) ----
   awards.push(...computeActivityAwards(teams));
+
+
+
+  // ---- Career / All-Time Superlatives (from HISTORY_CACHE) ----
+  if (typeof HISTORY_CACHE !== 'undefined' && HISTORY_CACHE && Object.keys(HISTORY_CACHE).length >= 3) {
+    const allYears = Object.keys(HISTORY_CACHE).map(Number).sort();
+    const ownerSeasons = {}; // ownerKey -> [{year, wins, losses, points, highGame, lowGame, madePlayoffs, champion}]
+
+    for (const yr of allYears) {
+      const s = HISTORY_CACHE[yr];
+      if (!s || !s.teams) continue;
+      const placements2 = seasonPlacements(s);
+      const champId = placements2?.champion;
+      const runnerUpId = placements2?.runnerUp;
+      (s.teams || []).forEach(t => {
+        const key = resolvedOwnerKey(t);
+        const name = teamDisplayName(t);
+        const rec = t.record?.overall || {};
+        if (!ownerSeasons[key]) ownerSeasons[key] = { name, seasons: [] };
+        const gamesArr = (s.schedule || []).filter(g => g.winner && g.winner !== 'UNDECIDED' && ((g.home && g.home.teamId === t.id) || (g.away && g.away.teamId === t.id)));
+        let highGame = 0, lowGame = 9999;
+        gamesArr.forEach(g => {
+          const pts = (g.home && g.home.teamId === t.id) ? (g.home.totalPoints || 0) : (g.away?.totalPoints || 0);
+          if (pts > highGame) highGame = pts;
+          if (pts < lowGame && pts > 0) lowGame = pts;
+        });
+        ownerSeasons[key].seasons.push({
+          year: yr, wins: rec.wins || 0, losses: rec.losses || 0,
+          points: (rec.wins||0) + (rec.losses||0) > 0 ? gamesArr.reduce((s2, g) => s2 + ((g.home && g.home.teamId === t.id) ? (g.home.totalPoints||0) : (g.away?.totalPoints||0)), 0) : 0,
+          winPct: ((rec.wins||0) + (rec.losses||0)) > 0 ? (rec.wins||0) / ((rec.wins||0) + (rec.losses||0)) : 0,
+          highGame, lowGame: lowGame === 9999 ? 0 : lowGame,
+          champion: t.id === champId,
+          runnerUp: t.id === runnerUpId,
+          madePlayoffs: !!(t.playoffSeed && t.playoffSeed <= (s.settings?.scheduleSettings?.playoffTeamCount || 6)),
+        });
+      });
+    }
+
+    // The Dynasty: best 3-season rolling stretch by win%
+    let bestDynasty = null;
+    Object.entries(ownerSeasons).forEach(([key, data]) => {
+      const ss = data.seasons.sort((a, b) => a.year - b.year);
+      for (let i = 0; i <= ss.length - 3; i++) {
+        const window = ss.slice(i, i + 3);
+        const totalW = window.reduce((s2, x) => s2 + x.wins, 0);
+        const totalG = window.reduce((s2, x) => s2 + x.wins + x.losses, 0);
+        const pct = totalG > 0 ? totalW / totalG : 0;
+        const chips = window.filter(x => x.champion).length;
+        const score = pct + chips * 0.1;
+        if (!bestDynasty || score > bestDynasty.score) bestDynasty = { name: data.name, score, pct, chips, startYear: window[0].year, endYear: window[2].year, totalW, totalL: totalG - totalW };
+      }
+    });
+    if (bestDynasty) {
+      awards.push({ emoji: '\u{1f3f0}', title: 'The Dynasty', desc: 'Best 3-season rolling stretch', winner: bestDynasty.name, detail: bestDynasty.startYear + '-' + bestDynasty.endYear + ': ' + bestDynasty.totalW + '-' + bestDynasty.totalL + ' (' + (bestDynasty.pct*100).toFixed(0) + '%)' + (bestDynasty.chips ? ' + ' + bestDynasty.chips + ' title(s)' : '') });
+    }
+
+    // Bridesmaid: most runner-up finishes without winning
+    let bestBridesmaid = null;
+    Object.entries(ownerSeasons).forEach(([key, data]) => {
+      const chips = data.seasons.filter(s2 => s2.champion).length;
+      const runnerUps = data.seasons.filter(s2 => s2.runnerUp).length;
+      if (runnerUps >= 2 && chips === 0) {
+        if (!bestBridesmaid || runnerUps > bestBridesmaid.count) bestBridesmaid = { name: data.name, count: runnerUps };
+      }
+    });
+    if (bestBridesmaid) {
+      awards.push({ emoji: '\u{1f490}', title: 'Bridesmaid', desc: 'Most runner-up finishes without ever winning it all', winner: bestBridesmaid.name, detail: bestBridesmaid.count + ' runner-up finishes, 0 titles' });
+    }
+
+    // The Wilderness Years: longest drought since last title or playoff berth
+    let longestDrought = null;
+    Object.entries(ownerSeasons).forEach(([key, data]) => {
+      const ss = data.seasons.sort((a, b) => a.year - b.year);
+      let lastPlayoff = null;
+      for (const s2 of ss) { if (s2.madePlayoffs) lastPlayoff = s2.year; }
+      if (lastPlayoff && ss.length >= 3) {
+        const drought = ss[ss.length-1].year - lastPlayoff;
+        if (drought >= 2 && (!longestDrought || drought > longestDrought.drought)) {
+          longestDrought = { name: data.name, drought, lastYear: lastPlayoff };
+        }
+      }
+    });
+    if (longestDrought) {
+      awards.push({ emoji: '\u{1f3dc}\ufe0f', title: 'The Wilderness Years', desc: 'Longest active drought since last playoff berth', winner: longestDrought.name, detail: longestDrought.drought + ' years since ' + longestDrought.lastYear + ' playoffs' });
+    }
+
+    // Century Club: most 150+ point games all-time
+    let bestCentury = null;
+    Object.entries(ownerSeasons).forEach(([key, data]) => {
+      let count = 0;
+      for (const yr of allYears) {
+        const s = HISTORY_CACHE[yr];
+        if (!s) continue;
+        const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
+        if (!t) continue;
+        (s.schedule||[]).forEach(g => {
+          if (!g.winner || g.winner === 'UNDECIDED') return;
+          let pts = 0;
+          if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
+          else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
+          if (pts >= 150) count++;
+        });
+      }
+      if (count >= 3 && (!bestCentury || count > bestCentury.count)) bestCentury = { name: data.name, count };
+    });
+    if (bestCentury) {
+      awards.push({ emoji: '\u{1f4af}', title: 'Century Club', desc: 'Most 150+ point games, all-time', winner: bestCentury.name, detail: bestCentury.count + ' games scoring 150+' });
+    }
+
+    // Ice Age: most sub-70 point games all-time
+    let worstIce = null;
+    Object.entries(ownerSeasons).forEach(([key, data]) => {
+      let count = 0;
+      for (const yr of allYears) {
+        const s = HISTORY_CACHE[yr];
+        if (!s) continue;
+        const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
+        if (!t) continue;
+        (s.schedule||[]).forEach(g => {
+          if (!g.winner || g.winner === 'UNDECIDED') return;
+          let pts = 0;
+          if (g.home && g.home.teamId === t.id) pts = g.home.totalPoints || 0;
+          else if (g.away && g.away.teamId === t.id) pts = g.away.totalPoints || 0;
+          if (pts > 0 && pts < 70) count++;
+        });
+      }
+      if (count >= 3 && (!worstIce || count > worstIce.count)) worstIce = { name: data.name, count };
+    });
+    if (worstIce) {
+      awards.push({ emoji: '\u{1f9ca}', title: 'Ice Age', desc: 'Most sub-70 point games, all-time', winner: worstIce.name, detail: worstIce.count + ' games scoring under 70' });
+    }
+  }
 
   // ---- Best Waiver Pickup (precomputed) ----
   const _bpData = (typeof HISTORY_CACHE !== 'undefined' && HISTORY_CACHE[year])
@@ -3808,6 +4049,21 @@ const ALL_AWARD_TYPES = [
   { emoji: '🎬', title: 'The Closer' },
   { emoji: '🚪', title: 'Revolving Door' },
   { emoji: '💰', title: 'High Roller' },
+  { emoji: '💎', title: 'Diamond in the Rough' },
+  { emoji: '🔔', title: 'The Bellwether' },
+  { emoji: '🎢', title: 'Human Rollercoaster' },
+  { emoji: '🧱', title: 'The Wall' },
+  { emoji: '📏', title: 'Point Diff MVP' },
+  { emoji: '🤡', title: 'Anti-Value' },
+  { emoji: '🛋️', title: 'Checked Out' },
+  { emoji: '🧐', title: 'Sandbagger' },
+  { emoji: '🔥', title: 'Revenge Game' },
+  { emoji: '💥', title: 'The Grudge Match' },
+  { emoji: '🏰', title: 'The Dynasty' },
+  { emoji: '💐', title: 'Bridesmaid' },
+  { emoji: '🏜️', title: 'The Wilderness Years' },
+  { emoji: '💯', title: 'Century Club' },
+  { emoji: '🧊', title: 'Ice Age' },
 ];
 
 // Static descriptions for the award glossary modal (Task 3/4).
