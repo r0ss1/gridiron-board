@@ -848,7 +848,7 @@
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button><button data-tab="waivers">💎 Waivers</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -860,7 +860,7 @@
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -916,6 +916,7 @@ const recordBookView = document.getElementById('recordBookView');
   const milestonesView = document.getElementById('milestonesView');
   const h2hView = document.getElementById('h2hView');
   const eloView = document.getElementById('eloView');
+const waiversView = document.getElementById('waiversView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -997,6 +998,8 @@ function setTab(name){
     if (name === 'trash') renderTrashContent();
   draftView.style.display = name === 'draft' ? '' : 'none';
   if (name === 'draft') renderDraftContent();
+  waiversView.style.display = name === 'waivers' ? '' : 'none';
+  if (name === 'waivers') renderWaiversTab();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -2931,6 +2934,14 @@ function computeAwards(year, teams, schedule, settings){
   // ---- Roster activity (trades, waivers) ----
   awards.push(...computeActivityAwards(teams));
 
+  // ---- Best Waiver Pickup (precomputed) ----
+  const _bpData = (typeof HISTORY_CACHE !== 'undefined' && HISTORY_CACHE[year])
+    ? HISTORY_CACHE[year].computed?.bestPickup?.overall : null;
+  if (_bpData) {
+    const _bpOwner = teamDisplayName({ primaryOwner: _bpData.ownerKey });
+    awards.push({ emoji: '💎', title: 'Diamond in the Rough', desc: 'Best waiver/FA pickup (most pts while rostered, min 3 wks)', winner: _bpOwner, detail: _bpData.playerName + ' (Wk ' + _bpData.weekAdded + ', ' + _bpData.totalPoints.toFixed(1) + ' pts, ' + _bpData.weeksRostered + ' wks)', ownerKey: _bpData.ownerKey });
+  }
+
   return awards;
 }
 
@@ -4738,6 +4749,76 @@ if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(() => {});
   });
 }
+
+// ========== WAIVERS TAB ==========
+function renderWaiversTab(){
+  if (typeof HISTORY_CACHE === 'undefined' || !HISTORY_CACHE) {
+    waiversView.innerHTML = '<div class="status">\u{1f48e} Load history data first (History tab) to see waiver pickups.</div>';
+    return;
+  }
+  const seasons = Object.keys(HISTORY_CACHE).filter(yr => HISTORY_CACHE[yr]?.computed?.bestPickup).sort((a,b)=>b-a);
+  if (!seasons.length) {
+    waiversView.innerHTML = '<div class="status">\u{1f48e} No waiver wire data available yet. Run the precompute script.</div>';
+    return;
+  }
+  const cur = seasons[0];
+  waiversView.innerHTML = '<div style="margin-bottom:1rem;"><select id="waiverPicker" class="season-picker">' +
+    seasons.map(yr=>'<option value="'+yr+'">'+yr+'</option>').join('') +
+    '<option value="all-time">All-Time Top 15</option></select></div><div id="waiversDisplay"></div>';
+  document.getElementById('waiverPicker').addEventListener('change', function(){ renderWaiversSeason(this.value); });
+  renderWaiversSeason(cur);
+}
+
+function renderWaiversSeason(val){
+  const display = document.getElementById('waiversDisplay');
+  if (val === 'all-time') { renderWaiversAllTime(display); return; }
+  const bp = HISTORY_CACHE[val]?.computed?.bestPickup;
+  if (!bp) { display.innerHTML = '<div class="status">No waiver data for '+val+'.</div>'; return; }
+  const o = bp.overall;
+  const oName = teamDisplayName({ primaryOwner: o.ownerKey });
+  const ppw = (o.totalPoints / o.weeksRostered).toFixed(1);
+  let html = '<div style="text-align:center;padding:1.5rem;margin-bottom:1.5rem;background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:12px;">';
+  html += '<div style="font-size:2.5rem;">\u{1f3c6}</div>';
+  html += '<div style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
+  html += '<div style="font-size:1.6rem;font-weight:700;margin:0.5rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
+  html += '<div style="color:var(--text-muted);margin-bottom:0.75rem;">Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
+  html += '<div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;">';
+  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.totalPoints+' pts</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.weeksRostered+' wks</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+ppw+' pts/wk</span>';
+  html += '</div></div>';
+  html += '<h3>\u{1f4ca} All Teams \u2014 Best Pickups</h3>';
+  html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
+  for (const p of bp.perTeam) {
+    const nm = teamDisplayName({ primaryOwner: p.ownerKey });
+    const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
+    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+  }
+  html += '</tbody></table>';
+  display.innerHTML = html;
+}
+
+function renderWaiversAllTime(display){
+  const all = [];
+  for (const [year, season] of Object.entries(HISTORY_CACHE||{})) {
+    const bp = season?.computed?.bestPickup;
+    if (!bp) continue;
+    all.push({...bp.overall, year});
+    for (const p of bp.perTeam.slice(1)) all.push({...p, year});
+  }
+  all.sort((a,b)=>b.totalPoints-a.totalPoints);
+  const top = all.slice(0, 15);
+  let html = '<h3>\u{1f3c5} All-Time Best Waiver Pickups</h3><p style="color:var(--text-muted);font-size:0.85rem;">Top 15 across all seasons (min 3 weeks rostered)</p>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Year</th><th>Manager</th><th>Player</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
+  top.forEach((p,i) => {
+    const nm = teamDisplayName({ primaryOwner: p.ownerKey });
+    const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
+    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+  });
+  html += '</tbody></table>';
+  display.innerHTML = html;
+}
+
 </script>
 </body>
 </html>
