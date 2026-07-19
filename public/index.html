@@ -9,7 +9,7 @@
 
 <!-- PWA hookup -->
 <link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.jpg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -606,7 +606,7 @@
   }
   .footnotes p:last-child{margin-bottom:0;}
   .footnotes strong{color:var(--ink);}
-  table.h2h{font-size:var(--fs-sm);}
+  table.h2h{}
   table.h2h th, table.h2h td{padding:var(--sp-cell); white-space:nowrap;}
   table.h2h th.rowhead, table.h2h td.rowhead{
     text-align:left;
@@ -1013,6 +1013,20 @@ h3 { margin: var(--sp-md) 0 var(--sp-sm); }
 p.section-note { margin-bottom: var(--sp-md); }
 
 td.rank { width: 20px; color: var(--ink-dim); }
+
+/* Ensure team/manager names ALWAYS use Inter, never mono */
+td.team-name, td.rowhead, .tab-row button,
+table.h2h th, table.h2h td.rowhead { font-family: 'Inter', sans-serif !important; }
+
+/* Compact hero cards globally */
+.waiver-hero, [style*="linear-gradient"][style*="amber"] {
+  padding: var(--sp-md) var(--sp-lg) !important;
+  margin-bottom: var(--sp-md) !important;
+}
+
+.year-chips-row { display:flex; flex-wrap:wrap; gap:var(--sp-xs); margin-bottom:var(--sp-md); }
+.year-chip { background:var(--surface); border:1px solid var(--line); color:var(--ink-dim); border-radius:var(--radius-sm); padding:var(--sp-xs) var(--sp-md); font-family:var(--font-mono); font-size:var(--fs-xs); cursor:pointer; }
+.year-chip.active { background:var(--amber); color:#1a1a2e; border-color:var(--amber); font-weight:600; }
 </style>
 </head>
 <body>
@@ -1069,9 +1083,9 @@ td.rank { width: 20px; color: var(--ink-dim); }
       <button data-tab="milestones">Milestones</button>
       <button data-tab="otd">On This Day</button>
       <button data-tab="whatif">What-If</button>
-      <button data-tab="recap">Recap</button>
-      <button data-tab="hof">Hall of Fame</button>
-      <button data-tab="ceremony">Ceremony</button>
+      
+      
+      
       <button data-tab="belt">Belt</button>
     </div>
   </nav>
@@ -1085,7 +1099,7 @@ td.rank { width: 20px; color: var(--ink-dim); }
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div><div id="trendsView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="trendsView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -1142,9 +1156,7 @@ const recordBookView = document.getElementById('recordBookView');
   const h2hView = document.getElementById('h2hView');
   const eloView = document.getElementById('eloView');
 const waiversView = document.getElementById('waiversView');
-const hofView = document.getElementById('hofView');
 const bracketView = document.getElementById('bracketView');
-const ceremonyView = document.getElementById('ceremonyView');
 const trendsView = document.getElementById('trendsView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
@@ -1221,18 +1233,12 @@ function setTab(name){
   if (name === 'otd') renderOnThisDayContent();
   whatifView.style.display = name === 'whatif' ? '' : 'none';
   if (name === 'whatif') renderWhatIfContent();
-  recapView.style.display = name === 'recap' ? '' : 'none';
-  if (name === 'recap') renderRecapContent();
   draftView.style.display = name === 'draft' ? '' : 'none';
   if (name === 'draft') renderDraftContent();
   waiversView.style.display = name === 'waivers' ? '' : 'none';
   if (name === 'waivers') renderWaiversTab();
-  hofView.style.display = name === 'hof' ? '' : 'none';
-  if (name === 'hof') renderHofTab();
   bracketView.style.display = name === 'bracket' ? '' : 'none';
   if (name === 'bracket') renderBracketTab();
-  ceremonyView.style.display = name === 'ceremony' ? '' : 'none';
-  if (name === 'ceremony') renderCeremonyTab();
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
 }
@@ -1293,10 +1299,24 @@ async function renderDraftContent(){
   if (!view) return;
   if (!view.dataset.init){
     view.dataset.init = '1';
-    const opts = draftAvailableYears().map(y => '<option value="'+y+'">'+y+'</option>').join('');
-    view.innerHTML = '<div class="controls"><label>Season: <select id="draftYearSel">'+opts+'</select></label></div>'
-                   + '<div id="draftBody"></div>';
-    document.getElementById('draftYearSel').addEventListener('change', renderDraftBody);
+    const years = draftAvailableYears();
+    const defaultYear = years[0] || 2025;
+    view.innerHTML = '<div class="year-chips-row">' +
+      years.map(y => '<button class="year-chip'+(y===defaultYear?' active':'')+'" data-yr="'+y+'">'+y+'</button>').join('') +
+      '</div><div id="draftBody"></div>';
+    view.querySelectorAll('.year-chip').forEach(btn => btn.addEventListener('click', function(){
+      view.querySelectorAll('.year-chip').forEach(b=>b.classList.remove('active'));
+      this.classList.add('active');
+      document.getElementById('draftYearSel').value = this.dataset.yr;
+      renderDraftBody();
+    }));
+    // Hidden select to keep renderDraftBody working (it reads draftYearSel)
+    const hiddenSel = document.createElement('select');
+    hiddenSel.id = 'draftYearSel';
+    hiddenSel.style.display = 'none';
+    years.forEach(y => { const o = document.createElement('option'); o.value = y; o.text = y; hiddenSel.add(o); });
+    hiddenSel.value = defaultYear;
+    view.prepend(hiddenSel);
   }
   renderDraftBody();
 }
@@ -2125,8 +2145,8 @@ function renderPreview(){
 
   const cards = matchups.map(m => '<div class="pr-matchup">' +
     '<div class="pr-matchup-teams">' + escapeHtml(m.homeCtx.name) + '<span class="vs-sep">vs</span>' + escapeHtml(m.awayCtx.name) + '</div>' +
-    '<div class="pr-matchup-sub">' + m.homeCtx.wins + '-' + m.homeCtx.losses + (m.homeCtx.ties ? '-' + m.homeCtx.ties : '') +
-      ' · ' + m.awayCtx.wins + '-' + m.awayCtx.losses + (m.awayCtx.ties ? '-' + m.awayCtx.ties : '') + '</div>' +
+    '<div class="pr-matchup-sub">' + m.homeCtx.wins + '-' + m.homeCtx.losses + '' +
+      ' · ' + m.awayCtx.wins + '-' + m.awayCtx.losses + '' + '</div>' +
     '<div class="pr-matchup-banter">' + escapeHtml(m.banter) + '</div>' +
     '</div>').join('');
 
@@ -4153,7 +4173,7 @@ function renderHistoryContent(){
       return '<tr>' +
       '<td class="num rank">' + (idx + 1) + '</td>' +
       '<td class="team-name">' + escapeHtml(names[id] || ('Team ' + id)) + '</td>' +
-      '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
+      '<td class="num rec">' + s.w + '-' + s.l + '</td>' +
       '<td class="num">' + (powerByOwner[id] !== undefined ? powerByOwner[id].toFixed(1) : '-') + '</td>' +
       '<td class="num">' + (apPct === null ? '—' : (apPct * 100).toFixed(1) + '%') + '</td>' +
       '<td class="num">' + s.medW + '-' + s.medL + '</td>' +
@@ -4676,7 +4696,7 @@ function renderWhatIfContent(){
         (b.record.overall.pointsFor - a.record.overall.pointsFor),
       metric: t => {
         const r = t.record.overall;
-        return r.wins + '-' + r.losses + (r.ties ? '-' + r.ties : '');
+        return r.wins + '-' + r.losses;
       }
     },
     {
@@ -4690,7 +4710,7 @@ function renderWhatIfContent(){
       },
       metric: t => {
         const r = median[t.id];
-        return r.wins + '-' + r.losses + (r.ties ? '-' + r.ties : '');
+        return r.wins + '-' + r.losses;
       }
     }
   ];
@@ -5283,10 +5303,14 @@ async function renderWaiversTab(){
     return;
   }
   const cur = seasons[0];
-  waiversView.innerHTML = '<div style="margin-bottom:1rem;"><select id="waiverPicker" class="season-picker">' +
-    seasons.map(yr=>'<option value="'+yr+'">'+yr+'</option>').join('') +
-    '<option value="all-time">All-Time Top 15</option></select></div><div id="waiversDisplay"></div>';
-  document.getElementById('waiverPicker').addEventListener('change', function(){ renderWaiversSeason(this.value); });
+  waiversView.innerHTML = '<div class="year-chips-row">' +
+    seasons.map(yr=>'<button class="year-chip'+(yr===cur?' active':'')+'" data-yr="'+yr+'">'+yr+'</button>').join('') +
+    '<button class="year-chip" data-yr="all-time">All-Time</button></div><div id="waiversDisplay"></div>';
+  waiversView.querySelectorAll('.year-chip').forEach(btn => btn.addEventListener('click', function(){
+    waiversView.querySelectorAll('.year-chip').forEach(b=>b.classList.remove('active'));
+    this.classList.add('active');
+    renderWaiversSeason(this.dataset.yr);
+  }));
   renderWaiversSeason(cur);
 }
 
@@ -5364,7 +5388,7 @@ async function renderHofTab(){
     const champTeam = (s.teams||[]).find(t => t.id === p.champion);
     const champName = champTeam ? teamDisplayName(champTeam) : 'Unknown';
     const rec = champTeam?.record?.overall;
-    const detail = rec ? (rec.wins||0) + '-' + (rec.losses||0) + (rec.ties ? '-'+rec.ties : '') : '';
+    const detail = rec ? (rec.wins||0) + '-' + (rec.losses||0) + '' : '';
     html += '<div class="hof-plaque' + (isVacated ? ' hof-vacated' : '') + '">';
     html += '<div class="hof-year">' + yr + ' Season</div>';
     html += '<div class="hof-trophy">\u{1f3c6}</div>';
