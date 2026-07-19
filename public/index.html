@@ -163,16 +163,33 @@
   .btn-text:hover{color:var(--amber); text-decoration-color:var(--amber);}
 
   /* Tabs */
-  nav.tabs{
+  .tabs-wrap{
+    margin:20px 0 14px;
+  }
+  .tab-row{
     display:flex;
-    gap:22px;
-    margin:28px 0 18px;
-    border-bottom:1px solid var(--line);
+    gap:4px;
     overflow-x:auto;
     scrollbar-width:none;
+    padding-bottom:6px;
+    border-bottom:1px solid var(--line);
+    position:relative;
   }
-  nav.tabs::-webkit-scrollbar{display:none;}
-  nav.tabs button{
+  .tab-row::-webkit-scrollbar{display:none;}
+  .tab-row::after{
+    content:'';
+    position:sticky;
+    right:0;
+    top:0;
+    bottom:0;
+    width:28px;
+    flex-shrink:0;
+    background:linear-gradient(to left, var(--bg) 0%, transparent 100%);
+    pointer-events:none;
+    margin-left:-28px;
+  }
+  .tab-row:last-child{ border-bottom:none; }
+    .tab-row button{
     background:none;
     border:none;
     color:var(--ink-dim);
@@ -185,7 +202,7 @@
     white-space:nowrap;
     flex:none;
   }
-  nav.tabs button.active{color:var(--ink); border-bottom-color:var(--amber);}
+  .tab-row button.active{color:var(--ink); border-bottom-color:var(--amber);}
 
   /* Status / errors */
   .status{
@@ -300,8 +317,8 @@
   .spotlight-card{
     background:linear-gradient(135deg, var(--surface) 0%, var(--surface-2) 100%);
     border-radius:var(--radius);
-    padding:18px 18px 16px;
-    margin-bottom:18px;
+    padding:var(--sp-xl) var(--sp-xl) var(--sp-lg);
+    margin-bottom:var(--sp-lg);
   }
   .spotlight-label{
     font-family:var(--font-mono);
@@ -335,12 +352,12 @@
     align-items:baseline;
     font-family:'Oswald', sans-serif;
     font-weight:600;
-    font-size:var(--fs-lg);
+    font-size:var(--fs-md);
     margin-bottom:4px;
   }
   .pr-matchup-teams .vs-sep{color:var(--ink-dim); font-family:'Inter', sans-serif; font-weight:400; font-size:var(--fs-sm); margin:0 6px;}
-  .pr-matchup-sub{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--ink-dim); margin-bottom:10px;}
-  .pr-matchup-banter{font-size:var(--fs-base); line-height:1.55; color:var(--ink); margin-top:8px;}
+  .pr-matchup-sub{font-family:var(--font-mono); font-size:var(--fs-sm); color:var(--ink-dim); margin-bottom:var(--sp-md);}
+  .pr-matchup-banter{font-size:var(--fs-base); line-height:1.55; color:var(--ink); margin-top:var(--sp-md);}
   .pr-matchup-result{font-family:var(--font-mono); font-size:var(--fs-base); margin-top:2px;}
   .winner-name{color:var(--win); font-weight:700;}
 
@@ -590,7 +607,7 @@
   .footnotes p:last-child{margin-bottom:0;}
   .footnotes strong{color:var(--ink);}
   table.h2h{font-size:var(--fs-sm);}
-  table.h2h th, table.h2h td{padding:9px 10px; white-space:nowrap;}
+  table.h2h th, table.h2h td{padding:var(--sp-cell); white-space:nowrap;}
   table.h2h th.rowhead, table.h2h td.rowhead{
     text-align:left;
     font-weight:600;
@@ -853,7 +870,7 @@
 table .num, td.num { font-family: var(--font-mono); text-align: right; }
 
 /* Tab bar */
-nav.tabs button { font-size: var(--fs-xs); padding: 5px 7px; }
+.tab-row button { font-size: var(--fs-sm); padding: var(--sp-sm) var(--sp-md); }
 
 /* Awards */
 .award-card { font-size: var(--fs-sm); padding: 0.5rem 0.6rem; }
@@ -867,10 +884,11 @@ nav.tabs button { font-size: var(--fs-xs); padding: 5px 7px; }
 /* Preview matchup cards */
 .pr-matchup { font-size: var(--fs-base); padding: 0.5rem 0.7rem; margin-bottom: 0.4rem; }
 .pr-matchup-sub { font-size: var(--fs-sm); font-family: var(--font-mono); }
-.pr-matchup-banter { font-size: var(--fs-sm); }
+.pr-matchup-banter { font-size: var(--fs-base); }
 
-/* Standings / History tables - numeric columns */
-table td:nth-child(n+2), table td.num { font-family: var(--font-mono); }
+/* Numeric columns get mono (but not name headers in h2h) */
+table td.num, table td:nth-child(n+2) { font-family: var(--font-mono); }
+table td.team-name, table td.rowhead, table.h2h td.rowhead, table.h2h th { font-family: 'Inter', sans-serif; }
 
 /* Confidence bar */
 .confidence-bar { font-size: var(--fs-xs); font-family: var(--font-mono); height: 20px; }
@@ -993,6 +1011,8 @@ table thead th, table.data thead th { padding: var(--sp-sm) var(--sp-md); }
 h2.section-title, .section-title { margin: var(--gap-sections) 0 var(--sp-md); }
 h3 { margin: var(--sp-md) 0 var(--sp-sm); }
 p.section-note { margin-bottom: var(--sp-md); }
+
+td.rank { width: 20px; color: var(--ink-dim); }
 </style>
 </head>
 <body>
@@ -1027,19 +1047,33 @@ p.section-note { margin-bottom: var(--sp-md); }
 </header>
 
 <div class="wrap">
-  <nav class="tabs">
-    <button data-tab="standings" class="active">Standings</button>
-    <button data-tab="matchups">Matchups</button>
-    <button data-tab="preview">Preview</button>
-    <button data-tab="review">Review</button>
-    <button data-tab="positions">Positions</button>
-    <button data-tab="awards">Awards</button>
-    <button data-tab="profile">Profile</button>
-    <button data-tab="history">History</button>
-    <button data-tab="belt">Belt</button>
-    <button data-tab="records">Record Book</button>
-    <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="draft">Draft</button><button data-tab="waivers">Waivers</button><button data-tab="hof">Hall of Fame</button><button data-tab="bracket">Bracket</button><button data-tab="ceremony">Ceremony</button><button data-tab="trends">Trends</button>
+  <nav class="tabs-wrap">
+    <div class="tab-row">
+      <button data-tab="standings" class="active">Standings</button>
+      <button data-tab="matchups">Matchups</button>
+      <button data-tab="preview">Preview</button>
+      <button data-tab="review">Review</button>
+      <button data-tab="positions">Positions</button>
+      <button data-tab="draft">Draft</button>
+      <button data-tab="waivers">Waivers</button>
+      <button data-tab="bracket">Bracket</button>
+    </div>
+    <div class="tab-row">
+      <button data-tab="awards">Awards</button>
+      <button data-tab="profile">Profile</button>
+      <button data-tab="history">History</button>
+      <button data-tab="records">Record Book</button>
+      <button data-tab="h2h">H2H</button>
+      <button data-tab="elo">Elo</button>
+      <button data-tab="trends">Trends</button>
+      <button data-tab="milestones">Milestones</button>
+      <button data-tab="otd">On This Day</button>
+      <button data-tab="whatif">What-If</button>
+      <button data-tab="recap">Recap</button>
+      <button data-tab="hof">Hall of Fame</button>
+      <button data-tab="ceremony">Ceremony</button>
+      <button data-tab="belt">Belt</button>
+    </div>
   </nav>
 
   <div id="statusArea"></div>
@@ -1163,7 +1197,7 @@ let state = { teams: [], schedule: [], currentWeek: null, leagueName: '', season
 let history = { data: {}, loadedSeasons: [], checkedSeasons: new Set() };
 
 function setTab(name){
-  document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  document.querySelectorAll('.tabs-wrap button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
   standingsView.style.display = name === 'standings' ? '' : 'none';
   matchupsView.style.display = name === 'matchups' ? '' : 'none';
   previewView.style.display = name === 'preview' ? '' : 'none';
@@ -1202,7 +1236,7 @@ function setTab(name){
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
 }
-document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+document.querySelectorAll('.tabs-wrap button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
 // ---- Draft recap / grades (Task 9) ----
 const DRAFT_MIN_YEAR = 2018;
@@ -4114,9 +4148,10 @@ function renderHistoryContent(){
 
   const rows = Object.entries(agg)
     .sort((a, b) => b[1].championships - a[1].championships || (b[1].w / Math.max(b[1].w+b[1].l+b[1].t,1)) - (a[1].w / Math.max(a[1].w+a[1].l+a[1].t,1)))
-    .map(([id, s]) => {
+    .map(([id, s], idx) => {
       const apPct = allPlayPct({ wins: s.apW, losses: s.apL, ties: s.apT });
       return '<tr>' +
+      '<td class="num rank">' + (idx + 1) + '</td>' +
       '<td class="team-name">' + escapeHtml(names[id] || ('Team ' + id)) + '</td>' +
       '<td class="num rec">' + s.w + '-' + s.l + '-' + s.t + '</td>' +
       '<td class="num">' + (powerByOwner[id] !== undefined ? powerByOwner[id].toFixed(1) : '-') + '</td>' +
@@ -4132,7 +4167,7 @@ function renderHistoryContent(){
 
   const recordsTable = '<h2 class="section-title">All-time records</h2>' +
     '<p class="section-note">Across the seasons checked below. All-Play is each team\'s win% if they\'d played every other team every week — output separate from schedule luck. Championships, top-3, and toilet bowl come from each season\'s final bracket. DQ reflects manual adjustments (e.g. a vacated championship): the top-3 finish stays, only the championship credit moves to the DQ column.</p>' +
-    '<table data-sortable><thead><tr><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
+    '<table data-sortable><thead><tr><th class="num">#</th><th>Team</th><th class="num">Record</th><th class="num">Power</th><th class="num">All-Play</th><th class="num">vs Median</th><th class="num">🏆</th><th class="num">Top 3</th><th class="num">Playoffs</th><th class="num">🚽</th><th class="num">DQ</th></tr></thead>' +
     '<tbody>' + rows + '</tbody></table>';
 
   // ---- Head-to-head matrix ----
@@ -4153,14 +4188,14 @@ function renderHistoryContent(){
     });
   });
 
-  const header = '<th class="rowhead"></th>' + teamIds.map(id => '<th>' + escapeHtml((names[id]||'?').slice(0,10)) + '</th>').join('');
+  const header = '<th class="num">#</th><th class="rowhead"></th>' + teamIds.map(id => '<th>' + escapeHtml((names[id]||'?').slice(0,10)) + '</th>').join('');
   const bodyRows = teamIds.map(a => {
     const cells = teamIds.map(b => {
       if (a === b) return '<td class="diag">—</td>';
       const rec = h2h[a+'|'+b];
       return '<td class="num">' + rec.w + '-' + rec.l + (rec.t ? '-' + rec.t : '') + '</td>';
     }).join('');
-    return '<tr><td class="rowhead">' + escapeHtml((names[a]||'?').slice(0,14)) + '</td>' + cells + '</tr>';
+    return '<tr><td class="num rank">' + (teamIds.indexOf(a)+1) + '</td><td class="rowhead">' + escapeHtml((names[a]||'?').slice(0,14)) + '</td>' + cells + '</tr>';
   }).join('');
 
   const h2hTable = teamIds.length
