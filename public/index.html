@@ -34,7 +34,6 @@
     background:var(--bg);
     color:var(--ink);
     font-family:'Inter', sans-serif;
-    font-size:13px;
     -webkit-font-smoothing:antialiased;
     min-height:100vh;
     padding-bottom:56px;
@@ -146,7 +145,6 @@
     border-radius:8px;
     font-family:'Inter', sans-serif;
     font-weight:600;
-    font-size:13px;
     cursor:pointer;
     border:1px solid transparent;
     white-space:nowrap;
@@ -192,7 +190,6 @@
   /* Status / errors */
   .status{
     font-family:'Inter', sans-serif;
-    font-size:13px;
     color:var(--ink-dim);
     padding:16px 0;
   }
@@ -201,7 +198,6 @@
     border-left:3px solid var(--loss);
     border-radius:0 8px 8px 0;
     padding:14px 16px;
-    font-size:13px;
     line-height:1.55;
     color:var(--ink);
   }
@@ -223,7 +219,6 @@
   tbody td{
     padding:13px 10px;
     border-top:1px solid var(--line);
-    font-size:13px;
   }
   tbody tr:first-child td{border-top:none;}
   .rank{font-family:'JetBrains Mono', monospace; color:var(--ink-dim); width:26px;}
@@ -801,7 +796,7 @@
 .draft-chip { display:inline-block; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; letter-spacing:0.04em; line-height:1.3; text-transform:uppercase; }
 .draft-chip-steal { background:rgba(46,125,50,0.18); color:#2e7d32; }
 .draft-chip-bust { background:rgba(198,40,40,0.18); color:#c62828; }
-.draft-legend { font-size:0.8rem; opacity:0.8; margin:4px 0 14px; line-height:1.6; }
+.draft-legend {  opacity:0.8; margin:4px 0 14px; line-height:1.6; }
 .draft-legend .draft-chip { margin-right:4px; }
 
 .confidence-bar { display:flex; height:22px; border-radius:4px; overflow:hidden; margin:0.4rem 0; font-size:0.75rem; font-family:var(--font-mono); }
@@ -810,10 +805,10 @@
 .hof-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:1.2rem; margin-top:1rem; }
 .hof-plaque { background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border:2px solid var(--amber); border-radius:12px; padding:1.2rem; text-align:center; position:relative; overflow:hidden; }
 .hof-plaque::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--amber), #ffd700, var(--amber)); }
-.hof-year { font-size:0.8rem; text-transform:uppercase; letter-spacing:0.15em; color:var(--text-muted); margin-bottom:0.3rem; }
+.hof-year {  text-transform:uppercase; letter-spacing:0.15em; color:var(--text-muted); margin-bottom:0.3rem; }
 .hof-trophy { font-size:2.5rem; margin:0.3rem 0; }
 .hof-name { font-size:1.3rem; font-weight:700; color:var(--amber); }
-.hof-detail { font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem; }
+.hof-detail {  color:var(--text-muted); margin-top:0.3rem; }
 .hof-vacated { opacity:0.4; border-color:var(--text-muted); }
 .hof-vacated .hof-name { text-decoration:line-through; color:var(--text-muted); }
 .bracket-round { margin-bottom:1.5rem; }
@@ -825,8 +820,8 @@
 .bracket-game .team-right { text-align:left; }
 .bracket-game .winner { font-weight:700; color:var(--amber); }
 .bracket-game .loser { color:var(--text-muted); }
-.bracket-game .vs-col { text-align:center; padding:0 0.5rem; font-size:0.7rem; color:var(--text-muted); }
-.bracket-game .score { font-family:var(--font-mono); font-size:0.8rem; }
+.bracket-game .vs-col { text-align:center; padding:0 0.5rem;  color:var(--text-muted); }
+.bracket-game .score { font-family:var(--font-mono);  }
 .bracket-game .score-win { color:var(--amber); font-weight:600; }
 .ceremony-section { margin-bottom:2rem; }
 .ceremony-champ { text-align:center; padding:2rem; background:linear-gradient(135deg, rgba(255,193,7,0.1) 0%, var(--bg-card) 100%); border:2px solid var(--amber); border-radius:16px; margin-bottom:2rem; }
@@ -839,30 +834,118 @@
 .ceremony-award-winner { color:var(--amber); }
 .ceremony-award-detail { color:var(--text-muted); font-size:0.85rem; margin-left:auto; }
 
-/* Compact global overrides */
-h2.section-title { font-size: 1.1rem; margin: 0.8rem 0 0.4rem; }
-h3 { font-size: 0.95rem; margin: 0.7rem 0 0.3rem; }
-table.data th, table.data td { padding: 6px 8px; font-size: 0.82rem; }
-.award-card { padding: 0.6rem; }
-.award-emoji { font-size: 1.3rem; }
-.pr-matchup { padding: 0.6rem 0.8rem; margin-bottom: 0.5rem; }
-.badge-card { padding: 0.5rem; }
-.badge-emoji { font-size: 1.2rem; }
-nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
-
 .record-card { background:var(--surface-2, var(--bg-card)); border:1px solid var(--line); border-radius:var(--radius, 8px); padding:0.7rem 0.9rem; margin-bottom:0.6rem; }
 .record-card-title { font-family:'Oswald', sans-serif; font-size:0.75rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--gold, var(--amber)); margin-bottom:0.4rem; }
 .record-card-body table { width:100%; }
-.record-card-body th, .record-card-body td { font-size:0.8rem; padding:3px 6px; }
+.record-card-body th, .record-card-body td {  padding:3px 6px; }
 .record-card-body .num { font-family:var(--font-mono); text-align:right; }
 
 .bracket-bye { padding:0.4rem 0.7rem; margin-bottom:3px; background:var(--bg-card); border-radius:6px; border:1px dashed var(--amber); display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; }
-.bye-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); background:var(--bg-surface); padding:2px 6px; border-radius:3px; margin-left:auto; }
-.bye-seed, .bracket-seed { font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); }
+.bye-label {  text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); background:var(--bg-surface); padding:2px 6px; border-radius:3px; margin-left:auto; }
+.bye-seed, .bracket-seed { font-family:var(--font-mono);  color:var(--text-muted); }
 
-.trends-table { font-size:0.8rem; }
+.trends-table {  }
 .trends-table th, .trends-table td { padding:4px 6px; white-space:nowrap; }
 .trends-table svg { display:inline-block; }
+
+
+.elo-table th, .elo-table td, .trends-table th, .trends-table td { font-size: var(--fs-sm); padding: 5px 7px; }
+table .num, td.num { font-family: var(--font-mono); text-align: right; }
+
+/* Tab bar */
+nav.tabs button { font-size: var(--fs-xs); padding: 5px 7px; }
+
+/* Awards */
+.award-card { font-size: var(--fs-sm); padding: 0.5rem 0.6rem; }
+.award-emoji { font-size: 1.2rem; }
+
+/* Profile badges */
+.badge-card { font-size: var(--fs-xs); padding: 0.4rem; }
+.badge-emoji { font-size: 1.1rem; }
+.badge-title { font-size: var(--fs-xs); }
+
+/* Preview matchup cards */
+.pr-matchup { font-size: var(--fs-base); padding: 0.5rem 0.7rem; margin-bottom: 0.4rem; }
+.pr-matchup-sub { font-size: var(--fs-sm); font-family: var(--font-mono); }
+.pr-matchup-banter { font-size: var(--fs-sm); }
+
+/* Standings / History tables - numeric columns */
+table td:nth-child(n+2), table td.num { font-family: var(--font-mono); }
+
+/* Confidence bar */
+.confidence-bar { font-size: var(--fs-xs); font-family: var(--font-mono); height: 20px; }
+
+/* Record book cards */
+.record-card { font-size: var(--fs-sm); }
+.record-card-title { font-size: var(--fs-xs); }
+.record-card-body th, .record-card-body td { font-size: var(--fs-sm); padding: 3px 5px; }
+
+/* HOF plaques */
+.hof-year { font-size: var(--fs-xs); }
+.hof-name { font-size: var(--fs-xl); }
+.hof-detail { font-size: var(--fs-sm); font-family: var(--font-mono); }
+.hof-trophy { font-size: var(--fs-xxl); }
+
+/* Bracket */
+.bracket-round h3 { font-size: var(--fs-xs); }
+.bracket-game { font-size: var(--fs-sm); }
+.bracket-game .score { font-family: var(--font-mono); font-size: var(--fs-sm); }
+.bracket-seed, .bye-seed { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.bye-label { font-size: var(--fs-xs); }
+
+/* Ceremony */
+.ceremony-champ-name { font-size: var(--fs-xl); }
+.ceremony-champ-sub { font-size: var(--fs-sm); }
+.ceremony-champ-trophy { font-size: var(--fs-xxl); }
+.ceremony-award { font-size: var(--fs-sm); }
+.ceremony-award-emoji { font-size: 1.1rem; }
+.ceremony-award-title { font-size: var(--fs-sm); }
+.ceremony-award-detail { font-size: var(--fs-xs); font-family: var(--font-mono); }
+
+/* Waivers hero card */
+.waiver-hero-stats .stat { font-family: var(--font-mono); font-size: var(--fs-sm); }
+
+/* OTD cards */
+.otd-card { font-size: var(--fs-sm); }
+.otd-card-label { font-size: var(--fs-xs); }
+.otd-card-year { font-size: var(--fs-xs); }
+.otd-pts { font-family: var(--font-mono); }
+
+/* Elo table */
+.elo-table { font-size: var(--fs-sm); }
+
+/* Glossary modal */
+.glossary-title { font-size: var(--fs-base); }
+.glossary-desc { font-size: var(--fs-sm); }
+
+/* Standings-specific mono for records/points */
+#standingsView td { font-family: var(--font-mono); }
+#standingsView td:first-child { font-family: 'Inter', sans-serif; }
+
+/* Matchups view scores */
+.matchup-score { font-family: var(--font-mono); }
+
+/* Trends */
+.trends-table td, .trends-table th { font-size: var(--fs-sm); padding: 4px 5px; }
+
+/* ===== TYPOGRAPHY NORMALIZATION ===== */
+:root {
+  --fs-xs: 0.7rem;
+  --fs-sm: 0.78rem;
+  --fs-base: 0.85rem;
+  --fs-md: 0.95rem;
+  --fs-lg: 1.1rem;
+  --fs-xl: 1.3rem;
+  --fs-xxl: 1.8rem;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+body { font-size: var(--fs-base); line-height: 1.45; }
+h2.section-title, .section-title { font-size: var(--fs-lg); font-weight: 700; margin: 0.8rem 0 0.4rem; }
+h3 { font-size: var(--fs-md); font-weight: 600; margin: 0.6rem 0 0.3rem; }
+p.section-note, .section-note { font-size: var(--fs-sm); }
+
+/* Tables */
+table th, table td, table.data th, table.data td,
 </style>
 </head>
 <body>
@@ -5134,14 +5217,14 @@ function renderWaiversSeason(val){
   const oName = teamDisplayName({ primaryOwner: o.ownerKey });
   const ppw = (o.totalPoints / o.weeksRostered).toFixed(1);
   let html = '<div style="text-align:center;padding:1rem 1rem 0.8rem;margin-bottom:1rem;background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:10px;">';
-  html += '<div style="font-size:1.8rem;margin-bottom:0.2rem;">\u{1f3c6}</div>';
-  html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
-  html += '<div style="font-size:1.2rem;font-weight:700;margin:0.3rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
-  html += '<div style="color:var(--text-muted);margin-bottom:0.5rem;font-size:0.8rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
+  html += '<div style="margin-bottom:0.2rem;">\u{1f3c6}</div>';
+  html += '<div style="text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
+  html += '<div style="font-weight:700;margin:0.3rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
+  html += '<div style="color:var(--text-muted);margin-bottom:0.5rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
   html += '<div style="display:flex;justify-content:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.3rem;">';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+o.totalPoints+' pts</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+o.weeksRostered+' wks</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+ppw+' pts/wk</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+o.totalPoints+' pts</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+o.weeksRostered+' wks</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);">'+ppw+' pts/wk</span>';
   html += '</div></div>';
   html += '<h3>\u{1f4ca} All Teams \u2014 Best Pickups</h3>';
   html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
@@ -5388,7 +5471,7 @@ async function renderTrendsTab(){
     return bLast - aLast;
   });
 
-  const yearLabels = allYears.map(y => '<th style="font-family:var(--font-mono);font-size:0.7rem;">' + String(y).slice(2) + '</th>').join('');
+  const yearLabels = allYears.map(y => '<th style="font-family:var(--font-mono);">' + String(y).slice(2) + '</th>').join('');
 
   let html = '<h2 class="section-title">Season-over-Season Trends</h2>';
   html += '<p class="section-note">' + allYears.length + ' seasons (' + allYears[0] + '\u2013' + allYears[allYears.length-1] + ')</p>';
@@ -5400,7 +5483,7 @@ async function renderTrendsTab(){
     const validPcts = pcts.filter(v=>v!==null);
     const spark = trendSparkline(validPcts, 'var(--amber, #d9a441)', 80, 22);
     const curr = validPcts.length ? (validPcts[validPcts.length-1]*100).toFixed(0)+'%' : '\u2014';
-    const cells = pcts.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
+    const cells = pcts.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
     html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
@@ -5412,7 +5495,7 @@ async function renderTrendsTab(){
     const validPts = pts.filter(v=>v!==null);
     const spark = trendSparkline(validPts, '#4fc3f7', 80, 22);
     const curr = validPts.length ? validPts[validPts.length-1].toFixed(1) : '\u2014';
-    const cells = pts.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
+    const cells = pts.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
     html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
@@ -5426,7 +5509,7 @@ async function renderTrendsTab(){
     const inverted = validFins.map(v => 13 - v);
     const spark = trendSparkline(inverted, '#81c784', 80, 22);
     const curr = validFins.length ? '#' + validFins[validFins.length-1] : '\u2014';
-    const cells = fins.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
+    const cells = fins.map(v => '<td style="font-family:var(--font-mono);text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
     html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
