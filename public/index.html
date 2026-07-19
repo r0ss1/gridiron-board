@@ -785,6 +785,18 @@
   #draftView h4{ font-size:13px; }
   #draftView table.data tbody td{ font-size:12px; padding:8px 10px; }
   #draftView table.data thead th{ font-size:11px; }
+
+#eloView .section-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+#eloView .section-note { font-size: 0.8rem; opacity: 0.7; margin-bottom: 12px; }
+#eloView .elo-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+#eloView .elo-table th, #eloView .elo-table td { padding: 6px 10px; text-align: left; border-bottom: 1px solid rgba(128,128,128,0.2); }
+#eloView .elo-table th { font-weight: 600; opacity: 0.75; white-space: nowrap; }
+#eloView .elo-table tbody tr:hover { background: rgba(128,128,128,0.08); }
+#eloView .elo-num { text-align: right; font-variant-numeric: tabular-nums; }
+#eloView .elo-peak { white-space: nowrap; opacity: 0.85; font-variant-numeric: tabular-nums; }
+#eloView .elo-trend { width: 130px; }
+#eloView .elo-spark { display: block; color: #4a90d9; }
+#eloView .status { padding: 16px; opacity: 0.7; }
 </style>
 </head>
 <body>
@@ -831,7 +843,7 @@
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -843,7 +855,7 @@
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -898,6 +910,7 @@ const beltView = document.getElementById('beltView');
 const recordBookView = document.getElementById('recordBookView');
   const milestonesView = document.getElementById('milestonesView');
   const h2hView = document.getElementById('h2hView');
+  const eloView = document.getElementById('eloView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -967,6 +980,8 @@ function setTab(name){
   if (name === 'milestones') renderMilestonesContent();
   h2hView.style.display = name === 'h2h' ? '' : 'none';
   if (name === 'h2h') renderH2HContent();
+  eloView.style.display = name === 'elo' ? '' : 'none';
+  if (name === 'elo') renderEloContent();
   otdView.style.display = name === 'otd' ? '' : 'none';
   if (name === 'otd') renderOnThisDayContent();
   whatifView.style.display = name === 'whatif' ? '' : 'none';
@@ -4036,6 +4051,104 @@ function renderWhatIfContent(){
   whatifView.innerHTML = html;
 }
 
+function computeEloHistory(){
+  // Chronological head-to-head Elo with per-season soft reset toward 1500.
+  const names = historyTeamNames();
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+  const rating = {};        // ownerKey -> current rating
+  const series = {};        // ownerKey -> [{year, week, elo}]
+  const peak = {};          // ownerKey -> {elo, year, week}
+  const games = {};         // ownerKey -> count
+  const seen = new Set();   // owners active this run
+  const ensure = (k) => {
+    if (!(k in rating)) { rating[k] = 1500; series[k] = []; games[k] = 0; peak[k] = {elo:1500, year:null, week:null}; }
+  };
+  checked.forEach((year, yi) => {
+    // soft reset between seasons: regress 33% toward 1500
+    if (yi > 0) {
+      Object.keys(rating).forEach(k => { rating[k] = 1500 + 0.67 * (rating[k] - 1500); });
+    }
+    const data = history.data[year];
+    if (!data) return;
+    const sched = (data.schedule || []).slice().sort((a,b)=>(a.matchupPeriodId||0)-(b.matchupPeriodId||0));
+    const teams = data.teams || [];
+    const ownerById = idToOwnerKeyMap(teams);
+    sched.forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const hk = ownerById[g.home.teamId];
+      const ak = ownerById[g.away.teamId];
+      if (!hk || !ak || hk === ak) return;
+      ensure(hk); ensure(ak); seen.add(hk); seen.add(ak);
+      const hp = g.home.totalPoints ?? 0;
+      const ap = g.away.totalPoints ?? 0;
+      const week = g.matchupPeriodId;
+      const rh = rating[hk], ra = rating[ak];
+      const eh = 1 / (1 + Math.pow(10, (ra - rh) / 400));
+      const ea = 1 - eh;
+      let sh, sa, margin;
+      if (g.winner === 'TIE') { sh = 0.5; sa = 0.5; margin = 0; }
+      else if (g.winner === 'HOME') { sh = 1; sa = 0; margin = Math.abs(hp - ap); }
+      else { sh = 0; sa = 1; margin = Math.abs(hp - ap); }
+      const eloDiff = Math.abs(rh - ra);
+      const movMult = Math.log(margin + 1) * (2.2 / (eloDiff * 0.001 + 2.2));
+      const K = 20 * (margin === 0 ? 1 : movMult);
+      rating[hk] = rh + K * (sh - eh);
+      rating[ak] = ra + K * (sa - ea);
+      games[hk]++; games[ak]++;
+      [hk, ak].forEach(k => {
+        series[k].push({year, week, elo: rating[k]});
+        if (rating[k] > peak[k].elo) peak[k] = {elo: rating[k], year, week};
+      });
+    });
+  });
+  const rows = Array.from(seen).map(k => ({
+    key: k,
+    name: names[k] || 'Unknown',
+    elo: rating[k],
+    peak: peak[k],
+    games: games[k],
+    series: series[k]
+  })).sort((a,b) => b.elo - a.elo);
+  return rows;
+}
+
+function eloSparkline(series){
+  if (!series || series.length < 2) return '';
+  const vals = series.map(p => p.elo);
+  const min = Math.min.apply(null, vals), max = Math.max.apply(null, vals);
+  const span = (max - min) || 1;
+  const W = 120, H = 28;
+  const step = W / (vals.length - 1);
+  const pts = vals.map((v, i) => (i * step).toFixed(1) + ',' + (H - ((v - min) / span) * H).toFixed(1)).join(' ');
+  return '<svg class="elo-spark" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none"><polyline points="' + pts + '" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>';
+}
+
+function renderEloContent(){
+  if (!history.loadedSeasons.length) { eloView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
+  if (!checked.length) { eloView.innerHTML = '<div class="status">Check some seasons in History to build ratings.</div>'; return; }
+  const rows = computeEloHistory();
+  if (!rows.length) { eloView.innerHTML = '<div class="status">No completed games in the selected seasons.</div>'; return; }
+  let html =
+    '<div class="section-title">Elo Ratings</div>' +
+    '<div class="section-note">Chronological head-to-head Elo across ' + checked.length + ' season' + (checked.length === 1 ? '' : 's') + '. Margin-of-victory adjusted, with a soft reset toward 1500 each season.</div>' +
+    '<table class="elo-table"><thead><tr><th>#</th><th>Manager</th><th>Elo</th><th>Peak</th><th>Games</th><th>Trend</th></tr></thead><tbody>';
+  rows.forEach((r, i) => {
+    const pk = r.peak && r.peak.year ? (Math.round(r.peak.elo) + ' (' + r.peak.year + ' Wk ' + r.peak.week + ')') : Math.round(r.peak.elo);
+    html +=
+      '<tr>' +
+      '<td>' + (i + 1) + '</td>' +
+      '<td>' + escapeHtml(r.name) + '</td>' +
+      '<td class="elo-num">' + Math.round(r.elo) + '</td>' +
+      '<td class="elo-peak">' + pk + '</td>' +
+      '<td class="elo-num">' + r.games + '</td>' +
+      '<td class="elo-trend">' + eloSparkline(r.series) + '</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table>';
+  eloView.innerHTML = html;
+}
+
 function renderH2HContent(){
   const seasonsData = profileSeasonsData();
   if (!seasonsData.length) {
@@ -4327,6 +4440,7 @@ function refreshSeasonDependentViews(){
   if (beltView) renderBeltContent();
   if (recordBookView) renderRecordBookContent();
   if (milestonesView) renderMilestonesContent();
+  if (eloView) renderEloContent();
 }
 
 async function autoLoadHistoryFromCache(){
