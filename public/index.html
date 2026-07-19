@@ -993,7 +993,7 @@ function buildDraftPlayerMap(data){
       fullName: pl.fullName || ('Player ' + entry.id),
       posId: pl.defaultPositionId,
       pos: POSITION_NAMES[pl.defaultPositionId] || '?',
-      positionalRanking: (typeof r0.positionalRanking === 'number') ? r0.positionalRanking : null,
+      positionalRanking: (typeof r0.positionalRanking === 'number' && r0.positionalRanking > 0) ? r0.positionalRanking : null,
       totalRanking: (typeof r0.totalRanking === 'number') ? r0.totalRanking : null,
       totalRating: (typeof r0.totalRating === 'number') ? r0.totalRating : null
     };
