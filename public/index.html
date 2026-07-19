@@ -5108,22 +5108,22 @@ function renderWaiversSeason(val){
   const o = bp.overall;
   const oName = teamDisplayName({ primaryOwner: o.ownerKey });
   const ppw = (o.totalPoints / o.weeksRostered).toFixed(1);
-  let html = '<div style="text-align:center;padding:1.5rem;margin-bottom:1.5rem;background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:12px;">';
-  html += '<div style="font-size:2.5rem;">\u{1f3c6}</div>';
-  html += '<div style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
-  html += '<div style="font-size:1.6rem;font-weight:700;margin:0.5rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
-  html += '<div style="color:var(--text-muted);margin-bottom:0.75rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
-  html += '<div style="display:flex;justify-content:center;gap:1.5rem;flex-wrap:wrap;">';
-  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.totalPoints+' pts</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+o.weeksRostered+' wks</span>';
-  html += '<span style="background:var(--bg-surface);padding:0.4rem 0.8rem;border-radius:6px;font-family:var(--font-mono);font-size:0.9rem;">'+ppw+' pts/wk</span>';
+  let html = '<div style="text-align:center;padding:1rem 1rem 0.8rem;margin-bottom:1rem;background:linear-gradient(135deg,var(--bg-card) 0%,rgba(255,193,7,0.08) 100%);border:1px solid var(--amber);border-radius:10px;">';
+  html += '<div style="font-size:1.8rem;margin-bottom:0.2rem;">\u{1f3c6}</div>';
+  html += '<div style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);">Best Pickup of '+val+'</div>';
+  html += '<div style="font-size:1.2rem;font-weight:700;margin:0.3rem 0;color:var(--amber);">\u{1f48e} '+o.playerName+'</div>';
+  html += '<div style="color:var(--text-muted);margin-bottom:0.5rem;font-size:0.8rem;">'+(o.posLabel ? '<strong>'+o.posLabel+'</strong> \u00b7 ' : '')+'Added Week '+o.weekAdded+' by <strong>'+oName+'</strong> '+(o.bidAmount>0?'($'+o.bidAmount+' FAAB)':'(Free)')+'</div>';
+  html += '<div style="display:flex;justify-content:center;gap:0.8rem;flex-wrap:wrap;margin-bottom:0.3rem;">';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+o.totalPoints+' pts</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+o.weeksRostered+' wks</span>';
+  html += '<span style="background:var(--bg-surface);padding:0.3rem 0.6rem;border-radius:4px;font-family:var(--font-mono);font-size:0.8rem;">'+ppw+' pts/wk</span>';
   html += '</div></div>';
   html += '<h3>\u{1f4ca} All Teams \u2014 Best Pickups</h3>';
   html += '<table class="data"><thead><tr><th>Manager</th><th>Player</th><th>Pos</th><th>Wk</th><th>Pts</th><th>Wks</th><th>Pts/Wk</th></tr></thead><tbody>';
   for (const p of bp.perTeam) {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'—')+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+    html += '<tr><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'—')+'</td><td style="font-family:var(--font-mono)">'+p.weekAdded+'</td><td style="font-family:var(--font-mono)"><strong>'+p.totalPoints+'</strong></td><td style="font-family:var(--font-mono)">'+p.weeksRostered+'</td><td style="font-family:var(--font-mono)">'+pw+'</td></tr>';
   }
   html += '</tbody></table>';
   display.innerHTML = html;
@@ -5144,7 +5144,7 @@ function renderWaiversAllTime(display){
   top.forEach((p,i) => {
     const nm = teamDisplayName({ primaryOwner: p.ownerKey });
     const pw = (p.totalPoints / p.weeksRostered).toFixed(1);
-    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'\u2014')+'</td><td>'+p.weekAdded+'</td><td><strong>'+p.totalPoints+'</strong></td><td>'+p.weeksRostered+'</td><td>'+pw+'</td></tr>';
+    html += '<tr><td>'+(i+1)+'</td><td>'+p.year+'</td><td>'+nm+'</td><td>'+p.playerName+'</td><td>'+(p.posLabel||'\u2014')+'</td><td style="font-family:var(--font-mono)">'+p.weekAdded+'</td><td style="font-family:var(--font-mono)"><strong>'+p.totalPoints+'</strong></td><td style="font-family:var(--font-mono)">'+p.weeksRostered+'</td><td style="font-family:var(--font-mono)">'+pw+'</td></tr>';
   });
   html += '</tbody></table>';
   display.innerHTML = html;
