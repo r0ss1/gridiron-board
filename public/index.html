@@ -802,6 +802,35 @@
 .draft-chip-bust { background:rgba(198,40,40,0.18); color:#c62828; }
 .draft-legend { font-size:0.8rem; opacity:0.8; margin:4px 0 14px; line-height:1.6; }
 .draft-legend .draft-chip { margin-right:4px; }
+
+.confidence-bar { display:flex; height:22px; border-radius:4px; overflow:hidden; margin:0.4rem 0; font-size:0.75rem; font-family:var(--font-mono); }
+.conf-home { background:var(--green, #2e7d32); color:#fff; display:flex; align-items:center; justify-content:center; min-width:30px; transition:width 0.3s; }
+.conf-away { background:var(--red, #c62828); color:#fff; display:flex; align-items:center; justify-content:center; min-width:30px; transition:width 0.3s; }
+.hof-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:1.2rem; margin-top:1rem; }
+.hof-plaque { background:linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border:2px solid var(--amber); border-radius:12px; padding:1.2rem; text-align:center; position:relative; overflow:hidden; }
+.hof-plaque::before { content:''; position:absolute; top:0; left:0; right:0; height:4px; background:linear-gradient(90deg, var(--amber), #ffd700, var(--amber)); }
+.hof-year { font-size:0.8rem; text-transform:uppercase; letter-spacing:0.15em; color:var(--text-muted); margin-bottom:0.3rem; }
+.hof-trophy { font-size:2.5rem; margin:0.3rem 0; }
+.hof-name { font-size:1.3rem; font-weight:700; color:var(--amber); }
+.hof-detail { font-size:0.8rem; color:var(--text-muted); margin-top:0.3rem; }
+.hof-vacated { opacity:0.4; border-color:var(--text-muted); }
+.hof-vacated .hof-name { text-decoration:line-through; color:var(--text-muted); }
+.bracket-round { margin-bottom:1.5rem; }
+.bracket-round h3 { margin-bottom:0.5rem; }
+.bracket-game { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.8rem; margin-bottom:0.4rem; background:var(--bg-card); border-radius:8px; border-left:3px solid var(--amber); }
+.bracket-game .winner { font-weight:700; color:var(--amber); }
+.bracket-game .loser { color:var(--text-muted); }
+.bracket-game .score { font-family:var(--font-mono); font-size:0.85rem; margin-left:auto; }
+.ceremony-section { margin-bottom:2rem; }
+.ceremony-champ { text-align:center; padding:2rem; background:linear-gradient(135deg, rgba(255,193,7,0.1) 0%, var(--bg-card) 100%); border:2px solid var(--amber); border-radius:16px; margin-bottom:2rem; }
+.ceremony-champ-trophy { font-size:4rem; }
+.ceremony-champ-name { font-size:2rem; font-weight:700; color:var(--amber); margin:0.5rem 0; }
+.ceremony-champ-sub { color:var(--text-muted); }
+.ceremony-award { display:flex; align-items:center; gap:0.8rem; padding:0.6rem 1rem; background:var(--bg-card); border-radius:8px; margin-bottom:0.4rem; }
+.ceremony-award-emoji { font-size:1.5rem; }
+.ceremony-award-title { font-weight:600; min-width:140px; }
+.ceremony-award-winner { color:var(--amber); }
+.ceremony-award-detail { color:var(--text-muted); font-size:0.85rem; margin-left:auto; }
 </style>
 </head>
 <body>
@@ -848,7 +877,7 @@
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button><button data-tab="waivers">💎 Waivers</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button><button data-tab="waivers">💎 Waivers</button><button data-tab="hof">🏆 Hall of Fame</button><button data-tab="bracket">🏀 Bracket</button><button data-tab="ceremony">🎬 Ceremony</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -860,7 +889,7 @@
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -917,6 +946,9 @@ const recordBookView = document.getElementById('recordBookView');
   const h2hView = document.getElementById('h2hView');
   const eloView = document.getElementById('eloView');
 const waiversView = document.getElementById('waiversView');
+const hofView = document.getElementById('hofView');
+const bracketView = document.getElementById('bracketView');
+const ceremonyView = document.getElementById('ceremonyView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -1000,6 +1032,12 @@ function setTab(name){
   if (name === 'draft') renderDraftContent();
   waiversView.style.display = name === 'waivers' ? '' : 'none';
   if (name === 'waivers') renderWaiversTab();
+  hofView.style.display = name === 'hof' ? '' : 'none';
+  if (name === 'hof') renderHofTab();
+  bracketView.style.display = name === 'bracket' ? '' : 'none';
+  if (name === 'bracket') renderBracketTab();
+  ceremonyView.style.display = name === 'ceremony' ? '' : 'none';
+  if (name === 'ceremony') renderCeremonyTab();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -5083,6 +5121,133 @@ function renderWaiversAllTime(display){
   });
   html += '</tbody></table>';
   display.innerHTML = html;
+}
+
+
+// ========== HALL OF FAME TAB ==========
+async function renderHofTab(){
+  if (!history.data || !Object.keys(history.data).length) {
+    hofView.innerHTML = '<div class="status">Loading...</div>';
+    const cache = await loadHistoryCache();
+    if (cache && Object.keys(cache).length) Object.assign(history.data, cache);
+  }
+  if (!history.data || !Object.keys(history.data).length) {
+    hofView.innerHTML = '<div class="status">No history data available.</div>';
+    return;
+  }
+  const years = Object.keys(history.data).map(Number).sort((a,b)=>b-a);
+  const vacated = (typeof MANUAL_ADJUSTMENTS !== 'undefined' && MANUAL_ADJUSTMENTS?.vacatedChampionshipSeasons) || [];
+  let html = '<h2 class="section-title">\u{1f3c6} Hall of Fame</h2><p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">Every champion in league history</p><div class="hof-grid">';
+  for (const yr of years) {
+    const s = history.data[yr];
+    if (!s || !s.teams) continue;
+    const p = seasonPlacements(s);
+    if (!p) continue;
+    const isVacated = vacated.includes(yr);
+    const champTeam = (s.teams||[]).find(t => t.id === p.champion);
+    const champName = champTeam ? teamDisplayName(champTeam) : 'Unknown';
+    const rec = champTeam?.record?.overall;
+    const detail = rec ? (rec.wins||0) + '-' + (rec.losses||0) + (rec.ties ? '-'+rec.ties : '') : '';
+    html += '<div class="hof-plaque' + (isVacated ? ' hof-vacated' : '') + '">';
+    html += '<div class="hof-year">' + yr + ' Season</div>';
+    html += '<div class="hof-trophy">\u{1f3c6}</div>';
+    html += '<div class="hof-name">' + escapeHtml(champName) + (isVacated ? ' (VACATED)' : '') + '</div>';
+    if (detail) html += '<div class="hof-detail">' + detail + '</div>';
+    html += '</div>';
+  }
+  html += '</div>';
+  hofView.innerHTML = html;
+}
+
+// ========== PLAYOFF BRACKET TAB ==========
+async function renderBracketTab(){
+  let data = null;
+  if (state.teams.length) {
+    data = { teams: state.teams, schedule: state.schedule, settings: state.settings };
+  } else {
+    if (!history.data || !Object.keys(history.data).length) {
+      const cache = await loadHistoryCache();
+      if (cache && Object.keys(cache).length) Object.assign(history.data, cache);
+    }
+    const latestYear = Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a)[0];
+    if (latestYear) data = history.data[latestYear];
+  }
+  if (!data || !data.schedule) { bracketView.innerHTML = '<div class="status">No schedule data available.</div>'; return; }
+  const allYears = Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a);
+  const pickerHtml = allYears.length > 1 ? '<select id="bracketYearPicker" class="season-picker">' + allYears.map(y=>'<option value="'+y+'">'+y+'</option>').join('') + '</select>' : '';
+  bracketView.innerHTML = '<h2 class="section-title">\u{1f3c0} Playoff Bracket</h2>' + pickerHtml + '<div id="bracketDisplay"></div>';
+  if (allYears.length > 1) document.getElementById('bracketYearPicker').addEventListener('change', function(){ renderBracketForYear(+this.value); });
+  renderBracketForYear(allYears[0] || state.seasonYear);
+}
+
+function renderBracketForYear(year){
+  const display = document.getElementById('bracketDisplay');
+  const data = history.data[year] || { teams: state.teams, schedule: state.schedule };
+  if (!data || !data.schedule) { display.innerHTML = '<div class="status">No data for '+year+'.</div>'; return; }
+  const nameById = {};
+  (data.teams||[]).forEach(t => { nameById[t.id] = teamDisplayName(t); });
+  const playoffGames = (data.schedule||[]).filter(g => g.playoffTierType === 'WINNERS_BRACKET' && g.home && g.away).sort((a,b) => a.matchupPeriodId - b.matchupPeriodId);
+  if (!playoffGames.length) { display.innerHTML = '<div class="status">No playoff games found for '+year+'.</div>'; return; }
+  const byWeek = {};
+  playoffGames.forEach(g => { const wk = g.matchupPeriodId; if (!byWeek[wk]) byWeek[wk] = []; byWeek[wk].push(g); });
+  const weeks = Object.keys(byWeek).map(Number).sort((a,b)=>a-b);
+  const roundNames = weeks.length === 3 ? ['Quarterfinals', 'Semifinals', 'Championship'] : weeks.length === 2 ? ['Semifinals', 'Championship'] : weeks.map((_,i) => 'Round ' + (i+1));
+  let html = '';
+  weeks.forEach((wk, idx) => {
+    html += '<div class="bracket-round"><h3>' + roundNames[idx] + ' (Week ' + wk + ')</h3>';
+    byWeek[wk].forEach(g => {
+      const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
+      const hName = nameById[g.home.teamId] || 'Team '+g.home.teamId;
+      const aName = nameById[g.away.teamId] || 'Team '+g.away.teamId;
+      const hWon = g.winner === 'HOME', aWon = g.winner === 'AWAY';
+      const undecided = !g.winner || g.winner === 'UNDECIDED';
+      html += '<div class="bracket-game"><span class="' + (hWon?'winner':aWon?'loser':'') + '">' + escapeHtml(hName) + '</span><span style="color:var(--text-muted);margin:0 0.3rem;">vs</span><span class="' + (aWon?'winner':hWon?'loser':'') + '">' + escapeHtml(aName) + '</span>';
+      if (!undecided) html += '<span class="score">' + hp.toFixed(1) + ' - ' + ap.toFixed(1) + '</span>';
+      else html += '<span class="score" style="color:var(--text-muted);">TBD</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  display.innerHTML = html;
+}
+
+// ========== AWARDS CEREMONY TAB ==========
+async function renderCeremonyTab(){
+  if (!history.data || !Object.keys(history.data).length) {
+    ceremonyView.innerHTML = '<div class="status">Loading...</div>';
+    const cache = await loadHistoryCache();
+    if (cache && Object.keys(cache).length) Object.assign(history.data, cache);
+  }
+  const allYears = Object.keys(history.data||{}).map(Number).sort((a,b)=>b-a);
+  if (!allYears.length) { ceremonyView.innerHTML = '<div class="status">No history data.</div>'; return; }
+  const pickerHtml = '<select id="ceremonyYearPicker" class="season-picker">' + allYears.map(y=>'<option value="'+y+'">'+y+'</option>').join('') + '</select>';
+  ceremonyView.innerHTML = '<h2 class="section-title">\u{1f3ac} Awards Ceremony</h2>' + pickerHtml + '<div id="ceremonyDisplay"></div>';
+  document.getElementById('ceremonyYearPicker').addEventListener('change', function(){ renderCeremonyForYear(+this.value); });
+  renderCeremonyForYear(allYears[0]);
+}
+
+function renderCeremonyForYear(year){
+  const display = document.getElementById('ceremonyDisplay');
+  const data = history.data[year];
+  if (!data || !data.teams) { display.innerHTML = '<div class="status">No data for '+year+'.</div>'; return; }
+  const teams = data.teams || [], schedule = data.schedule || [], settings = data.settings || {};
+  const p = seasonPlacements(data);
+  let champHtml = '';
+  if (p) {
+    const champTeam = teams.find(t => t.id === p.champion);
+    const champName = champTeam ? teamDisplayName(champTeam) : 'Unknown';
+    const rec = champTeam?.record?.overall;
+    champHtml = '<div class="ceremony-champ"><div class="ceremony-champ-trophy">\u{1f3c6}</div><div class="ceremony-champ-name">' + escapeHtml(champName) + '</div><div class="ceremony-champ-sub">' + year + ' League Champion' + (rec ? ' \u00b7 ' + (rec.wins||0) + '-' + (rec.losses||0) : '') + '</div></div>';
+  }
+  const awards = computeAwards(year, teams, schedule, settings) || [];
+  let awardsHtml = '<div class="ceremony-section"><h3>Season Awards</h3>';
+  if (awards.length) {
+    awardsHtml += awards.map(a => '<div class="ceremony-award"><span class="ceremony-award-emoji">' + a.emoji + '</span><span class="ceremony-award-title">' + escapeHtml(a.title) + '</span><span class="ceremony-award-winner">' + escapeHtml(a.winner) + '</span><span class="ceremony-award-detail">' + escapeHtml(a.detail || '') + '</span></div>').join('');
+  } else {
+    awardsHtml += '<div class="status">No awards computed for ' + year + '.</div>';
+  }
+  awardsHtml += '</div>';
+  display.innerHTML = champHtml + awardsHtml;
 }
 
 </script>
