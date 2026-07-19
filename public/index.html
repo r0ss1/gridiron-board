@@ -855,6 +855,14 @@ nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
 .record-card-body table { width:100%; }
 .record-card-body th, .record-card-body td { font-size:0.8rem; padding:3px 6px; }
 .record-card-body .num { font-family:var(--font-mono); text-align:right; }
+
+.bracket-bye { padding:0.4rem 0.7rem; margin-bottom:3px; background:var(--bg-card); border-radius:6px; border:1px dashed var(--amber); display:flex; align-items:center; gap:0.5rem; font-size:0.82rem; }
+.bye-label { font-size:0.7rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); background:var(--bg-surface); padding:2px 6px; border-radius:3px; margin-left:auto; }
+.bye-seed, .bracket-seed { font-family:var(--font-mono); font-size:0.7rem; color:var(--text-muted); }
+
+.trends-table { font-size:0.8rem; }
+.trends-table th, .trends-table td { padding:4px 6px; white-space:nowrap; }
+.trends-table svg { display:inline-block; }
 </style>
 </head>
 <body>
@@ -901,7 +909,7 @@ nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="draft">Draft</button><button data-tab="waivers">Waivers</button><button data-tab="hof">Hall of Fame</button><button data-tab="bracket">Bracket</button><button data-tab="ceremony">Ceremony</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="draft">Draft</button><button data-tab="waivers">Waivers</button><button data-tab="hof">Hall of Fame</button><button data-tab="bracket">Bracket</button><button data-tab="ceremony">Ceremony</button><button data-tab="trends">Trends</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -913,7 +921,7 @@ nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div><div id="trendsView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -973,6 +981,7 @@ const waiversView = document.getElementById('waiversView');
 const hofView = document.getElementById('hofView');
 const bracketView = document.getElementById('bracketView');
 const ceremonyView = document.getElementById('ceremonyView');
+const trendsView = document.getElementById('trendsView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -1060,6 +1069,8 @@ function setTab(name){
   if (name === 'bracket') renderBracketTab();
   ceremonyView.style.display = name === 'ceremony' ? '' : 'none';
   if (name === 'ceremony') renderCeremonyTab();
+  trendsView.style.display = name === 'trends' ? '' : 'none';
+  if (name === 'trends') renderTrendsTab();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -5226,26 +5237,46 @@ function renderBracketForYear(year){
   const data = history.data[year] || { teams: state.teams, schedule: state.schedule };
   if (!data || !data.schedule) { display.innerHTML = '<div class="status">No data for '+year+'.</div>'; return; }
   const nameById = {};
-  (data.teams||[]).forEach(t => { nameById[t.id] = teamDisplayName(t); });
+  const seedById = {};
+  (data.teams||[]).forEach(t => { nameById[t.id] = teamDisplayName(t); seedById[t.id] = t.playoffSeed || 999; });
   const playoffGames = (data.schedule||[]).filter(g => g.playoffTierType === 'WINNERS_BRACKET' && g.home && g.away).sort((a,b) => a.matchupPeriodId - b.matchupPeriodId);
   if (!playoffGames.length) { display.innerHTML = '<div class="status">No playoff games found for '+year+'.</div>'; return; }
   const byWeek = {};
   playoffGames.forEach(g => { const wk = g.matchupPeriodId; if (!byWeek[wk]) byWeek[wk] = []; byWeek[wk].push(g); });
   const weeks = Object.keys(byWeek).map(Number).sort((a,b)=>a-b);
   const roundNames = weeks.length === 3 ? ['Quarterfinals', 'Semifinals', 'Championship'] : weeks.length === 2 ? ['Semifinals', 'Championship'] : weeks.map((_,i) => 'Round ' + (i+1));
+
+  // Detect bye team: #1 seed that doesn't appear in first round but appears in second
+  let byeHtml = '';
+  if (weeks.length >= 2) {
+    const firstRoundTeamIds = new Set();
+    (byWeek[weeks[0]]||[]).forEach(g => { firstRoundTeamIds.add(g.home.teamId); firstRoundTeamIds.add(g.away.teamId); });
+    const secondRoundTeamIds = new Set();
+    (byWeek[weeks[1]]||[]).forEach(g => { secondRoundTeamIds.add(g.home.teamId); secondRoundTeamIds.add(g.away.teamId); });
+    // Bye team is in round 2 but not round 1
+    secondRoundTeamIds.forEach(id => {
+      if (!firstRoundTeamIds.has(id) && seedById[id] <= 2) {
+        const byeName = nameById[id] || 'Team '+id;
+        byeHtml = '<div class="bracket-bye"><span class="bye-seed">#' + seedById[id] + '</span> <span class="winner">' + escapeHtml(byeName) + '</span> <span class="bye-label">BYE</span></div>';
+      }
+    });
+  }
+
   let html = '';
   weeks.forEach((wk, idx) => {
     html += '<div class="bracket-round"><h3>' + roundNames[idx] + ' (Week ' + wk + ')</h3>';
+    if (idx === 0 && byeHtml) html += byeHtml;
     byWeek[wk].forEach(g => {
       const hp = g.home.totalPoints ?? 0, ap = g.away.totalPoints ?? 0;
       const hName = nameById[g.home.teamId] || 'Team '+g.home.teamId;
       const aName = nameById[g.away.teamId] || 'Team '+g.away.teamId;
+      const hSeed = seedById[g.home.teamId], aSeed = seedById[g.away.teamId];
       const hWon = g.winner === 'HOME', aWon = g.winner === 'AWAY';
       const undecided = !g.winner || g.winner === 'UNDECIDED';
       html += '<div class="bracket-game">';
-      html += '<div class="team-left ' + (hWon?'winner':aWon?'loser':'') + '">' + escapeHtml(hName) + ((!undecided) ? ' <span class="score' + (hWon?' score-win':'') + '">' + hp.toFixed(1) + '</span>' : '') + '</div>';
+      html += '<div class="team-left ' + (hWon?'winner':aWon?'loser':'') + '"><span class="bracket-seed">#'+hSeed+'</span> ' + escapeHtml(hName) + ((!undecided) ? ' <span class="score' + (hWon?' score-win':'') + '">' + hp.toFixed(1) + '</span>' : '') + '</div>';
       html += '<div class="vs-col">' + (undecided ? 'vs' : '\u2014') + '</div>';
-      html += '<div class="team-right ' + (aWon?'winner':hWon?'loser':'') + '">' + ((!undecided) ? '<span class="score' + (aWon?' score-win':'') + '">' + ap.toFixed(1) + '</span> ' : '') + escapeHtml(aName) + '</div>';
+      html += '<div class="team-right ' + (aWon?'winner':hWon?'loser':'') + '">' + ((!undecided) ? '<span class="score' + (aWon?' score-win':'') + '">' + ap.toFixed(1) + '</span> ' : '') + escapeHtml(aName) + ' <span class="bracket-seed">#'+aSeed+'</span></div>';
       html += '</div>';
     });
     html += '</div>';
@@ -5290,6 +5321,117 @@ function renderCeremonyForYear(year){
   }
   awardsHtml += '</div>';
   display.innerHTML = champHtml + awardsHtml;
+}
+
+
+
+// ========== TRENDS TAB (season-over-season sparklines) ==========
+async function renderTrendsTab(){
+  if (!history.data || !Object.keys(history.data).length) {
+    trendsView.innerHTML = '<div class="status">Loading...</div>';
+    const cache = await loadHistoryCache();
+    if (cache && Object.keys(cache).length) Object.assign(history.data, cache);
+  }
+  const allYears = Object.keys(history.data||{}).map(Number).sort((a,b)=>a-b);
+  if (allYears.length < 2) { trendsView.innerHTML = '<div class="status">Need at least 2 seasons of data for trends.</div>'; return; }
+
+  // Build per-owner season-over-season data
+  const ownerData = {}; // ownerKey -> { name, seasons: [{year, winPct, avgPts, finish}] }
+  allYears.forEach(yr => {
+    const s = history.data[yr];
+    if (!s || !s.teams) return;
+    const teams = s.teams || [];
+    const schedule = s.schedule || [];
+    // Compute avg points per team for the season
+    const teamPts = {};
+    schedule.forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      [[g.home.teamId, g.home.totalPoints||0],[g.away.teamId, g.away.totalPoints||0]].forEach(([tid,pts]) => {
+        if (!teamPts[tid]) teamPts[tid] = { total:0, games:0 };
+        teamPts[tid].total += pts; teamPts[tid].games++;
+      });
+    });
+    // Sort by wins for finish position
+    const sorted = [...teams].sort((a,b) => {
+      const aw = a.record?.overall?.wins||0, bw = b.record?.overall?.wins||0;
+      if (bw !== aw) return bw - aw;
+      return ((b.record?.overall?.pointsFor||0) - (a.record?.overall?.pointsFor||0));
+    });
+    teams.forEach(t => {
+      const key = resolvedOwnerKey(t);
+      const name = teamDisplayName(t);
+      if (!ownerData[key]) ownerData[key] = { name, seasons: [] };
+      const rec = t.record?.overall || {};
+      const gp = (rec.wins||0)+(rec.losses||0)+(rec.ties||0);
+      const winPct = gp > 0 ? (rec.wins||0)/gp : 0;
+      const tp = teamPts[t.id];
+      const avgPts = tp && tp.games > 0 ? tp.total/tp.games : 0;
+      const finish = sorted.indexOf(t) + 1;
+      ownerData[key].seasons.push({ year: yr, winPct, avgPts, finish });
+    });
+  });
+
+  // Build sparkline SVG helper
+  function trendSparkline(values, color, W, H) {
+    if (!values || values.length < 2) return '';
+    const min = Math.min(...values), max = Math.max(...values);
+    const span = (max - min) || 1;
+    const step = W / (values.length - 1);
+    const pts = values.map((v, i) => (i * step).toFixed(1) + ',' + (H - ((v - min) / span) * (H - 4) - 2).toFixed(1)).join(' ');
+    return '<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" style="vertical-align:middle;"><polyline points="'+pts+'" fill="none" stroke="'+color+'" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+
+  // Sort owners by most recent winPct
+  const owners = Object.values(ownerData).filter(o => o.seasons.length >= 2).sort((a,b) => {
+    const aLast = a.seasons[a.seasons.length-1].winPct;
+    const bLast = b.seasons[b.seasons.length-1].winPct;
+    return bLast - aLast;
+  });
+
+  const yearLabels = allYears.map(y => '<th style="font-family:var(--font-mono);font-size:0.7rem;">' + String(y).slice(2) + '</th>').join('');
+
+  let html = '<h2 class="section-title">Season-over-Season Trends</h2>';
+  html += '<p class="section-note">' + allYears.length + ' seasons (' + allYears[0] + '\u2013' + allYears[allYears.length-1] + ')</p>';
+
+  // Win% trends
+  html += '<h3>Win %</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  owners.forEach(o => {
+    const pcts = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.winPct : null; });
+    const validPcts = pcts.filter(v=>v!==null);
+    const spark = trendSparkline(validPcts, 'var(--amber, #d9a441)', 80, 22);
+    const curr = validPcts.length ? (validPcts[validPcts.length-1]*100).toFixed(0)+'%' : '\u2014';
+    const cells = pcts.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
+    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  // Avg Points trends
+  html += '<h3>Avg Points / Game</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  owners.forEach(o => {
+    const pts = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.avgPts : null; });
+    const validPts = pts.filter(v=>v!==null);
+    const spark = trendSparkline(validPts, '#4fc3f7', 80, 22);
+    const curr = validPts.length ? validPts[validPts.length-1].toFixed(1) : '\u2014';
+    const cells = pts.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
+    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  // Finish position trends (lower is better, invert sparkline)
+  html += '<h3>Finish Position</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  owners.forEach(o => {
+    const fins = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.finish : null; });
+    const validFins = fins.filter(v=>v!==null);
+    // Invert for sparkline (lower finish = higher line)
+    const inverted = validFins.map(v => 13 - v);
+    const spark = trendSparkline(inverted, '#81c784', 80, 22);
+    const curr = validFins.length ? '#' + validFins[validFins.length-1] : '\u2014';
+    const cells = fins.map(v => '<td style="font-family:var(--font-mono);font-size:0.75rem;text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
+    html += '<tr><td>' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td style="font-family:var(--font-mono);font-weight:600;">' + curr + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  trendsView.innerHTML = html;
 }
 
 </script>
