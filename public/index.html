@@ -797,9 +797,11 @@
 #eloView .elo-trend { width: 130px; }
 #eloView .elo-spark { display: block; color: #4a90d9; }
 #eloView .status { padding: 16px; opacity: 0.7; }
-.draft-chip { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.72rem; font-weight:700; letter-spacing:0.03em; line-height:1.4; }
-.draft-chip-steal { background:rgba(46,125,50,0.15); color:#2e7d32; }
-.draft-chip-bust { background:rgba(198,40,40,0.15); color:#c62828; }
+.draft-chip { display:inline-block; padding:1px 6px; border-radius:4px; font-size:0.62rem; font-weight:700; letter-spacing:0.04em; line-height:1.3; text-transform:uppercase; }
+.draft-chip-steal { background:rgba(46,125,50,0.18); color:#2e7d32; }
+.draft-chip-bust { background:rgba(198,40,40,0.18); color:#c62828; }
+.draft-legend { font-size:0.8rem; opacity:0.8; margin:4px 0 14px; line-height:1.6; }
+.draft-legend .draft-chip { margin-right:4px; }
 </style>
 </head>
 <body>
@@ -1114,6 +1116,10 @@ async function renderDraftBody(){
     .sort((a,b)=> (b.steals - b.busts) - (a.steals - a.busts) || b.steals - a.steals);
 
   let html = '';
+  html += '<p class="draft-legend">'
+        + '<span class="draft-chip draft-chip-steal">Steal</span> drafted &ge; 8 spots below where the player finished at their position. '
+        + '<span class="draft-chip draft-chip-bust">Bust</span> drafted &ge; 8 spots above their final position rank (kickers &amp; defenses excluded).'
+        + '</p>';
   html += '<h3>Steals &amp; Busts by Owner</h3><table class="data"><thead><tr><th>Owner</th><th>Steals</th><th>Busts</th></tr></thead><tbody>'
         + tallyRows.map(r => '<tr><td>' + escapeHtml(r.who)
             + '</td><td>' + (r.steals ? '<span class="draft-chip draft-chip-steal">' + r.steals + '</span>' : '\u2014')
