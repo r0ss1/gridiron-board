@@ -44,6 +44,10 @@ async function handleEspnProxy(request, url) {
   const season = url.searchParams.get('season');
   const wantRoster = url.searchParams.get('roster') === '1';
   const wantDraft = url.searchParams.get('draft') === '1';
+  // Optional per-period scoping. Line-item mTransactions2 and mBoxscore are
+  // both per-scoringPeriod views; the offline precompute step iterates periods
+  // and passes one at a time. Absent -> ESPN returns the season-wide default.
+  const scoringPeriodId = url.searchParams.get('scoringPeriodId');
   const espnS2 = request.headers.get('x-espn-s2');
   const swid = request.headers.get('x-espn-swid');
 
@@ -58,9 +62,10 @@ async function handleEspnProxy(request, url) {
   let views = wantRoster ? VIEWS + '&view=mBoxscore' : VIEWS;
   if (wantDraft) views += '&view=mDraftDetail&view=kona_player_info';
 
-  const espnUrl = isLegacy
+  let espnUrl = isLegacy
     ? `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/leagueHistory/${leagueId}?seasonId=${season}&${views}`
     : `https://lm-api-reads.fantasy.espn.com/apis/v3/games/ffl/seasons/${season}/segments/0/leagues/${leagueId}?${views}`;
+  if (scoringPeriodId) espnUrl += `&scoringPeriodId=${encodeURIComponent(scoringPeriodId)}`;
 
   const reqHeaders = {
     Accept: 'application/json',
@@ -72,6 +77,11 @@ async function handleEspnProxy(request, url) {
     // kona_player_info returns ~50 players by default; bound a large pool so
     // every drafted playerId can be resolved to a name client-side.
     reqHeaders['X-Fantasy-Filter'] = JSON.stringify({ players: { limit: 2000, offset: 0, sortPercOwned: { sortAsc: false, sortPriority: 1 } } });
+  } else {
+    // Caller-supplied filter passthrough (used by offline precompute to page
+    // transactions/box scores). No-op for normal client reads.
+    const callerFilter = request.headers.get('X-Fantasy-Filter');
+    if (callerFilter) reqHeaders['X-Fantasy-Filter'] = callerFilter;
   }
   if (espnS2 && swid) {
     reqHeaders.Cookie = `espn_s2=${espnS2}; SWID=${swid}`;
