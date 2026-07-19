@@ -780,6 +780,11 @@
     font-size:13px; line-height:1.5;
     color:var(--ink-dim); margin:0;
   }
+  #draftView{ font-size:12px; }
+  #draftView h3{ font-size:15px; }
+  #draftView h4{ font-size:13px; }
+  #draftView table.data tbody td{ font-size:12px; padding:8px 10px; }
+  #draftView table.data thead th{ font-size:11px; }
 </style>
 </head>
 <body>
@@ -1064,7 +1069,7 @@ async function renderDraftBody(){
     let tag = '';
     if (g.delta != null){
       if (g.delta >= 8) tag = ' <span style="color:#2e7d32;font-weight:600;">STEAL</span>';
-      else if (g.delta <= -8) tag = ' <span style="color:#c62828;font-weight:600;">BUST</span>';
+      else if (g.delta <= -8 && info.posId !== 5 && info.posId !== 16) tag = ' <span style="color:#c62828;font-weight:600;">BUST</span>';
     }
     return '<tr><td>' + (pk.overallPickNumber||'') + '</td><td>' + escapeHtml(info.fullName)
          + '</td><td>' + info.pos + '</td><td>' + escapeHtml(who) + '</td><td>' + rank + tag + '</td></tr>';
