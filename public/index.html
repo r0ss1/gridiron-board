@@ -818,10 +818,16 @@
 .hof-vacated .hof-name { text-decoration:line-through; color:var(--text-muted); }
 .bracket-round { margin-bottom:1.5rem; }
 .bracket-round h3 { margin-bottom:0.5rem; }
-.bracket-game { display:flex; align-items:center; gap:0.5rem; padding:0.5rem 0.8rem; margin-bottom:0.4rem; background:var(--bg-card); border-radius:8px; border-left:3px solid var(--amber); }
+.bracket-round { margin-bottom:1.2rem; }
+.bracket-round h3 { font-size:0.85rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); margin-bottom:0.4rem; border-bottom:1px solid var(--line); padding-bottom:0.3rem; }
+.bracket-game { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:0; padding:0.5rem 0.7rem; margin-bottom:3px; background:var(--bg-card); border-radius:6px; border:1px solid var(--line); }
+.bracket-game .team-left { text-align:right; }
+.bracket-game .team-right { text-align:left; }
 .bracket-game .winner { font-weight:700; color:var(--amber); }
 .bracket-game .loser { color:var(--text-muted); }
-.bracket-game .score { font-family:var(--font-mono); font-size:0.85rem; margin-left:auto; }
+.bracket-game .vs-col { text-align:center; padding:0 0.5rem; font-size:0.7rem; color:var(--text-muted); }
+.bracket-game .score { font-family:var(--font-mono); font-size:0.8rem; }
+.bracket-game .score-win { color:var(--amber); font-weight:600; }
 .ceremony-section { margin-bottom:2rem; }
 .ceremony-champ { text-align:center; padding:2rem; background:linear-gradient(135deg, rgba(255,193,7,0.1) 0%, var(--bg-card) 100%); border:2px solid var(--amber); border-radius:16px; margin-bottom:2rem; }
 .ceremony-champ-trophy { font-size:4rem; }
@@ -843,6 +849,12 @@ table.data th, table.data td { padding: 6px 8px; font-size: 0.82rem; }
 .badge-card { padding: 0.5rem; }
 .badge-emoji { font-size: 1.2rem; }
 nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
+
+.record-card { background:var(--surface-2, var(--bg-card)); border:1px solid var(--line); border-radius:var(--radius, 8px); padding:0.7rem 0.9rem; margin-bottom:0.6rem; }
+.record-card-title { font-family:'Oswald', sans-serif; font-size:0.75rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--gold, var(--amber)); margin-bottom:0.4rem; }
+.record-card-body table { width:100%; }
+.record-card-body th, .record-card-body td { font-size:0.8rem; padding:3px 6px; }
+.record-card-body .num { font-family:var(--font-mono); text-align:right; }
 </style>
 </head>
 <body>
@@ -889,7 +901,7 @@ nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button><button data-tab="waivers">💎 Waivers</button><button data-tab="hof">🏆 Hall of Fame</button><button data-tab="bracket">🏀 Bracket</button><button data-tab="ceremony">🎬 Ceremony</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="elo">Elo</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="draft">Draft</button><button data-tab="waivers">Waivers</button><button data-tab="hof">Hall of Fame</button><button data-tab="bracket">Bracket</button><button data-tab="ceremony">Ceremony</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -901,7 +913,7 @@ nav.tabs button { font-size: 0.72rem; padding: 6px 8px; }
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="hofView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="ceremonyView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -1038,8 +1050,6 @@ function setTab(name){
   if (name === 'whatif') renderWhatIfContent();
   recapView.style.display = name === 'recap' ? '' : 'none';
   if (name === 'recap') renderRecapContent();
-    trashView.style.display = name === 'trash' ? '' : 'none';
-    if (name === 'trash') renderTrashContent();
   draftView.style.display = name === 'draft' ? '' : 'none';
   if (name === 'draft') renderDraftContent();
   waiversView.style.display = name === 'waivers' ? '' : 'none';
@@ -3869,8 +3879,12 @@ function renderRecordBookContent(){
 
   const row = (cells) => '<tr>' + cells.map((c,i) => i === 0 ? '<td>'+c+'</td>' : '<td class="num">'+c+'</td>').join('') + '</tr>';
   const tbl = (title, head, rows) =>
-    '<h2 class="section-title">' + title + '</h2>' +
-    '<table><thead><tr>' + head.map((h,i) => i===0 ? '<th>'+h+'</th>' : '<th class="num">'+h+'</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    '<div class="record-card">' +
+      '<div class="record-card-title">' + title + '</div>' +
+      '<div class="record-card-body">' +
+        '<table><thead><tr>' + head.map((h,i) => i===0 ? '<th>'+h+'</th>' : '<th class="num">'+h+'</th>').join('') + '</tr></thead><tbody>' + rows + '</tbody></table>' +
+      '</div>' +
+    '</div>';
 
   let html = '<p class="section-note">Single-game and single-season extremes across the seasons checked in the History tab. These are peaks and valleys &mdash; separate from the cumulative career records in History.</p>';
 
@@ -5228,9 +5242,10 @@ function renderBracketForYear(year){
       const aName = nameById[g.away.teamId] || 'Team '+g.away.teamId;
       const hWon = g.winner === 'HOME', aWon = g.winner === 'AWAY';
       const undecided = !g.winner || g.winner === 'UNDECIDED';
-      html += '<div class="bracket-game"><span class="' + (hWon?'winner':aWon?'loser':'') + '">' + escapeHtml(hName) + '</span><span style="color:var(--text-muted);margin:0 0.3rem;">vs</span><span class="' + (aWon?'winner':hWon?'loser':'') + '">' + escapeHtml(aName) + '</span>';
-      if (!undecided) html += '<span class="score">' + hp.toFixed(1) + ' - ' + ap.toFixed(1) + '</span>';
-      else html += '<span class="score" style="color:var(--text-muted);">TBD</span>';
+      html += '<div class="bracket-game">';
+      html += '<div class="team-left ' + (hWon?'winner':aWon?'loser':'') + '">' + escapeHtml(hName) + ((!undecided) ? ' <span class="score' + (hWon?' score-win':'') + '">' + hp.toFixed(1) + '</span>' : '') + '</div>';
+      html += '<div class="vs-col">' + (undecided ? 'vs' : '\u2014') + '</div>';
+      html += '<div class="team-right ' + (aWon?'winner':hWon?'loser':'') + '">' + ((!undecided) ? '<span class="score' + (aWon?' score-win':'') + '">' + ap.toFixed(1) + '</span> ' : '') + escapeHtml(aName) + '</div>';
       html += '</div>';
     });
     html += '</div>';
