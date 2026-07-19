@@ -502,6 +502,62 @@
     margin:0 0 14px;
     line-height:1.55;
   }
+  .otd-cards{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+    gap:10px; margin:0 0 20px;
+  }
+  .otd-card{
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:var(--radius); padding:12px 14px;
+  }
+  .otd-card-label{
+    font-family:'Oswald', sans-serif; font-size:11px; font-weight:600;
+    letter-spacing:.06em; text-transform:uppercase; color:var(--gold,#d9a441);
+    margin:0 0 6px;
+  }
+  .otd-card-year{ font-size:11px; color:var(--ink-dim); margin:0 0 8px; }
+  .otd-card-line{
+    display:flex; justify-content:space-between; gap:8px;
+    font-size:13px; padding:2px 0; color:var(--ink-dim);
+  }
+  .otd-card-line.otd-win{ color:var(--ink,#E5E5E5); font-weight:600; }
+  .otd-pts{ font-variant-numeric:tabular-nums; }
+  .otd-season{ margin:0 0 14px; }
+  .otd-season-year{
+    font-family:'Oswald', sans-serif; font-size:14px; font-weight:500;
+    color:var(--ink,#E5E5E5); margin:0 0 6px; padding-bottom:3px;
+    border-bottom:1px solid var(--line);
+  }
+  .otd-season-games{ display:flex; flex-direction:column; gap:3px; }
+  .otd-game{
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+    font-size:12px; color:var(--ink-dim); padding:2px 0;
+  }
+  .otd-team{ font-variant-numeric:tabular-nums; }
+  .otd-team.otd-win{ color:var(--win,#8FBF9F); font-weight:600; }
+  .otd-sep{ color:var(--ink-dim); font-size:10px; opacity:.7; }
+  .otd-badge{
+    font-size:9px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--gold,#d9a441); border:1px solid var(--gold,#d9a441);
+    border-radius:4px; padding:1px 5px;
+  }
+  /* What-If Standings */
+  .wi-intro{ color:var(--ink-dim); font-size:12px; margin:0 0 12px; }
+  .wi-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; }
+  .wi-card{ border:1px solid var(--line,#2a2a2a); border-radius:8px; padding:12px 14px; background:var(--panel,rgba(255,255,255,.02)); }
+  .wi-title{ margin:0 0 2px; font-size:14px; }
+  .wi-desc{ margin:0 0 10px; font-size:11px; color:var(--ink-dim); }
+  .wi-table{ width:100%; border-collapse:collapse; font-size:12px; }
+  .wi-table th{ text-align:left; font-size:10px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-dim); padding:2px 6px; border-bottom:1px solid var(--line,#2a2a2a); }
+  .wi-table td{ padding:3px 6px; }
+  .wi-rank{ color:var(--ink-dim); width:24px; }
+  .wi-team{ font-weight:600; }
+  .wi-metric{ text-align:right; white-space:nowrap; }
+  .wi-playoff-line td{ border-bottom:2px solid var(--gold,#d9a441); }
+  .wi-delta{ font-size:11px; font-weight:700; }
+  .wi-up{ color:#4caf50; }
+  .wi-down{ color:#e05656; }
+  .wi-same{ color:var(--ink-dim); }
   .belt-current{
     display:inline-block;
     font-size:9px;
@@ -631,7 +687,99 @@
   .glossary-text{ flex:1; }
   .glossary-title{ font-weight:700; font-size:13px; }
   .glossary-desc{ color:var(--ink-dim); font-size:12px; margin-top:2px; }
+  .muted{ color:var(--ink-dim); font-weight:400; }
+  th.num{ text-align:right; }
+  .milestone-highlights{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(150px, 1fr));
+    gap:10px;
+    margin:0 0 16px;
+  }
+  .milestone-card{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:10px 12px;
+  }
+  .milestone-card-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:9px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--amber);
+    margin-bottom:6px;
+  }
+  .milestone-card-name{
+    font-size:14px;
+    font-weight:700;
+    color:var(--ink);
+    margin-bottom:3px;
+  }
+  .milestone-card-detail{
+    font-size:12px;
+    color:var(--ink-dim);
+    line-height:1.4;
+  }
+.milestone-card.milestone-achieved{
+    border-color:var(--gold, #d9a441);
+    box-shadow:0 0 0 1px var(--gold, #d9a441) inset;
+  }
+  .milestone-achieved .milestone-card-label{ color:var(--gold, #d9a441); }
+  .milestone-achieved .milestone-card-detail{ color:var(--ink); }
+  .milestone-section-head{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--ink-dim);
+    margin:14px 2px 6px;
+  }
+  .milestone-table tbody td{ padding:8px 10px; }
+  .milestone-table td.num{ font-family:'JetBrains Mono', monospace; font-size:12px; }
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+
+  .h2h-select{
+    background:var(--surface); color:var(--ink); border:1px solid var(--line, rgba(255,255,255,.12));
+    border-radius:var(--radius); padding:8px 10px; font-size:13px; font-family:inherit; width:100%;
+  }
+  .h2h-row{
+    display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px;
+    padding:9px 12px; border-radius:var(--radius); background:var(--surface); margin-bottom:6px;
+  }
+  .h2h-head{ background:transparent; font-weight:700; }
+  .h2h-cell-a{ text-align:right; font-family:'JetBrains Mono', monospace; font-size:13px; }
+  .h2h-cell-b{ text-align:left; font-family:'JetBrains Mono', monospace; font-size:13px; }
+  .h2h-cell-label{ text-align:center; font-size:10px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; }
+  .h2h-win{ color:var(--accent, #4ade80); font-weight:700; }
+  .h2h-games-title{ font-weight:700; font-size:13px; margin:22px 0 8px; }
+  .h2h-game{ padding:7px 12px; margin-bottom:4px; }
+  .h2h-game .h2h-cell-label{ font-size:11px; text-transform:none; letter-spacing:0; color:var(--ink-dim); }
+  .h2h-game-tag{ font-size:9px; text-transform:uppercase; letter-spacing:.05em; color:var(--accent, #4ade80); margin-left:4px; }
+  .trash-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:14px 16px;
+    margin-bottom:12px;
+  }
+  .trash-head{
+    display:flex; align-items:baseline; gap:10px; margin-bottom:6px;
+  }
+  .trash-rank{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px; font-weight:700;
+    color:var(--gold,#d9a441);
+  }
+  .trash-name{
+    font-family:'Oswald', sans-serif;
+    font-weight:600; font-size:15px;
+    color:var(--ink);
+  }
+  .trash-line{
+    font-family:'Inter', sans-serif;
+    font-size:13px; line-height:1.5;
+    color:var(--ink-dim); margin:0;
+  }
 </style>
 </head>
 <body>
@@ -677,6 +825,8 @@
     <button data-tab="history">History</button>
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
+    <button data-tab="milestones">Milestones</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -687,6 +837,8 @@
   <div id="positionsView" style="display:none;"></div>
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
+  <div id="milestonesView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -739,6 +891,8 @@ const profileContent = document.getElementById('profileContent');
 const historyView = document.getElementById('historyView');
 const beltView = document.getElementById('beltView');
 const recordBookView = document.getElementById('recordBookView');
+  const milestonesView = document.getElementById('milestonesView');
+  const h2hView = document.getElementById('h2hView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -804,6 +958,18 @@ function setTab(name){
   if (name === 'belt') renderBeltContent();
   recordBookView.style.display = name === 'records' ? '' : 'none';
   if (name === 'records') renderRecordBookContent();
+  milestonesView.style.display = name === 'milestones' ? '' : 'none';
+  if (name === 'milestones') renderMilestonesContent();
+  h2hView.style.display = name === 'h2h' ? '' : 'none';
+  if (name === 'h2h') renderH2HContent();
+  otdView.style.display = name === 'otd' ? '' : 'none';
+  if (name === 'otd') renderOnThisDayContent();
+  whatifView.style.display = name === 'whatif' ? '' : 'none';
+  if (name === 'whatif') renderWhatIfContent();
+  recapView.style.display = name === 'recap' ? '' : 'none';
+  if (name === 'recap') renderRecapContent();
+    trashView.style.display = name === 'trash' ? '' : 'none';
+    if (name === 'trash') renderTrashContent();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
@@ -1459,7 +1625,248 @@ function renderPreview(){
   previewView.innerHTML = banner + spotlightHtml + '<h2 class="section-title">Week ' + upcomingWeek + ' matchups</h2>' + cards;
 }
 
-function renderReview(){
+function renderRecapContent(){
+  if (multiSeasonGuard(recapView, 'Recap Card')) return;
+  if (!state.teams.length) { recapView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+
+  const { priorWeek } = currentAndPriorWeeks();
+  if (priorWeek === null) {
+    recapView.innerHTML = '<div class="status">No completed weeks yet this season.</div>';
+    return;
+  }
+
+  const games = state.schedule.filter(g => g.matchupPeriodId === priorWeek && g.home && g.away && g.winner && g.winner !== 'UNDECIDED');
+  if (!games.length) {
+    recapView.innerHTML = '<div class="status">No completed matchups found for Week ' + priorWeek + '.</div>';
+    return;
+  }
+
+  const byTeam = teamContexts();
+  let highest = null, lowest = null, closest = null, blowout = null;
+  const rows = [];
+  games.forEach(g => {
+    const homeCtx = byTeam[g.home.teamId], awayCtx = byTeam[g.away.teamId];
+    if (!homeCtx || !awayCtx) return;
+    const homePts = g.home.totalPoints ?? 0, awayPts = g.away.totalPoints ?? 0;
+    const margin = Math.abs(homePts - awayPts);
+    if (!highest || homePts > highest.pts) highest = { name: homeCtx.name, pts: homePts };
+    if (!highest || awayPts > highest.pts) highest = { name: awayCtx.name, pts: awayPts };
+    if (!lowest || homePts < lowest.pts) lowest = { name: homeCtx.name, pts: homePts };
+    if (!lowest || awayPts < lowest.pts) lowest = { name: awayCtx.name, pts: awayPts };
+    if (g.winner !== 'TIE') {
+      if (!closest || margin < closest.margin) closest = { home: homeCtx.name, away: awayCtx.name, margin };
+      if (!blowout || margin > blowout.margin) blowout = { home: homeCtx.name, away: awayCtx.name, margin };
+    }
+    rows.push({ home: homeCtx.name, away: awayCtx.name, homePts, awayPts, homeWin: homePts > awayPts, awayWin: awayPts > homePts });
+  });
+
+  const W = 900, headerH = 120, rowH = 46, hlH = 140, padB = 60;
+  const H = headerH + rows.length * rowH + hlH + padB;
+  const cvs = document.createElement('canvas');
+  cvs.width = W; cvs.height = H;
+  cvs.style.maxWidth = '100%'; cvs.style.height = 'auto';
+  cvs.style.borderRadius = '12px'; cvs.style.boxShadow = '0 4px 18px rgba(0,0,0,0.35)';
+  const ctx = cvs.getContext('2d');
+
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, '#0f2027'); bg.addColorStop(1, '#203a43');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+
+  ctx.fillStyle = '#ffd54a';
+  ctx.font = 'bold 40px Segoe UI, Arial, sans-serif';
+  ctx.textBaseline = 'top';
+  ctx.fillText('Week ' + priorWeek + ' Recap', 40, 30);
+  ctx.fillStyle = '#9fb3c8';
+  ctx.font = '20px Segoe UI, Arial, sans-serif';
+  ctx.fillText((state.leagueName || 'Fantasy League') + '  \u2022  ' + state.seasonYear, 42, 82);
+
+  let y = headerH;
+  ctx.font = '22px Segoe UI, Arial, sans-serif';
+  rows.forEach((r, idx) => {
+    if (idx % 2 === 0) { ctx.fillStyle = 'rgba(255,255,255,0.04)'; ctx.fillRect(30, y, W - 60, rowH); }
+    ctx.textAlign = 'left';
+    ctx.fillStyle = r.homeWin ? '#7CFC98' : '#e8eef3';
+    ctx.fillText(r.home, 48, y + 12);
+    ctx.fillStyle = r.awayWin ? '#7CFC98' : '#e8eef3';
+    ctx.textAlign = 'right';
+    ctx.fillText(r.away, W - 48, y + 12);
+    ctx.fillStyle = '#ffd54a';
+    ctx.textAlign = 'center';
+    ctx.fillText(r.homePts.toFixed(1) + ' - ' + r.awayPts.toFixed(1), W / 2, y + 12);
+    y += rowH;
+  });
+
+  ctx.textAlign = 'left';
+  y += 14;
+  ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+  ctx.beginPath(); ctx.moveTo(30, y); ctx.lineTo(W - 30, y); ctx.stroke();
+  y += 16;
+  ctx.font = 'bold 18px Segoe UI, Arial, sans-serif';
+  ctx.fillStyle = '#9fb3c8';
+  const hl = [];
+  if (highest) hl.push(['\uD83D\uDD25 Highest', highest.name + ' (' + highest.pts.toFixed(1) + ')']);
+  if (lowest) hl.push(['\uD83D\uDCC9 Lowest', lowest.name + ' (' + lowest.pts.toFixed(1) + ')']);
+  if (closest) hl.push(['\u2694\uFE0F Closest', closest.home + ' vs ' + closest.away + ' (' + closest.margin.toFixed(1) + ')']);
+  if (blowout) hl.push(['\uD83D\uDCA5 Blowout', blowout.home + ' vs ' + blowout.away + ' (' + blowout.margin.toFixed(1) + ')']);
+  hl.forEach((pair, i) => {
+    const hx = 48 + (i % 2) * (W / 2 - 20);
+    const hy = y + Math.floor(i / 2) * 46;
+    ctx.fillStyle = '#ffd54a'; ctx.fillText(pair[0], hx, hy);
+    ctx.fillStyle = '#e8eef3'; ctx.font = '18px Segoe UI, Arial, sans-serif';
+    ctx.fillText(pair[1], hx, hy + 22);
+    ctx.font = 'bold 18px Segoe UI, Arial, sans-serif';
+  });
+
+  recapView.innerHTML = '';
+  const wrap = document.createElement('div');
+  wrap.className = 'recap-wrap';
+  const btn = document.createElement('button');
+  btn.id = 'recapDownloadBtn';
+  btn.className = 'btn';
+  btn.textContent = 'Download PNG';
+  btn.addEventListener('click', downloadRecapCard);
+  wrap.appendChild(btn);
+  wrap.appendChild(cvs);
+  recapView.appendChild(wrap);
+  recapView._canvas = cvs;
+  recapView._week = priorWeek;
+}
+
+function downloadRecapCard(){
+  const cvs = recapView._canvas;
+  if (!cvs) return;
+  cvs.toBlob(function(blob){
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'week-' + (recapView._week || 'x') + '-recap.png';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+﻿function renderTrashContent(){
+  if (multiSeasonGuard(trashView, 'Trash Talk')) return;
+  if (!state.teams.length) { trashView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+
+  const ctxs = teamContexts();
+  const list = Object.values(ctxs);
+  if (!list.some(c => c.games.length)) {
+    trashView.innerHTML = '<div class="status">No completed games yet. Come back after Week 1 to start the disrespect.</div>';
+    return;
+  }
+
+  const allPlay = computeAllPlayRecords(state.teams, state.schedule);
+  const n = list.length;
+
+  // Rank by a blended power number: avg points (weighted) + win pct.
+  const ranked = [...list].sort((a, b) => {
+    const av = (a.avgPoints || 0) + (a.winPct || 0) * 100;
+    const bv = (b.avgPoints || 0) + (b.winPct || 0) * 100;
+    return bv - av;
+  });
+  const rankOf = {};
+  ranked.forEach((c, i) => { rankOf[c.team.id] = i + 1; });
+
+  // Seeded RNG so a given league state produces stable roasts (no reshuffle
+  // on every tab switch), but still varied across teams.
+  function rng(seed){
+    let x = seed % 2147483647; if (x <= 0) x += 2147483646;
+    return () => (x = x * 16807 % 2147483647) / 2147483647;
+  }
+
+  const OPENERS = [
+    'Let me be blunt:', 'No sugarcoating this:', 'Gather round, because',
+    'Somebody had to say it \u2014', 'Breaking news, jackass:', 'Real talk:'
+  ];
+  const TOP_INSULTS = [
+    'you\u2019re the reason the rest of this league drinks on Sundays',
+    'you win so much it\u2019s honestly obnoxious, you smug bastard',
+    'the trophy already has your grubby fingerprints on it',
+    'everyone else is playing for second and they know it'
+  ];
+  const MID_INSULTS = [
+    'aggressively mediocre \u2014 the plain oatmeal of this league',
+    'you\u2019re a coin flip in cleats and half the time the coin\u2019s embarrassed',
+    'not good enough to brag, not bad enough to pity, just\u2026 there, like a fart in an elevator',
+    'the human equivalent of a participation trophy that nobody clapped for'
+  ];
+  const BOTTOM_INSULTS = [
+    'your lineup looks like it was set by a concussed raccoon',
+    'you\u2019d lose a staring contest to your own bench',
+    'your roster is a dumpster fire and the dumpster filed a complaint',
+    'a wet paper bag has a better win probability than your starting QB',
+    'you manage this team like you\u2019re actively being blackmailed to lose',
+    'even your kicker is embarrassed to be seen with you'
+  ];
+
+  function pick(arr, r){ return arr[Math.floor(r() * arr.length)]; }
+
+  function roastFor(ctx){
+    const rank = rankOf[ctx.team.id];
+    const r = rng((ctx.team.id + 1) * 7919 + rank * 31 + Math.round((ctx.avgPoints || 0) * 10));
+    const rec = ctx.wins + '-' + ctx.losses + (ctx.ties ? '-' + ctx.ties : '');
+    const avg = ctx.avgPoints !== null ? ctx.avgPoints.toFixed(1) : '\u2014';
+    const sRank = scoringRank(ctxs, ctx.team.id);
+    const ap = allPlay[ctx.team.id];
+    const bits = [];
+
+    bits.push(pick(OPENERS, r));
+
+    let pool = MID_INSULTS;
+    if (rank <= Math.ceil(n / 3)) pool = TOP_INSULTS;
+    else if (rank > Math.floor(2 * n / 3)) pool = BOTTOM_INSULTS;
+    bits.push(pick(pool, r) + '.');
+
+    // Concrete stat citations so the roast feels earned.
+    bits.push('You\u2019re sitting at ' + rec + ' averaging ' + avg + ' points a week');
+    if (sRank) bits.push('\u2014 that\u2019s ' + ordinal(sRank) + ' of ' + n + ' in scoring, ' +
+      (sRank <= n / 3 ? 'which is the one thing keeping you off the milk carton' :
+       sRank > 2 * n / 3 ? 'which is functionally a hate crime against fantasy football' :
+       'which is stunningly forgettable') + '.');
+    else bits.push('.');
+
+    if (ap && (ap.wins + ap.losses + ap.ties)) {
+      const pct = allPlayPct(ap);
+      bits.push('Against the whole league you\u2019d be ' + ap.wins + '-' + ap.losses +
+        (ap.ties ? '-' + ap.ties : '') + ' (' + Math.round(pct * 100) + '% all-play), so ' +
+        (pct >= 0.6 ? 'your record isn\u2019t even luck \u2014 you\u2019re just a menace.' :
+         pct <= 0.4 ? 'no, it\u2019s not bad luck, you\u2019re actually just this bad.' :
+         'you\u2019re exactly as forgettable as your record suggests.'));
+    }
+
+    if (ctx.streakType === 'W' && ctx.streakLen >= 2)
+      bits.push('Riding a ' + ctx.streakLen + '-game win streak and insufferable about it.');
+    else if (ctx.streakType === 'L' && ctx.streakLen >= 2)
+      bits.push('Losers of ' + ctx.streakLen + ' straight \u2014 at this point it\u2019s a lifestyle.');
+
+    return bits.join(' ');
+  }
+
+  function ordinal(k){
+    const t = k % 100; if (t >= 11 && t <= 13) return k + 'th';
+    switch (k % 10){ case 1: return k + 'st'; case 2: return k + 'nd'; case 3: return k + 'rd'; default: return k + 'th'; }
+  }
+
+  const rows = ranked.map(ctx => {
+    const rank = rankOf[ctx.team.id];
+    return '<div class="trash-card">' +
+      '<div class="trash-head"><span class="trash-rank">#' + rank + '</span>' +
+      '<span class="trash-name">' + escapeHtml(ctx.name) + '</span></div>' +
+      '<p class="trash-line">' + escapeHtml(roastFor(ctx)) + '</p>' +
+      '</div>';
+  }).join('');
+
+  trashView.innerHTML =
+    '<h2 class="section-title">Trash Talk</h2>' +
+    '<div class="status" style="margin-bottom:12px;">Ranked worst-to-first in disrespect. \uD83C\uDF36\uFE0F NC-17, brought to you by the numbers. All roasts are affectionate. Mostly.</div>' +
+    rows;
+}
+
+    function renderReview(){
   if (multiSeasonGuard(reviewView, 'Review')) return;
   if (!state.teams.length) { reviewView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
 
@@ -2565,6 +2972,185 @@ function renderBeltContent(){
   beltView.innerHTML = beltTable || '<p class="section-note">No belt history yet &mdash; check some seasons.</p>';
 }
 
+﻿function renderMilestonesContent(){
+  if (!history.loadedSeasons.length) { milestonesView.innerHTML = ''; return; }
+
+  const names = historyTeamNames();
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort();
+  if (!checked.length) { milestonesView.innerHTML = '<p class="section-note">No seasons checked &mdash; check some seasons to see milestone progress.</p>'; return; }
+
+  // Per-owner cumulative career totals across all checked seasons.
+  const stats = {}; // ownerKey -> {wins, points, games, titles, playoffs, crowns}
+  const ensure = k => (stats[k] || (stats[k] = {wins:0, points:0, games:0, titles:0, playoffs:0, crowns:0}));
+  const vacated = (MANUAL_ADJUSTMENTS && MANUAL_ADJUSTMENTS.vacatedChampionshipSeasons) || [];
+
+  const lastYear = checked[checked.length - 1];
+  let snapshotBefore = null; // deep copy of stats just before processing lastYear
+  const clone = obj => { const o = {}; Object.keys(obj).forEach(k => { o[k] = Object.assign({}, obj[k]); }); return o; };
+
+  checked.forEach(year => {
+    if (year === lastYear) snapshotBefore = clone(stats);
+
+    const data = history.data[year];
+    if (!data) return;
+    const sched = data.schedule || [];
+    const teams = data.teams || [];
+    const ownerById = idToOwnerKeyMap(teams);
+
+    // Wins / points / games played, plus weekly crowns.
+    const weekBest = {}; // week -> {owner, pts}
+    sched.forEach(g => {
+      if (!g.winner || g.winner === 'UNDECIDED' || !g.home || !g.away) return;
+      const hp = g.home.totalPoints ?? 0;
+      const ap = g.away.totalPoints ?? 0;
+      const hKey = ownerById[g.home.teamId];
+      const aKey = ownerById[g.away.teamId];
+      const week = g.matchupPeriodId;
+      const homeWon = g.winner === 'HOME';
+      [[hKey, hp, homeWon],[aKey, ap, !homeWon]].forEach(([k, pts, won]) => {
+        if (!k) return;
+        const st = ensure(k);
+        st.games += 1;
+        st.points += pts;
+        if (won) st.wins += 1;
+        const wb = weekBest[week];
+        if (!wb || pts > wb.pts) weekBest[week] = {owner:k, pts};
+      });
+    });
+    Object.keys(weekBest).forEach(w => { const b = weekBest[w]; if (b && b.owner) ensure(b.owner).crowns += 1; });
+
+    // Playoff appearances: seed-based qualification, matching the
+    // authoritative all-time/History view (playoffSeed <= playoffTeamCount).
+    const settings = data.settings || {};
+    const playoffSpots = (settings.scheduleSettings && settings.scheduleSettings.playoffTeamCount) || 0;
+    teams.forEach(t => {
+      const k = ownerById[t.id];
+      if (!k) return;
+      if (playoffSpots && t.playoffSeed && t.playoffSeed <= playoffSpots) {
+        ensure(k).playoffs += 1;
+      }
+    });
+
+    // Championship for the season (respect vacated seasons).
+    if (vacated.indexOf(year) === -1) {
+      const placements = seasonPlacements(data);
+      if (placements && placements.champion != null) {
+        const champKey = ownerById[placements.champion];
+        if (champKey) ensure(champKey).titles += 1;
+      }
+    }
+  });
+
+  const owners = Object.keys(stats);
+  if (!owners.length) { milestonesView.innerHTML = '<p class="section-note">No completed games in the checked seasons yet.</p>'; return; }
+
+  const nmeta = [
+    { key:'wins',     label:'Career Wins',           step:25,   fmt:v => Math.round(v) },
+    { key:'points',   label:'Career Points',         step:1000, fmt:v => Math.round(v).toLocaleString() },
+    { key:'games',    label:'Career Games Played',   step:25,   fmt:v => Math.round(v) },
+    { key:'titles',   label:'Championships',          step:1,    fmt:v => Math.round(v) },
+    { key:'playoffs', label:'Playoff Appearances',   step:5,    fmt:v => Math.round(v) },
+    { key:'crowns',   label:'Weekly Crowns',         step:5,    fmt:v => Math.round(v) }
+  ];
+
+  const esc = str => String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const nameOf = k => names[k] || 'Unknown';
+
+  // ---- Recently achieved: milestones crossed during the most recent checked season ----
+  const achieved = [];
+  const before = snapshotBefore || {};
+  owners.forEach(k => {
+    const prev = before[k] || {wins:0, points:0, games:0, titles:0, playoffs:0, crowns:0};
+    const cur = stats[k];
+    nmeta.forEach(m => {
+      if (m.key === 'titles') {
+        const gained = cur.titles - (prev.titles || 0);
+        for (let n = 0; n < gained; n++) {
+          achieved.push({ owner:k, label:'Championship', detail:'Won the ' + lastYear + ' title', sort:1000000 });
+        }
+        return;
+      }
+      const p = prev[m.key] || 0;
+      const c = cur[m.key];
+      const prevMul = Math.floor(p / m.step);
+      const curMul = Math.floor(c / m.step);
+      for (let mul = prevMul + 1; mul <= curMul; mul++) {
+        const threshold = mul * m.step;
+        achieved.push({ owner:k, label:m.label, detail:'Reached ' + m.fmt(threshold) + ' in ' + lastYear, sort:threshold });
+      }
+    });
+  });
+  achieved.sort((a,b) => (b.sort - a.sort) || nameOf(a.owner).localeCompare(nameOf(b.owner)));
+
+  let achievedHtml = '';
+  if (achieved.length) {
+    achievedHtml =
+      '<div class="milestone-section-head">&#127881; Recently Achieved &mdash; ' + esc(String(lastYear)) + '</div>' +
+      '<div class="milestone-highlights">' +
+      achieved.map(a =>
+        '<div class="milestone-card milestone-achieved">' +
+          '<div class="milestone-card-label">' + esc(a.label) + '</div>' +
+          '<div class="milestone-card-name">' + esc(nameOf(a.owner)) + '</div>' +
+          '<div class="milestone-card-detail">' + esc(a.detail) + '</div>' +
+        '</div>'
+      ).join('') +
+    '</div>';
+  }
+
+  // ---- Next up: closest owner to their next milestone in each category ----
+  const nextUp = [];
+  nmeta.forEach(m => {
+    let best = null;
+    owners.forEach(k => {
+      const val = stats[k][m.key];
+      if (m.key === 'titles') {
+        // Titles: each one is a milestone; highlight who needs fewest games? Not applicable.
+        return;
+      }
+      const nextThreshold = (Math.floor(val / m.step) + 1) * m.step;
+      const remaining = nextThreshold - val;
+      if (val <= 0) return;
+      if (!best || remaining < best.remaining) best = {owner:k, val, nextThreshold, remaining};
+    });
+    if (best) nextUp.push({ label:m.label, fmt:m.fmt, best });
+  });
+
+  let highlightHtml = '';
+  if (nextUp.length) {
+    highlightHtml = '<div class="milestone-section-head">Next up</div><div class="milestone-highlights">' +
+      nextUp.map(n =>
+        '<div class="milestone-card">' +
+          '<div class="milestone-card-label">' + esc(n.label) + '</div>' +
+          '<div class="milestone-card-name">' + esc(nameOf(n.best.owner)) + '</div>' +
+          '<div class="milestone-card-detail">' + n.fmt(n.best.remaining) + ' from ' + n.fmt(n.best.nextThreshold) + '</div>' +
+        '</div>'
+      ).join('') +
+    '</div>';
+  }
+
+  // ---- Full progress table ----
+  const sorted = owners.slice().sort((a,b) => stats[b].wins - stats[a].wins || nameOf(a).localeCompare(nameOf(b)));
+  const headCells = nmeta.map(m => '<th class="num">' + esc(m.label) + '</th>').join('');
+  const bodyRows = sorted.map(k => {
+    const cells = nmeta.map(m => {
+      const val = stats[k][m.key];
+      if (m.key === 'titles') return '<td class="num">' + m.fmt(val) + '</td>';
+      const nextThreshold = (Math.floor(val / m.step) + 1) * m.step;
+      const remaining = nextThreshold - val;
+      return '<td class="num">' + m.fmt(val) + '</td>';
+    }).join('');
+    return '<tr><td>' + esc(nameOf(k)) + '</td>' + cells + '</tr>';
+  }).join('');
+
+  const tableHtml = '<div class="h2h-scroll"><table class="milestone-table"><thead><tr><th>Manager</th>' + headCells + '</tr></thead>' +
+    '<tbody>' + bodyRows + '</tbody></table></div>';
+
+  milestonesView.innerHTML =
+    '<p class="section-note">Cumulative career totals across the checked seasons. \u201CNext up\u201D shows who is closest to their next milestone in each category.</p>' +
+    achievedHtml +
+    highlightHtml +
+    tableHtml;
+}
 function renderRecordBookContent(){
   if (!history.loadedSeasons.length) { recordBookView.innerHTML = ''; return; }
 
@@ -3114,6 +3700,353 @@ function buildManagerProfile(key, seasonsData){
   };
 }
 
+function renderOnThisDayContent(){
+  const seasonsData = profileSeasonsData();
+  if (!seasonsData.length) {
+    otdView.innerHTML = '<div class="status">Load a league first.</div>';
+    return;
+  }
+  let week = state.currentWeek;
+  if (!week) {
+    let maxW = 0;
+    seasonsData.forEach(sd => (sd.schedule || []).forEach(g => {
+      const w = g && g.matchupPeriodId || 0;
+      if (w > maxW) maxW = w;
+    }));
+    week = maxW || 1;
+  }
+  const curYear = state.seasonYear || 0;
+  const rows = [];
+  seasonsData.forEach(sd => {
+    if (sd.year === curYear) return;
+    const teams = sd.teams || [];
+    const nameById = {};
+    teams.forEach(t => { nameById[t.id] = teamDisplayName(t); });
+    (sd.schedule || []).forEach(g => {
+      if (!g || !g.home || !g.away) return;
+      if ((g.matchupPeriodId || 0) !== week) return;
+      const hPts = g.home.totalPoints ?? 0;
+      const aPts = g.away.totalPoints ?? 0;
+      if (hPts === 0 && aPts === 0) return;
+      let winSide = null;
+      if (g.winner === 'HOME') winSide = 'home';
+      else if (g.winner === 'AWAY') winSide = 'away';
+      else if (hPts > aPts) winSide = 'home';
+      else if (aPts > hPts) winSide = 'away';
+      const isPlayoff = !!(g.playoffTierType && g.playoffTierType !== 'NONE');
+      rows.push({
+        year: sd.year, playoff: isPlayoff,
+        hName: nameById[g.home.teamId] || 'Unknown',
+        aName: nameById[g.away.teamId] || 'Unknown',
+        hPts: hPts, aPts: aPts,
+        hWon: winSide === 'home', aWon: winSide === 'away',
+        total: hPts + aPts, margin: Math.abs(hPts - aPts)
+      });
+    });
+  });
+  let html =
+    '<div class="section-title">On This Day</div>' +
+    '<div class="section-note">Memorable matchups from Week ' + week + ' in prior seasons.</div>';
+  if (!rows.length) {
+    html += '<div class="status">No Week ' + week + ' games found in prior seasons.</div>';
+    otdView.innerHTML = html;
+    return;
+  }
+  const highest = rows.slice().sort((x, y) => y.total - x.total)[0];
+  const blowout = rows.slice().sort((x, y) => y.margin - x.margin)[0];
+  const nail = rows.slice().sort((x, y) => x.margin - y.margin)[0];
+  const card = (label, r) => {
+    if (!r) return '';
+    const hn = escapeHtml(r.hName), an = escapeHtml(r.aName);
+    return '<div class="otd-card">' +
+      '<div class="otd-card-label">' + escapeHtml(label) + '</div>' +
+      '<div class="otd-card-year">' + r.year + (r.playoff ? ' &middot; Playoffs' : '') + '</div>' +
+      '<div class="otd-card-line' + (r.hWon ? ' otd-win' : '') + '">' + hn + ' <span class="otd-pts">' + r.hPts.toFixed(1) + '</span></div>' +
+      '<div class="otd-card-line' + (r.aWon ? ' otd-win' : '') + '">' + an + ' <span class="otd-pts">' + r.aPts.toFixed(1) + '</span></div>' +
+      '</div>';
+  };
+  html += '<div class="otd-cards">' +
+    card('Highest Scoring', highest) +
+    card('Biggest Blowout', blowout) +
+    card('Closest Finish', nail) +
+    '</div>';
+  const byYear = {};
+  rows.forEach(r => { (byYear[r.year] = byYear[r.year] || []).push(r); });
+  const years = Object.keys(byYear).map(Number).sort((a, b) => b - a);
+  years.forEach(y => {
+    html += '<div class="otd-season"><div class="otd-season-year">' + y + '</div><div class="otd-season-games">';
+    byYear[y].forEach(r => {
+      const hn = escapeHtml(r.hName), an = escapeHtml(r.aName);
+      html += '<div class="otd-game">' +
+        '<span class="otd-team' + (r.hWon ? ' otd-win' : '') + '">' + hn + ' ' + r.hPts.toFixed(1) + '</span>' +
+        '<span class="otd-sep">vs</span>' +
+        '<span class="otd-team' + (r.aWon ? ' otd-win' : '') + '">' + an + ' ' + r.aPts.toFixed(1) + '</span>' +
+        (r.playoff ? '<span class="otd-badge">Playoffs</span>' : '') +
+        '</div>';
+    });
+    html += '</div></div>';
+  });
+  otdView.innerHTML = html;
+}
+
+function renderWhatIfContent(){
+  if (multiSeasonGuard(whatifView, 'What-If Standings')) return;
+  const teams = state.teams;
+  const n = teams.length;
+  const PLAYOFF_LINE = 7;
+
+  // Actual standings order (for delta arrows): wins desc, then PF desc
+  const actualOrder = [...teams].sort((a,b) =>
+    (b.record.overall.wins - a.record.overall.wins) ||
+    (b.record.overall.pointsFor - a.record.overall.pointsFor));
+  const actualRank = {};
+  actualOrder.forEach((t,i) => { actualRank[t.id] = i + 1; });
+
+  const allPlay = computeAllPlayRecords(teams, state.schedule);
+  const median = computeMedianRecords(teams, state.schedule);
+
+  // Mode definitions: each returns a sorted array of teams + a metric label/value fn
+  const modes = [
+    {
+      key: 'points',
+      title: 'Points Reseed',
+      desc: 'Ranked purely by total points scored \u2014 no luck of the schedule.',
+      metricLabel: 'Points For',
+      sort: (a,b) => b.record.overall.pointsFor - a.record.overall.pointsFor,
+      metric: t => t.record.overall.pointsFor.toFixed(1)
+    },
+    {
+      key: 'allplay',
+      title: 'All-Play Reseed',
+      desc: 'Ranked by all-play win % \u2014 as if every team played every other team each week.',
+      metricLabel: 'All-Play %',
+      sort: (a,b) => {
+        const ra = allPlay[a.id], rb = allPlay[b.id];
+        return allPlayPct(rb) - allPlayPct(ra);
+      },
+      metric: t => (allPlayPct(allPlay[t.id]) * 100).toFixed(1) + '%'
+    },
+    {
+      key: 'today',
+      title: 'Season Ends Today',
+      desc: 'Current standings locked in as the final seeding.',
+      metricLabel: 'Record',
+      sort: (a,b) =>
+        (b.record.overall.wins - a.record.overall.wins) ||
+        (b.record.overall.pointsFor - a.record.overall.pointsFor),
+      metric: t => {
+        const r = t.record.overall;
+        return r.wins + '-' + r.losses + (r.ties ? '-' + r.ties : '');
+      }
+    },
+    {
+      key: 'median',
+      title: 'Median Reseed',
+      desc: 'Ranked by record vs. the weekly median score.',
+      metricLabel: 'vs Median',
+      sort: (a,b) => {
+        const ra = median[a.id], rb = median[b.id];
+        return (rb.wins - rb.losses) - (ra.wins - ra.losses);
+      },
+      metric: t => {
+        const r = median[t.id];
+        return r.wins + '-' + r.losses + (r.ties ? '-' + r.ties : '');
+      }
+    }
+  ];
+
+  function deltaCell(teamId, newRank){
+    const d = actualRank[teamId] - newRank; // positive = moved up
+    if (d > 0) return '<span class="wi-delta wi-up">\u25B2' + d + '</span>';
+    if (d < 0) return '<span class="wi-delta wi-down">\u25BC' + (-d) + '</span>';
+    return '<span class="wi-delta wi-same">\u2013</span>';
+  }
+
+  let html = '<div class="wi-intro">Alternate seedings from the same games. Arrows show movement vs. the actual standings. The line marks the top ' + PLAYOFF_LINE + ' playoff spots.</div>';
+  html += '<div class="wi-grid">';
+  modes.forEach(mode => {
+    const ordered = [...teams].sort(mode.sort);
+    html += '<div class="wi-card">';
+    html += '<h3 class="wi-title">' + escapeHtml(mode.title) + '</h3>';
+    html += '<p class="wi-desc">' + escapeHtml(mode.desc) + '</p>';
+    html += '<table class="wi-table"><thead><tr><th>#</th><th>Team</th><th>' + escapeHtml(mode.metricLabel) + '</th><th>\u0394</th></tr></thead><tbody>';
+    ordered.forEach((t, i) => {
+      const rank = i + 1;
+      const lineClass = rank === PLAYOFF_LINE ? ' wi-playoff-line' : '';
+      html += '<tr class="' + lineClass.trim() + '">' +
+        '<td class="wi-rank">' + rank + '</td>' +
+        '<td class="wi-team">' + escapeHtml(teamDisplayName(t)) + '</td>' +
+        '<td class="wi-metric">' + mode.metric(t) + '</td>' +
+        '<td>' + deltaCell(t.id, rank) + '</td>' +
+        '</tr>';
+    });
+    html += '</tbody></table></div>';
+  });
+  html += '</div>';
+  whatifView.innerHTML = html;
+}
+
+function renderH2HContent(){
+  const seasonsData = profileSeasonsData();
+  if (!seasonsData.length) {
+    h2hView.innerHTML = '<div class="status">Load a league first.</div>';
+    return;
+  }
+  const managers = allManagerOptions(seasonsData);
+  if (managers.length < 2) {
+    h2hView.innerHTML = '<div class="status">Need at least two managers to compare.</div>';
+    return;
+  }
+  if (!window._h2hSel) window._h2hSel = { a: null, b: null };
+  const st = window._h2hSel;
+  let defA = managers.some(m => m.key === st.a) ? st.a : managers[0].key;
+  let defB = managers.some(m => m.key === st.b) ? st.b : managers[1].key;
+  if (defB === defA) {
+    const other = managers.find(m => m.key !== defA);
+    defB = other ? other.key : defB;
+  }
+  st.a = defA;
+  st.b = defB;
+  const optsA = managers.map(m => '<option value="' + escapeHtml(m.key) + '"' + (m.key === defA ? ' selected' : '') + '>' + escapeHtml(m.name) + '</option>').join('');
+  const optsB = managers.map(m => '<option value="' + escapeHtml(m.key) + '"' + (m.key === defB ? ' selected' : '') + '>' + escapeHtml(m.name) + '</option>').join('');
+  h2hView.innerHTML =
+    '<div class="section-title">Head-to-Head</div>' +
+    '<div class="section-note">Compare two managers and their direct matchups across league history.</div>' +
+    '<div class="h2h-select">' +
+    '<select id="h2hSelA">' + optsA + '</select>' +
+    '<span class="h2h-vs">vs</span>' +
+    '<select id="h2hSelB">' + optsB + '</select>' +
+    '</div>' +
+    '<div id="h2hBody"></div>';
+  const selA = document.getElementById('h2hSelA');
+  const selB = document.getElementById('h2hSelB');
+  selA.addEventListener('change', () => { window._h2hSel.a = selA.value; renderH2HBody(); });
+  selB.addEventListener('change', () => { window._h2hSel.b = selB.value; renderH2HBody(); });
+  renderH2HBody();
+}
+
+function renderH2HBody(){
+  const body = document.getElementById('h2hBody');
+  if (!body) return;
+  const seasonsData = profileSeasonsData();
+  const st = window._h2hSel || { a: null, b: null };
+  const keyA = st.a;
+  const keyB = st.b;
+  if (!keyA || !keyB || keyA === keyB) {
+    body.innerHTML = '<div class="status">Pick two different managers.</div>';
+    return;
+  }
+  const profA = buildManagerProfile(keyA, seasonsData);
+  const profB = buildManagerProfile(keyB, seasonsData);
+  if (!profA || !profB) {
+    body.innerHTML = '<div class="status">No data for one of the selected managers.</div>';
+    return;
+  }
+  let a2hW = 0, a2hL = 0, a2hT = 0, a2hPF = 0, a2hPA = 0, meetings = 0;
+  const games = [];
+  seasonsData.forEach(sd => {
+    const teams = sd.teams || [];
+    const teamKey = {};
+    teams.forEach(t => { teamKey[t.id] = resolvedOwnerKey(t); });
+    (sd.schedule || []).forEach(g => {
+      if (!g || !g.home || !g.away) return;
+      const hk = teamKey[g.home.teamId];
+      const ak = teamKey[g.away.teamId];
+      if (!hk || !ak) return;
+      let aSide = null, bSide = null;
+      if (hk === keyA && ak === keyB) { aSide = 'home'; bSide = 'away'; }
+      else if (hk === keyB && ak === keyA) { aSide = 'away'; bSide = 'home'; }
+      else return;
+      const aPts = (aSide === 'home' ? g.home.totalPoints : g.away.totalPoints) ?? 0;
+      const bPts = (bSide === 'home' ? g.home.totalPoints : g.away.totalPoints) ?? 0;
+      if (aPts === 0 && bPts === 0) return;
+      meetings++;
+      a2hPF += aPts;
+      a2hPA += bPts;
+      let winSide = null;
+      if (g.winner === 'HOME') winSide = 'home';
+      else if (g.winner === 'AWAY') winSide = 'away';
+      else if (aPts > bPts) winSide = aSide;
+      else if (bPts > aPts) winSide = bSide;
+      if (winSide === aSide) a2hW++;
+      else if (winSide === bSide) a2hL++;
+      else a2hT++;
+      const isPlayoff = !!(g.playoffTierType && g.playoffTierType !== 'NONE');
+      games.push({
+        year: sd.year, week: g.matchupPeriodId || 0, playoff: isPlayoff,
+        aPts: aPts, bPts: bPts,
+        aWon: (winSide === aSide), bWon: (winSide === bSide)
+      });
+    });
+  });
+  const fmt = (n, d) => (typeof n === 'number' && isFinite(n)) ? n.toFixed(d === undefined ? 1 : d) : String.fromCharCode(8212);
+  const pct = n => (typeof n === 'number' && isFinite(n)) ? (n * 100).toFixed(1) + '%' : String.fromCharCode(8212);
+  const rows = [];
+  const row = (label, va, vb, higherWins) => {
+    let ca = 'h2h-cell-a', cb = 'h2h-cell-b';
+    if (typeof higherWins === 'boolean' && va !== vb && va !== null && vb !== null) {
+      const aWins = higherWins ? va > vb : va < vb;
+      if (aWins) ca += ' h2h-win'; else cb += ' h2h-win';
+    }
+    return { label, va, vb, ca, cb };
+  };
+  rows.push(row('Seasons Played', profA.seasonsPlayed, profB.seasonsPlayed, null));
+  rows.push(row('Career Record', profA.careerW + '-' + profA.careerL + (profA.careerT ? '-' + profA.careerT : ''), profB.careerW + '-' + profB.careerL + (profB.careerT ? '-' + profB.careerT : ''), null));
+  rows.push(row('Win %', pct(profA.careerWinPct), pct(profB.careerWinPct), null));
+  rows.push(row('Career Points For', fmt(profA.careerPF), fmt(profB.careerPF), null));
+  rows.push(row('Career Points Against', fmt(profA.careerPA), fmt(profB.careerPA), null));
+  rows.push(row('Championships', profA.champCount, profB.champCount, true));
+  rows.push(row('Top-3 Finishes', profA.top3Count, profB.top3Count, true));
+  rows.push(row('Playoff Appearances', profA.playoffCount, profB.playoffCount, true));
+  rows.push(row('Toilet Bowls', profA.toiletCount, profB.toiletCount, false));
+  rows.push(row('Highest Game', fmt(profA.highGame && profA.highGame.points), fmt(profB.highGame && profB.highGame.points), null));
+  const bodyRows = rows.map(r => {
+    const va = (r.ca.indexOf('h2h-win') >= 0) ? '<span class="h2h-winmark">' + r.va + '</span>' : r.va;
+    const vb = (r.cb.indexOf('h2h-win') >= 0) ? '<span class="h2h-winmark">' + r.vb + '</span>' : r.vb;
+    return '<div class="h2h-row">' +
+      '<div class="' + r.ca + '">' + va + '</div>' +
+      '<div class="h2h-cell-label">' + escapeHtml(r.label) + '</div>' +
+      '<div class="' + r.cb + '">' + vb + '</div>' +
+      '</div>';
+  }).join('');
+  let h2hLine;
+  if (meetings === 0) {
+    h2hLine = '<div class="section-note">These two managers have never faced each other.</div>';
+  } else {
+    h2hLine = '<div class="h2h-direct">' +
+      '<span class="h2h-direct-label">Direct Matchups</span> ' +
+      escapeHtml(profA.name) + ' leads ' + a2hW + String.fromCharCode(8211) + a2hL + (a2hT ? String.fromCharCode(8211) + a2hT : '') +
+      ' over ' + escapeHtml(profB.name) + ' (' + fmt(a2hPF) + ' PF, ' + fmt(a2hPA) + ' PA across ' + meetings + ' game' + (meetings === 1 ? '' : 's') + ').' +
+      '</div>';
+  }
+  let gamesHtml = '';
+  if (games.length) {
+    const sorted = games.slice().sort((x, y) => (y.year - x.year) || (y.week - x.week));
+    const gameRows = sorted.map(gm => {
+      let ca = 'h2h-cell-a', cb = 'h2h-cell-b';
+      if (gm.aWon) ca += ' h2h-win';
+      else if (gm.bWon) cb += ' h2h-win';
+      const tag = gm.playoff ? '<span class="h2h-game-tag">Playoff</span>' : '';
+      const mid = 'Season ' + gm.year + ' Wk' + gm.week + tag;
+      return '<div class="h2h-row h2h-game">' +
+        '<div class="' + ca + '">' + fmt(gm.aPts) + '</div>' +
+        '<div class="h2h-cell-label">' + mid + '</div>' +
+        '<div class="' + cb + '">' + fmt(gm.bPts) + '</div>' +
+        '</div>';
+    }).join('');
+    gamesHtml = '<div class="h2h-games-title">Every Meeting</div>' + gameRows;
+  }
+  body.innerHTML =
+    h2hLine +
+    '<div class="h2h-row h2h-head">' +
+    '<div class="h2h-cell-a">' + escapeHtml(profA.name) + '</div>' +
+    '<div class="h2h-cell-label"></div>' +
+    '<div class="h2h-cell-b">' + escapeHtml(profB.name) + '</div>' +
+    '</div>' +
+    bodyRows +
+    gamesHtml;
+}
+
 function renderProfile(){
   const seasonsData = profileSeasonsData();
   if (!seasonsData.length) {
@@ -3243,6 +4176,7 @@ function refreshSeasonDependentViews(){
   renderPositions();
   if (beltView) renderBeltContent();
   if (recordBookView) renderRecordBookContent();
+  if (milestonesView) renderMilestonesContent();
 }
 
 async function autoLoadHistoryFromCache(){
