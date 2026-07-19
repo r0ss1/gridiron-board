@@ -71,7 +71,7 @@ async function handleEspnProxy(request, url) {
   if (wantDraft) {
     // kona_player_info returns ~50 players by default; bound a large pool so
     // every drafted playerId can be resolved to a name client-side.
-    reqHeaders['X-Fantasy-Filter'] = JSON.stringify({ players: { limit: 2000, offset: 0 } });
+    reqHeaders['X-Fantasy-Filter'] = JSON.stringify({ players: { limit: 2000, offset: 0, sortPercOwned: { sortAsc: false, sortPriority: 1 } } });
   }
   if (espnS2 && swid) {
     reqHeaders.Cookie = `espn_s2=${espnS2}; SWID=${swid}`;
