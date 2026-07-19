@@ -826,7 +826,7 @@
     <button data-tab="belt">Belt</button>
     <button data-tab="records">Record Book</button>
     <button data-tab="milestones">Milestones</button>
-    <button data-tab="h2h">Head-to-Head</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button>
+    <button data-tab="h2h">Head-to-Head</button><button data-tab="otd">On This Day</button><button data-tab="whatif">What-If</button><button data-tab="recap">Recap Card</button><button data-tab="trash">Trash Talk</button><button data-tab="draft">Draft</button>
   </nav>
 
   <div id="statusArea"></div>
@@ -838,7 +838,7 @@
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="trashView" style="display:none;"></div><div id="draftView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -970,8 +970,137 @@ function setTab(name){
   if (name === 'recap') renderRecapContent();
     trashView.style.display = name === 'trash' ? '' : 'none';
     if (name === 'trash') renderTrashContent();
+  draftView.style.display = name === 'draft' ? '' : 'none';
+  if (name === 'draft') renderDraftContent();
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => setTab(b.dataset.tab)));
+
+// ---- Draft recap / grades (Task 9) ----
+const DRAFT_MIN_YEAR = 2018;
+function draftAvailableYears(){
+  const ys = [];
+  const now = new Date().getFullYear();
+  for (let y = now; y >= DRAFT_MIN_YEAR; y--) ys.push(y);
+  return ys;
+}
+
+function buildDraftPlayerMap(data){
+  const map = {};
+  (data.players || []).forEach(entry => {
+    const pl = entry.player || {};
+    const r0 = (entry.ratings && entry.ratings["0"]) || {};
+    map[entry.id] = {
+      fullName: pl.fullName || ('Player ' + entry.id),
+      posId: pl.defaultPositionId,
+      pos: POSITION_NAMES[pl.defaultPositionId] || '?',
+      positionalRanking: (typeof r0.positionalRanking === 'number') ? r0.positionalRanking : null,
+      totalRanking: (typeof r0.totalRanking === 'number') ? r0.totalRanking : null,
+      totalRating: (typeof r0.totalRating === 'number') ? r0.totalRating : null
+    };
+  });
+  return map;
+}
+
+function draftTeamNameMap(data){
+  const m = {};
+  (data.teams || []).forEach(t => { m[t.id] = teamDisplayName(t); });
+  return m;
+}
+
+// Steal/bust score: positional draft order vs. end-of-season positional rank.
+// Positive = outperformed draft slot (steal); negative = underperformed (bust).
+function gradeDraftPicks(picks, pmap){
+  const posOrder = {}; // pos -> running count of how many at that pos drafted so far
+  const graded = [];
+  picks.slice().sort((a,b)=> (a.overallPickNumber||0)-(b.overallPickNumber||0)).forEach(pk => {
+    const info = pmap[pk.playerId];
+    if (!info) return;
+    posOrder[info.pos] = (posOrder[info.pos] || 0) + 1;
+    const draftPosRank = posOrder[info.pos]; // Nth at this position taken in the draft
+    const endPosRank = info.positionalRanking;
+    let delta = null;
+    if (endPosRank != null) delta = draftPosRank - endPosRank; // >0 steal, <0 bust
+    graded.push({ pk, info, draftPosRank, endPosRank, delta });
+  });
+  return graded;
+}
+
+async function renderDraftContent(){
+  const view = document.getElementById('draftView');
+  if (!view) return;
+  if (!view.dataset.init){
+    view.dataset.init = '1';
+    const opts = draftAvailableYears().map(y => '<option value="'+y+'">'+y+'</option>').join('');
+    view.innerHTML = '<div class="controls"><label>Season: <select id="draftYearSel">'+opts+'</select></label></div>'
+                   + '<div id="draftBody"></div>';
+    document.getElementById('draftYearSel').addEventListener('change', renderDraftBody);
+  }
+  renderDraftBody();
+}
+
+async function renderDraftBody(){
+  const body = document.getElementById('draftBody');
+  const year = document.getElementById('draftYearSel').value;
+  body.innerHTML = '<p>Loading draft data\u2026</p>';
+  const data = await fetchDraftData(year);
+  if (!data || !data.draftDetail || !Array.isArray(data.draftDetail.picks) || !data.draftDetail.picks.length){
+    body.innerHTML = '<p>No draft data available for ' + year + '.</p>';
+    return;
+  }
+  const pmap = buildDraftPlayerMap(data);
+  const tmap = draftTeamNameMap(data);
+  const picks = data.draftDetail.picks;
+  const graded = gradeDraftPicks(picks, pmap);
+
+  // Steals & busts (only picks with an end-of-season positional rank)
+  const rated = graded.filter(g => g.delta != null);
+  const steals = rated.slice().sort((a,b)=> b.delta - a.delta).slice(0,10);
+  const busts  = rated.slice().sort((a,b)=> a.delta - b.delta).slice(0,10);
+
+  function pickRow(g){
+    const pk = g.pk, info = g.info;
+    const who = tmap[pk.teamId] || ('Team ' + pk.teamId);
+    const rank = info.positionalRanking != null ? (info.pos + info.positionalRanking) : '\u2014';
+    let tag = '';
+    if (g.delta != null){
+      if (g.delta >= 8) tag = ' <span style="color:#2e7d32;font-weight:600;">STEAL</span>';
+      else if (g.delta <= -8) tag = ' <span style="color:#c62828;font-weight:600;">BUST</span>';
+    }
+    return '<tr><td>' + (pk.overallPickNumber||'') + '</td><td>' + escapeHtml(info.fullName)
+         + '</td><td>' + info.pos + '</td><td>' + escapeHtml(who) + '</td><td>' + rank + tag + '</td></tr>';
+  }
+
+  // Group by round
+  const rounds = {};
+  picks.forEach(pk => { (rounds[pk.roundId] = rounds[pk.roundId] || []).push(pk); });
+  const gByPlayer = {};
+  graded.forEach(g => { gByPlayer[g.pk.playerId + ':' + g.pk.overallPickNumber] = g; });
+
+  let html = '';
+  html += '<h3>Steals</h3><table class="data"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th><th>End Rank</th></tr></thead><tbody>'
+        + steals.map(pickRow).join('') + '</tbody></table>';
+  html += '<h3>Busts</h3><table class="data"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th><th>End Rank</th></tr></thead><tbody>'
+        + busts.map(pickRow).join('') + '</tbody></table>';
+
+  html += '<h3>Full Draft Board</h3>';
+  Object.keys(rounds).map(Number).sort((a,b)=>a-b).forEach(rd => {
+    html += '<h4>Round ' + rd + '</h4>';
+    html += '<table class="data"><thead><tr><th>Pick</th><th>Player</th><th>Pos</th><th>Team</th><th>End Rank</th></tr></thead><tbody>';
+    rounds[rd].slice().sort((a,b)=>(a.overallPickNumber||0)-(b.overallPickNumber||0)).forEach(pk => {
+      const g = gByPlayer[pk.playerId + ':' + pk.overallPickNumber];
+      if (g) html += pickRow(g);
+      else {
+        const info = pmap[pk.playerId] || { fullName: 'Player ' + pk.playerId, pos: '?' };
+        html += '<tr><td>' + (pk.overallPickNumber||'') + '</td><td>' + escapeHtml(info.fullName)
+             + '</td><td>' + info.pos + '</td><td>' + escapeHtml(tmap[pk.teamId] || ('Team ' + pk.teamId))
+             + '</td><td>\u2014</td></tr>';
+      }
+    });
+    html += '</tbody></table>';
+  });
+  body.innerHTML = html;
+}
+
 
 function ownerKey(t){
   return t.primaryOwner || ('teamid:' + t.id); // fallback if a team has no owner on record
@@ -1955,6 +2084,22 @@ async function fetchRosterData(year){
     const payload = await res.json().catch(() => null);
     if (!res.ok || !payload) return null;
     rosterDataCache[year] = payload;
+    return payload;
+  } catch (e) {
+    return null;
+  }
+}
+
+const draftDataCache = {}; // year -> raw data with draftDetail + players
+async function fetchDraftData(year){
+  if (draftDataCache[year]) return draftDataCache[year];
+  const proxyUrl = '/api/espn-proxy?leagueId=' + encodeURIComponent(LEAGUE_ID) +
+                    '&season=' + encodeURIComponent(year) + '&draft=1';
+  try {
+    const res = await fetch(proxyUrl, { headers: { 'Accept': 'application/json' } });
+    const payload = await res.json().catch(() => null);
+    if (!res.ok || !payload) return null;
+    draftDataCache[year] = payload;
     return payload;
   } catch (e) {
     return null;
