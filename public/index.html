@@ -3045,13 +3045,13 @@ function computeAwards(year, teams, schedule, settings){
 
 
 
-  // ---- Career / All-Time Superlatives (from HISTORY_CACHE) ----
-  if (typeof HISTORY_CACHE !== 'undefined' && HISTORY_CACHE && Object.keys(HISTORY_CACHE).length >= 3) {
-    const allYears = Object.keys(HISTORY_CACHE).map(Number).sort();
+  // ---- Career / All-Time Superlatives (from history.data) ----
+  if (history && history.data && Object.keys(history.data).length >= 3) {
+    const allYears = Object.keys(history.data).map(Number).sort();
     const ownerSeasons = {}; // ownerKey -> [{year, wins, losses, points, highGame, lowGame, madePlayoffs, champion}]
 
     for (const yr of allYears) {
-      const s = HISTORY_CACHE[yr];
+      const s = history.data[yr];
       if (!s || !s.teams) continue;
       const placements2 = seasonPlacements(s);
       const champId = placements2?.champion;
@@ -3133,7 +3133,7 @@ function computeAwards(year, teams, schedule, settings){
     Object.entries(ownerSeasons).forEach(([key, data]) => {
       let count = 0;
       for (const yr of allYears) {
-        const s = HISTORY_CACHE[yr];
+        const s = history.data[yr];
         if (!s) continue;
         const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
         if (!t) continue;
@@ -3156,7 +3156,7 @@ function computeAwards(year, teams, schedule, settings){
     Object.entries(ownerSeasons).forEach(([key, data]) => {
       let count = 0;
       for (const yr of allYears) {
-        const s = HISTORY_CACHE[yr];
+        const s = history.data[yr];
         if (!s) continue;
         const t = (s.teams||[]).find(t2 => resolvedOwnerKey(t2) === key);
         if (!t) continue;
@@ -3176,8 +3176,8 @@ function computeAwards(year, teams, schedule, settings){
   }
 
   // ---- Best Waiver Pickup (precomputed) ----
-  const _bpData = (typeof HISTORY_CACHE !== 'undefined' && HISTORY_CACHE[year])
-    ? HISTORY_CACHE[year].computed?.bestPickup?.overall : null;
+  const _bpData = (history && history.data && history.data[year])
+    ? history.data[year].computed?.bestPickup?.overall : null;
   if (_bpData) {
     const _bpOwner = teamDisplayName({ primaryOwner: _bpData.ownerKey });
     awards.push({ emoji: '💎', title: 'Diamond in the Rough', desc: 'Best waiver/FA pickup (most pts while rostered, min 3 wks)', winner: _bpOwner, detail: _bpData.playerName + ' (Wk ' + _bpData.weekAdded + ', ' + _bpData.totalPoints.toFixed(1) + ' pts, ' + _bpData.weeksRostered + ' wks)', ownerKey: _bpData.ownerKey });
@@ -5007,12 +5007,22 @@ if ('serviceWorker' in navigator) {
 }
 
 // ========== WAIVERS TAB ==========
-function renderWaiversTab(){
-  if (typeof HISTORY_CACHE === 'undefined' || !HISTORY_CACHE) {
-    waiversView.innerHTML = '<div class="status">\u{1f48e} Load history data first (History tab) to see waiver pickups.</div>';
+async function renderWaiversTab(){
+  // Auto-load history cache if not already loaded
+  if (!history.data || !Object.keys(history.data).length) {
+    waiversView.innerHTML = '<div class="status">Loading history data\u2026</div>';
+    const cache = await loadHistoryCache();
+    if (cache && Object.keys(cache).length) {
+      // Merge cache into history.data (same pattern as History tab)
+      Object.assign(history.data, cache);
+      history.loadedSeasons = Object.keys(history.data).map(Number).sort((a,b)=>a-b);
+    }
+  }
+  if (!history.data || !Object.keys(history.data).length) {
+    waiversView.innerHTML = '<div class="status">\u{1f48e} No history data available. Check that history-cache.json is deployed.</div>';
     return;
   }
-  const seasons = Object.keys(HISTORY_CACHE).filter(yr => HISTORY_CACHE[yr]?.computed?.bestPickup).sort((a,b)=>b-a);
+  const seasons = Object.keys(history.data).filter(yr => history.data[yr]?.computed?.bestPickup).sort((a,b)=>b-a);
   if (!seasons.length) {
     waiversView.innerHTML = '<div class="status">\u{1f48e} No waiver wire data available yet. Run the precompute script.</div>';
     return;
@@ -5028,7 +5038,7 @@ function renderWaiversTab(){
 function renderWaiversSeason(val){
   const display = document.getElementById('waiversDisplay');
   if (val === 'all-time') { renderWaiversAllTime(display); return; }
-  const bp = HISTORY_CACHE[val]?.computed?.bestPickup;
+  const bp = history.data[val]?.computed?.bestPickup;
   if (!bp) { display.innerHTML = '<div class="status">No waiver data for '+val+'.</div>'; return; }
   const o = bp.overall;
   const oName = teamDisplayName({ primaryOwner: o.ownerKey });
@@ -5056,7 +5066,7 @@ function renderWaiversSeason(val){
 
 function renderWaiversAllTime(display){
   const all = [];
-  for (const [year, season] of Object.entries(HISTORY_CACHE||{})) {
+  for (const [year, season] of Object.entries(history.data||{})) {
     const bp = season?.computed?.bestPickup;
     if (!bp) continue;
     all.push({...bp.overall, year});
