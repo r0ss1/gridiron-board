@@ -1426,14 +1426,15 @@ function wireContextBarEvents(type){
             history.checkedSeasons.add(yr);
           }
           activateNewestChecked();
-          refreshSeasonDependentViews();
           updateContextBar();
+          rerenderActiveTab();
         } else {
           // Single select
           if (!history.data[yr]) { selectSeason(yr, false); return; }
           history.checkedSeasons = new Set([yr]);
           activateNewestChecked();
           updateContextBar();
+          rerenderActiveTab();
         }
       });
     });
@@ -1446,7 +1447,7 @@ function wireContextBarEvents(type){
       btn.addEventListener('click', () => {
         viewWeekSelect.value = btn.dataset.week;
         updateContextBar();
-        renderMatchups(); renderPreview(); renderReview();
+        rerenderActiveTab();
       });
     });
   }
@@ -1456,16 +1457,16 @@ function wireContextBarEvents(type){
   if (bulkAll) bulkAll.addEventListener('click', () => {
     history.loadedSeasons.forEach(y => { if (history.data[y]) history.checkedSeasons.add(y); });
     activateNewestChecked();
-    refreshSeasonDependentViews();
     updateContextBar();
+    rerenderActiveTab();
   });
   const bulkNone = document.getElementById('ctxBulkNone');
   if (bulkNone) bulkNone.addEventListener('click', () => {
     const checked = Array.from(history.checkedSeasons).sort((a, b) => b - a);
     history.checkedSeasons = new Set([checked[0] || latestLikelySeason]);
     activateNewestChecked();
-    refreshSeasonDependentViews();
     updateContextBar();
+    rerenderActiveTab();
   });
 
   // Refresh button
@@ -1473,6 +1474,31 @@ function wireContextBarEvents(type){
   if (refBtn) refBtn.addEventListener('click', () => {
     selectSeason(state.seasonYear || parseInt(viewSeasonSelect.value, 10) || latestLikelySeason, true);
   });
+}
+
+// Re-render whichever tab is currently active (called on year/week change)
+function rerenderActiveTab(){
+  switch(activeTabName){
+    case 'standings': renderStandings(); break;
+    case 'matchups': renderMatchups(); break;
+    case 'preview': renderPreview(); break;
+    case 'review': renderReview(); break;
+    case 'positions': renderPositions(); break;
+    case 'draft': renderDraftContent(); break;
+    case 'waivers': renderWaiversTab(); break;
+    case 'bracket': renderBracketTab(); break;
+    case 'whatif': renderWhatIfContent(); break;
+    case 'awards': renderAwards(); break;
+    case 'h2h': renderH2HContent(); break;
+    case 'elo': renderEloContent(); break;
+    case 'profile': renderProfile(); break;
+    case 'records': renderRecordBookContent(); break;
+    case 'trends': renderTrendsTab(); break;
+    case 'milestones': renderMilestonesContent(); break;
+    case 'otd': renderOnThisDayContent(); break;
+    case 'belt': renderBeltContent(); break;
+    case 'history': renderHistoryContent(); break;
+  }
 }
 
 // ---- Draft recap / grades (Task 9) ----
@@ -2586,7 +2612,7 @@ function downloadRecapCard(){
     (blowout ? tile(blowout.margin.toFixed(1), 'Blowout: ' + escapeHtml(blowout.home) + ' / ' + escapeHtml(blowout.away)) : '') +
     '</div>';
 
-  reviewView.innerHTML = banner + '<h2 class="section-title">Week ' + priorWeek + ' recap</h2>' + highlights + cards;
+  reviewView.innerHTML = banner + '<h2 class="section-title">Week ' + reviewWeek + ' recap</h2>' + highlights + cards;
 }
 
 // ---------------------------------------------------------------
@@ -5319,7 +5345,7 @@ async function autoLoadHistoryFromCache(){
 
   history.data = cache;
   history.loadedSeasons = years;
-  history.checkedSeasons = new Set([years[years.length - 1]]); // default: newest season only
+  history.checkedSeasons = new Set(years); // default: all seasons selected
 
   historyStatus.textContent = 'Loaded ' + years.length + ' season(s) from the cache file.';
   refreshSeasonDependentViews();
@@ -5340,9 +5366,8 @@ async function autoLoadHistoryFromCache(){
     // selectSeason ADDS to checkedSeasons; force the single-newest default
     // so we never start with two checked (which greys single-season views).
     if (history.data[latestLikelySeason]) {
-      history.checkedSeasons = new Set([latestLikelySeason]);
+      history.checkedSeasons.add(latestLikelySeason);
       updateContextBar();
-      refreshSeasonDependentViews();
     }
   }
   // Always push the newest checked season into state so Standings/Matchups
