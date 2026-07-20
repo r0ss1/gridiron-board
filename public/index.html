@@ -5831,33 +5831,36 @@ function renderInjuriesTab(){
     if (!d || !d.computed || !d.computed.rosterStats) continue;
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
-      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, players: {} };
+      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, totalPtsLost: 0, players: {} };
       acc[key].totalWeeksMissed += data.totalWeeksMissed;
+      acc[key].totalPtsLost += (data.totalPtsLost || 0);
       for (const p of data.players) {
         const pk = p.name;
-        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, injury: '' };
+        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, ptsLost: 0, ppg: p.ppg || 0, injury: '' };
         acc[key].players[pk].weeks += p.weeksMissed;
+        acc[key].players[pk].ptsLost += (p.ptsLost || 0);
+        if (p.ppg) acc[key].players[pk].ppg = p.ppg;
         if (p.injury && p.injury !== 'Unknown') acc[key].players[pk].injury = p.injury;
       }
     }
   }
 
-  const keys = Object.keys(acc).sort((a,b) => acc[b].totalWeeksMissed - acc[a].totalWeeksMissed);
+  const keys = Object.keys(acc).sort((a,b) => acc[b].totalPtsLost - acc[a].totalPtsLost);
   if (!keys.length) { injuriesView.innerHTML = '<div class="status">No injury data found for selected seasons. Run precompute-injuries.js first.</div>'; return; }
 
   const nameMap = historyTeamNames();
   const label = checked.length > 1 ? checked[0] + '\u2013' + checked[checked.length-1] : String(checked[0]);
 
   let html = '<h2 class="section-title">Injury Report</h2>';
-  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players listed Out or Doubtful on official NFL injury reports while on your fantasy roster</p>';
+  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players listed Out/Doubtful on NFL injury reports, or Questionable and scored 0. Pts Lost is weighted by player PPG.</p>';
 
-  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Player-Weeks Lost</th><th class="num">Players Hurt</th><th class="num">Avg Wks/Season</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Pts Lost</th><th class="num">Weeks Lost</th><th class="num">Players</th><th class="num">Avg Pts/Season</th></tr></thead><tbody>';
   keys.forEach((key, i) => {
     const d = acc[key];
     const name = nameMap[key] || key;
     const playerCount = Object.keys(d.players).length;
-    const avg = (d.totalWeeksMissed / checked.length).toFixed(1);
-    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + playerCount + '</td><td class="num">' + avg + '</td></tr>';
+    const avgPts = (d.totalPtsLost / checked.length).toFixed(0);
+    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalPtsLost.toFixed(0) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + playerCount + '</td><td class="num">' + avgPts + '</td></tr>';
   });
   html += '</tbody></table>';
 
@@ -5869,15 +5872,15 @@ function renderInjuriesTab(){
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
       for (const p of data.players) {
-        allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
+        allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, ptsLost: p.ptsLost || 0, ppg: p.ppg || 0, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
       }
     }
   }
-  allPlayers.sort((a,b) => b.weeks - a.weeks || b.season - a.season);
+  allPlayers.sort((a,b) => b.ptsLost - a.ptsLost || b.weeks - a.weeks);
 
   // Manager dropdown
   const managerList = keys.map(k => ({ key: k, name: nameMap[k] || k })).sort((a,b) => a.name.localeCompare(b.name));
-  html += '<h3>Most Injured Players</h3>';
+  html += '<h3>Costliest Injuries</h3>';
   html += '<div style="margin-bottom:var(--sp-sm)"><label style="font-size:var(--fs-sm);margin-right:var(--sp-xs)">Manager:</label>';
   html += '<select id="injuryManagerFilter" style="font-size:var(--fs-sm);padding:var(--sp-xs) var(--sp-sm);border-radius:6px;border:1px solid var(--clr-border);background:var(--clr-surface);color:var(--clr-text)">';
   html += '<option value="">All Managers</option>';
@@ -5894,13 +5897,13 @@ function renderInjuriesTab(){
     const showManager = !filterKey;
     let t = '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Injury</th>';
     if (showManager) t += '<th>Manager</th>';
-    t += '<th class="num">Season</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
+    t += '<th class="num">Season</th><th class="num">PPG</th><th class="num">Wks</th><th class="num">Pts Lost</th></tr></thead><tbody>';
     filtered.slice(0, limit).forEach((p, i) => {
       t += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td>' + escapeHtml(p.injury || '\u2014') + '</td>';
       if (showManager) t += '<td class="team-name">' + escapeHtml(p.owner) + '</td>';
-      t += '<td class="num">' + p.season + '</td><td class="num">' + p.weeks + '</td></tr>';
+      t += '<td class="num">' + p.season + '</td><td class="num">' + p.ppg.toFixed(1) + '</td><td class="num">' + p.weeks + '</td><td class="num">' + p.ptsLost.toFixed(0) + '</td></tr>';
     });
-    if (filtered.length === 0) t += '<tr><td colspan="' + (showManager ? 7 : 6) + '">No injuries recorded.</td></tr>';
+    if (filtered.length === 0) t += '<tr><td colspan="' + (showManager ? 9 : 8) + '">No injuries recorded.</td></tr>';
     t += '</tbody></table>';
     document.getElementById('injuryPlayerTable').innerHTML = t;
   }
