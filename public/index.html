@@ -837,22 +837,30 @@
   @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
 
   .h2h-select{
+    display:flex; align-items:center; justify-content:center; gap:var(--sp-sm);
+    margin-bottom:var(--sp-lg);
+  }
+  .h2h-select select{
     background:var(--surface); color:var(--ink); border:1px solid var(--line, rgba(255,255,255,.12));
-    border-radius:var(--radius); padding:var(--sp-md) var(--sp-md); font-size:var(--fs-base); font-family:inherit; width:100%;
+    border-radius:var(--radius); padding:var(--sp-sm) var(--sp-md); font-size:var(--fs-base); font-family:inherit;
   }
   .h2h-row{
     display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px;
     padding:var(--sp-md) var(--sp-lg); border-radius:var(--radius); background:var(--surface); margin-bottom:var(--sp-sm);
   }
   .h2h-head{ background:transparent; font-weight:700; }
+  .h2h-head .h2h-cell-a, .h2h-head .h2h-cell-b{ font-family:'Inter',sans-serif; font-size:var(--fs-base); }
   .h2h-cell-a{ text-align:right; font-family:var(--font-mono); font-size:var(--fs-base); }
   .h2h-cell-b{ text-align:left; font-family:var(--font-mono); font-size:var(--fs-base); }
   .h2h-cell-label{ text-align:center; font-size:var(--fs-xs); color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; }
   .h2h-win{ color:var(--accent, #4ade80); font-weight:700; }
   .h2h-games-title{ font-weight:700; font-size:var(--fs-base); margin:1.5rem 0 var(--sp-md); }
+  .h2h-direct{ font-size:var(--fs-sm); color:var(--ink-dim); margin-bottom:var(--sp-lg); padding:var(--sp-md); background:var(--surface); border-radius:6px; }
+  .h2h-direct-label{ font-weight:700; color:var(--ink); display:block; margin-bottom:var(--sp-xs); }
   .h2h-game{ padding:var(--sp-sm) var(--sp-lg); margin-bottom:var(--sp-xs); }
   .h2h-game .h2h-cell-label{ font-size:var(--fs-sm); text-transform:none; letter-spacing:0; color:var(--ink-dim); }
   .h2h-game-tag{ font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.05em; color:var(--accent, #4ade80); margin-left:var(--sp-xs); }
+  .h2h-vs{ font-family:'Oswald',sans-serif; font-size:var(--fs-sm); color:var(--ink-dim); margin:0 var(--sp-md); }
   .trash-card{
     background:var(--surface);
     border:1px solid var(--line);
@@ -1309,10 +1317,10 @@ document.querySelectorAll('.tabs-wrap button').forEach(b => b.addEventListener('
 // ===== Context Bar =====
 const CTX_TAB_CONFIG = {
   standings:'season', matchups:'season-week', preview:'season-week', review:'season-week',
-  positions:'season', draft:'season', waivers:'season', bracket:'season', whatif:'season',
+  positions:'season-week', draft:'season', waivers:'season', bracket:'season', whatif:'season',
   awards:'multi', h2h:'multi', elo:'multi',
-  profile:'all', history:'all', records:'all', trends:'all',
-  milestones:'all', otd:'all', belt:'all'
+  profile:'all', history:'multi', records:'all', trends:'all',
+  milestones:'all', otd:'all', belt:'multi'
 };
 
 function getAvailableYears(){
@@ -1520,16 +1528,9 @@ function gradeDraftPicks(picks, pmap){
 async function renderDraftContent(){
   const view = document.getElementById('draftView');
   if (!view) return;
-  // Ensure hidden draftYearSel exists (renderDraftBody reads it)
-  if (!document.getElementById('draftYearSel')) {
-    const hiddenSel = document.createElement('select');
-    hiddenSel.id = 'draftYearSel';
-    hiddenSel.style.display = 'none';
-    view.prepend(hiddenSel);
-  }
-  document.getElementById('draftYearSel').value = state.seasonYear || latestLikelySeason;
-  view.innerHTML = '<div id="draftBody"></div>';
-  if (document.getElementById('draftYearSel').parentNode !== view) view.prepend(document.getElementById('draftYearSel'));
+  const yr = state.seasonYear || latestLikelySeason;
+  view.innerHTML = '<select id="draftYearSel" style="display:none"></select><div id="draftBody"></div>';
+  document.getElementById('draftYearSel').value = yr;
   renderDraftBody();
 }
 
@@ -2003,7 +2004,7 @@ function renderStandings(){
 
   let rows = sorted.map((t, i) => {
     const r = t.record?.overall || {};
-    const rec = [r.wins||0, r.losses||0, r.ties||0].join('-');
+    const rec = (r.wins||0) + '-' + (r.losses||0);
     const apPct = allPlayPct(allPlay[t.id] || { wins: 0, losses: 0, ties: 0 });
     return '<tr>' +
       '<td class="rank">' + (i+1) + '</td>' +
@@ -2035,6 +2036,7 @@ function espnMatchupUrl(year, week){
     '&matchupPeriodId=' + encodeURIComponent(week);
 }
 
+
 function renderMatchups(){
   const teamsById = {};
   state.teams.forEach(t => teamsById[t.id] = t);
@@ -2056,8 +2058,8 @@ function renderMatchups(){
     const awayPts = away.totalPoints ?? 0;
     const homeWin = homePts > awayPts;
     const awayWin = awayPts > homePts;
-    const mUrl = espnMatchupUrl(state.seasonYear, week);
-    return '<a class="matchup" href="' + mUrl + '" target="_blank" rel="noopener" title="View this matchup on ESPN">' +
+    const mUrl = espnBoxScoreUrl(home.teamId, week, state.seasonYear);
+    return '<a class="matchup" href="' + mUrl + '" target="_blank" rel="noopener" title="View box score on ESPN">' +
       '<div class="side ' + (homeWin?'win':(awayWin?'lose':'')) + '">' +
         '<span class="nm">' + escapeHtml(homeTeam ? teamDisplayName(homeTeam) : 'TBD') + '</span>' +
         '<span class="pts">' + homePts.toFixed(1) + '</span>' +
@@ -2531,14 +2533,15 @@ function downloadRecapCard(){
   const banner = '<div class="placeholder-banner">"Projected vs. actual" isn\'t here yet — that needs roster/box-score data this app doesn\'t currently fetch. Everything else (results, margins, streak context, banter) is real and recomputes fresh every time you open this tab.</div>';
 
   const { priorWeek } = currentAndPriorWeeks();
-  if (priorWeek === null) {
+  const reviewWeek = viewWeekSelect.value ? parseInt(viewWeekSelect.value, 10) : priorWeek;
+  if (reviewWeek === null) {
     reviewView.innerHTML = banner + '<div class="status">No completed weeks yet this season.</div>';
     return;
   }
 
-  const games = state.schedule.filter(g => g.matchupPeriodId === priorWeek && g.home && g.away && g.winner && g.winner !== 'UNDECIDED');
+  const games = state.schedule.filter(g => g.matchupPeriodId === reviewWeek && g.home && g.away && g.winner && g.winner !== 'UNDECIDED');
   if (!games.length) {
-    reviewView.innerHTML = banner + '<div class="status">No completed matchups found for Week ' + priorWeek + '.</div>';
+    reviewView.innerHTML = banner + '<div class="status">No completed matchups found for Week ' + reviewWeek + '.</div>';
     return;
   }
 
@@ -4984,12 +4987,13 @@ function eloSparkline(series){
 }
 
 function renderEloContent(){
-  if (!history.loadedSeasons.length) { eloView.innerHTML = '<div class="status">Load a league first.</div>'; return; }
+  if (!history.loadedSeasons.length) { eloView.innerHTML = '<div class="status">Load history data to see Elo ratings.</div>'; return; }
   const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y));
   if (!checked.length) { eloView.innerHTML = '<div class="status">Check some seasons in History to build ratings.</div>'; return; }
   const rows = computeEloHistory();
   if (!rows.length) { eloView.innerHTML = '<div class="status">No completed games in the selected seasons.</div>'; return; }
-  let html =
+  const eloExplainer = '<div style="margin-bottom:var(--sp-lg);font-size:var(--fs-sm);color:var(--ink-dim);line-height:1.6;"><strong style="color:var(--ink);">What is Elo?</strong> Elo is a rating system originally designed for chess that measures relative skill. After each matchup, the winner gains points and the loser loses points \u2014 the amount depends on the expected outcome. Beating a higher-rated opponent earns more points than beating a lower-rated one. Everyone starts at 1500. <a href="https://en.wikipedia.org/wiki/Elo_rating_system" target="_blank" rel="noopener" style="color:var(--amber);">Learn more \u2197</a></div>';
+  let html = eloExplainer +
     '<div class="section-title">Elo Ratings</div>' +
     '<div class="section-note">Chronological head-to-head Elo across ' + checked.length + ' season' + (checked.length === 1 ? '' : 's') + '. Margin-of-victory adjusted, with a soft reset toward 1500 each season.</div>' +
     '<table class="elo-table"><thead><tr><th>#</th><th>Manager</th><th>Elo</th><th>Peak</th><th>Games</th><th>Trend</th></tr></thead><tbody>';
@@ -4998,7 +5002,7 @@ function renderEloContent(){
     html +=
       '<tr>' +
       '<td>' + (i + 1) + '</td>' +
-      '<td>' + escapeHtml(r.name) + '</td>' +
+      '<td><strong>' + escapeHtml(r.name) + '</strong></td>' +
       '<td class="elo-num">' + Math.round(r.elo) + '</td>' +
       '<td class="elo-peak">' + pk + '</td>' +
       '<td class="elo-num">' + r.games + '</td>' +
@@ -5466,7 +5470,8 @@ async function renderWaiversTab(){
     waiversView.innerHTML = '<div class="status">\u{1f48e} No waiver wire data available yet. Run the precompute script.</div>';
     return;
   }
-  const cur = String(state.seasonYear || seasons[0]);
+  const desired = String(state.seasonYear || seasons[0]);
+  const cur = seasons.includes(desired) ? desired : seasons[0];
   waiversView.innerHTML = '<div id="waiversDisplay"></div>';
   renderWaiversSeason(cur);
 }
@@ -5737,31 +5742,31 @@ async function renderTrendsTab(){
   html += '<p class="section-note">' + allYears.length + ' seasons (' + allYears[0] + '\u2013' + allYears[allYears.length-1] + ')</p>';
 
   // Win% trends
-  html += '<h3>Win %</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  html += '<h3>Win %</h3><table class="data trends-table"><thead><tr><th>#</th><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
   owners.forEach(o => {
     const pcts = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.winPct : null; });
     const validPcts = pcts.filter(v=>v!==null);
     const spark = trendSparkline(validPcts, 'var(--amber, #d9a441)', 80, 22);
     const curr = validPcts.length ? (validPcts[validPcts.length-1]*100).toFixed(0)+'%' : '\u2014';
     const cells = pcts.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? (v*100).toFixed(0) : '\u2014') + '</td>').join('');
-    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
+    html += '<tr><td class="rank">' + (owners.indexOf(o)+1) + '</td><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
   // Avg Points trends
-  html += '<h3>Avg Points / Game</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  html += '<h3>Avg Points / Game</h3><table class="data trends-table"><thead><tr><th>#</th><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
   owners.forEach(o => {
     const pts = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.avgPts : null; });
     const validPts = pts.filter(v=>v!==null);
     const spark = trendSparkline(validPts, '#4fc3f7', 80, 22);
     const curr = validPts.length ? validPts[validPts.length-1].toFixed(1) : '\u2014';
     const cells = pts.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? v.toFixed(0) : '\u2014') + '</td>').join('');
-    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
+    html += '<tr><td class="rank">' + (owners.indexOf(o)+1) + '</td><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
   // Finish position trends (lower is better, invert sparkline)
-  html += '<h3>Finish Position</h3><table class="data trends-table"><thead><tr><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
+  html += '<h3>Finish Position</h3><table class="data trends-table"><thead><tr><th>#</th><th>Manager</th><th>Trend</th>' + yearLabels + '<th>Curr</th></tr></thead><tbody>';
   owners.forEach(o => {
     const fins = allYears.map(yr => { const s = o.seasons.find(x=>x.year===yr); return s ? s.finish : null; });
     const validFins = fins.filter(v=>v!==null);
@@ -5770,7 +5775,7 @@ async function renderTrendsTab(){
     const spark = trendSparkline(inverted, '#81c784', 80, 22);
     const curr = validFins.length ? '#' + validFins[validFins.length-1] : '\u2014';
     const cells = fins.map(v => '<td class="num" style="text-align:center;">' + (v !== null ? v : '\u2014') + '</td>').join('');
-    html += '<tr><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
+    html += '<tr><td class="rank">' + (owners.indexOf(o)+1) + '</td><td class="team-name">' + escapeHtml(o.name) + '</td><td>' + spark + '</td>' + cells + '<td class="num" style="font-weight:600;">' + curr + '</td></tr>';
   });
   html += '</tbody></table>';
 
