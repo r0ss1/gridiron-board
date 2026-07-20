@@ -1139,6 +1139,8 @@ td.rank { width: 20px; color: var(--ink-dim); }
       <button data-tab="draft">Draft</button>
       <button data-tab="waivers">Waivers</button>
       <button data-tab="bracket">Bracket</button>
+      <button data-tab="injuries">Injuries</button>
+      <button data-tab="roster">Roster Mgmt</button>
       <span class="tab-divider"></span>
       <button data-tab="awards">Awards</button>
       <button data-tab="profile">Profile</button>
@@ -1165,7 +1167,7 @@ td.rank { width: 20px; color: var(--ink-dim); }
   <div id="beltView" style="display:none;"></div>
   <div id="recordBookView" style="display:none;"></div>
   <div id="milestonesView" style="display:none;"></div>
-  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="trendsView" style="display:none;"></div>
+  <div id="h2hView" style="display:none;"></div><div id="eloView" style="display:none;"></div><div id="otdView" style="display:none;"></div><div id="whatifView" style="display:none;"></div><div id="recapView" style="display:none;"></div><div id="draftView" style="display:none;"></div><div id="waiversView" style="display:none;"></div><div id="bracketView" style="display:none;"></div><div id="trendsView" style="display:none;"></div><div id="injuriesView" style="display:none;"></div><div id="rosterView" style="display:none;"></div>
   <div id="awardsView" style="display:none;"></div>
   <div id="profileView" style="display:none;">
     <div class="controls" style="margin-top:0;">
@@ -1226,6 +1228,8 @@ const recordBookView = document.getElementById('recordBookView');
 const waiversView = document.getElementById('waiversView');
 const bracketView = document.getElementById('bracketView');
 const trendsView = document.getElementById('trendsView');
+const injuriesView = document.getElementById('injuriesView');
+const rosterView = document.getElementById('rosterView');
 const histDownloadBtn = document.getElementById('histDownloadBtn');
 const historyStatus = document.getElementById('historyStatus');
 const historyContent = document.getElementById('historyContent');
@@ -1307,6 +1311,10 @@ function setTab(name){
   if (name === 'waivers') renderWaiversTab();
   bracketView.style.display = name === 'bracket' ? '' : 'none';
   if (name === 'bracket') renderBracketTab();
+  injuriesView.style.display = name === 'injuries' ? '' : 'none';
+  if (name === 'injuries') renderInjuriesTab();
+  rosterView.style.display = name === 'roster' ? '' : 'none';
+  if (name === 'roster') renderRosterTab();
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
   activeTabName = name;
@@ -1317,7 +1325,7 @@ document.querySelectorAll('.tabs-wrap button').forEach(b => b.addEventListener('
 // ===== Context Bar =====
 const CTX_TAB_CONFIG = {
   standings:'season', matchups:'season-week', preview:'season-week', review:'season-week',
-  positions:'season-week', draft:'season', waivers:'season', bracket:'season', whatif:'season',
+  positions:'season-week', draft:'season', waivers:'season', bracket:'season', injuries:'multi', roster:'multi', whatif:'season',
   awards:'multi', h2h:'multi', elo:'multi',
   profile:'all', history:'multi', records:'all', trends:'all',
   milestones:'all', otd:'all', belt:'multi'
@@ -1487,6 +1495,8 @@ function rerenderActiveTab(){
     case 'draft': renderDraftContent(); break;
     case 'waivers': renderWaiversTab(); break;
     case 'bracket': renderBracketTab(); break;
+    case 'injuries': renderInjuriesTab(); break;
+    case 'roster': renderRosterTab(); break;
     case 'whatif': renderWhatIfContent(); break;
     case 'awards': renderAwards(); break;
     case 'h2h': renderH2HContent(); break;
@@ -5807,6 +5817,131 @@ async function renderTrendsTab(){
   html += '</tbody></table>';
 
   trendsView.innerHTML = html;
+}
+
+
+// ===== Injuries Tab =====
+function renderInjuriesTab(){
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a,b)=>a-b);
+  if (!checked.length) { injuriesView.innerHTML = '<div class="status">Select at least one season.</div>'; return; }
+
+  const acc = {};
+  for (const yr of checked) {
+    const d = history.data[yr];
+    if (!d || !d.computed || !d.computed.rosterStats) continue;
+    const inj = d.computed.rosterStats.injuries;
+    for (const [key, data] of Object.entries(inj)) {
+      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, players: {} };
+      acc[key].totalWeeksMissed += data.totalWeeksMissed;
+      for (const p of data.players) {
+        const pk = p.name;
+        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0 };
+        acc[key].players[pk].weeks += p.weeksMissed;
+      }
+    }
+  }
+
+  const keys = Object.keys(acc).sort((a,b) => acc[b].totalWeeksMissed - acc[a].totalWeeksMissed);
+  if (!keys.length) { injuriesView.innerHTML = '<div class="status">No injury data found for selected seasons. Run precompute-rosters.js first.</div>'; return; }
+
+  const nameMap = historyTeamNames();
+  const label = checked.length > 1 ? checked[0] + '\u2013' + checked[checked.length-1] : String(checked[0]);
+
+  let html = '<h2 class="section-title">Injury Report</h2>';
+  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players marked OUT, IR, Doubtful, or Suspended on game day</p>';
+
+  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Player-Weeks Lost</th><th class="num">Players Hurt</th><th class="num">Avg Wks/Season</th></tr></thead><tbody>';
+  keys.forEach((key, i) => {
+    const d = acc[key];
+    const name = nameMap[key] || key;
+    const playerCount = Object.keys(d.players).length;
+    const avg = (d.totalWeeksMissed / checked.length).toFixed(1);
+    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + playerCount + '</td><td class="num">' + avg + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  const allPlayers = [];
+  for (const [key, d] of Object.entries(acc)) {
+    for (const [pName, pData] of Object.entries(d.players)) {
+      allPlayers.push({ name: pName, pos: pData.pos, weeks: pData.weeks, owner: nameMap[key] || key });
+    }
+  }
+  allPlayers.sort((a,b) => b.weeks - a.weeks);
+
+  html += '<h3>Most Injured Players</h3>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Manager</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
+  allPlayers.slice(0, 25).forEach((p, i) => {
+    html += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td class="team-name">' + escapeHtml(p.owner) + '</td><td class="num">' + p.weeks + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  injuriesView.innerHTML = html;
+}
+
+// ===== Roster Management Tab =====
+function renderRosterTab(){
+  const checked = history.loadedSeasons.filter(y => history.checkedSeasons.has(y)).sort((a,b)=>a-b);
+  if (!checked.length) { rosterView.innerHTML = '<div class="status">Select at least one season.</div>'; return; }
+
+  const acc = {};
+  for (const yr of checked) {
+    const d = history.data[yr];
+    if (!d || !d.computed || !d.computed.rosterStats) continue;
+    const bench = d.computed.rosterStats.bench;
+    for (const [key, data] of Object.entries(bench)) {
+      if (!acc[key]) acc[key] = { totalActual: 0, totalOptimal: 0, totalBench: 0, weeks: 0, worstWeek: null, worstYear: null };
+      acc[key].totalActual += data.totalActual;
+      acc[key].totalOptimal += data.totalOptimal;
+      acc[key].totalBench += data.totalBench;
+      acc[key].weeks += data.weeks;
+      if (data.worstWeek && (!acc[key].worstWeek || data.worstWeek.diff > acc[key].worstWeek.diff)) {
+        acc[key].worstWeek = data.worstWeek;
+        acc[key].worstYear = yr;
+      }
+    }
+  }
+
+  const keys = Object.keys(acc).sort((a,b) => {
+    const effA = acc[a].totalOptimal > 0 ? acc[a].totalActual / acc[a].totalOptimal : 0;
+    const effB = acc[b].totalOptimal > 0 ? acc[b].totalActual / acc[b].totalOptimal : 0;
+    return effB - effA;
+  });
+  if (!keys.length) { rosterView.innerHTML = '<div class="status">No roster data found for selected seasons. Run precompute-rosters.js first.</div>'; return; }
+
+  const nameMap = historyTeamNames();
+  const label = checked.length > 1 ? checked[0] + '\u2013' + checked[checked.length-1] : String(checked[0]);
+
+  let html = '<h2 class="section-title">Roster Management</h2>';
+  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 compares actual lineups to optimal (best possible) lineups using only rostered players each week</p>';
+
+  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Efficiency</th><th class="num">Pts Scored</th><th class="num">Optimal Pts</th><th class="num">Left on Bench</th><th class="num">Avg/Wk</th></tr></thead><tbody>';
+  keys.forEach((key, i) => {
+    const d = acc[key];
+    const name = nameMap[key] || key;
+    const eff = d.totalOptimal > 0 ? (d.totalActual / d.totalOptimal * 100).toFixed(1) : '100.0';
+    const left = (d.totalOptimal - d.totalActual).toFixed(1);
+    const avgLeft = d.weeks > 0 ? ((d.totalOptimal - d.totalActual) / d.weeks).toFixed(1) : '0.0';
+    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + eff + '%</td><td class="num">' + d.totalActual.toFixed(1) + '</td><td class="num">' + d.totalOptimal.toFixed(1) + '</td><td class="num">' + left + '</td><td class="num">' + avgLeft + '</td></tr>';
+  });
+  html += '</tbody></table>';
+
+  const worstWeeks = keys
+    .filter(k => acc[k].worstWeek)
+    .map(k => ({ key: k, ...acc[k].worstWeek, year: acc[k].worstYear }))
+    .sort((a,b) => b.diff - a.diff);
+
+  if (worstWeeks.length) {
+    html += '<h3>Worst Start/Sit Decisions</h3>';
+    html += '<p class="section-note">Biggest single-week points left on the bench from one wrong call</p>';
+    html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th>Year</th><th class="num">Wk</th><th>Benched</th><th class="num">Bench Pts</th><th>Started</th><th class="num">Start Pts</th><th class="num">Diff</th></tr></thead><tbody>';
+    worstWeeks.slice(0, 12).forEach((w, i) => {
+      const name = nameMap[w.key] || w.key;
+      html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + w.year + '</td><td class="num">' + w.week + '</td><td>' + escapeHtml(w.benchPlayer) + ' (' + w.pos + ')</td><td class="num">' + w.benchPts.toFixed(1) + '</td><td>' + escapeHtml(w.startedPlayer) + '</td><td class="num">' + w.startedPts.toFixed(1) + '</td><td class="num" style="color:var(--loss);">+' + w.diff.toFixed(1) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  rosterView.innerHTML = html;
 }
 
 </script>
