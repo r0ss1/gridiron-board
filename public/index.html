@@ -5861,22 +5861,54 @@ function renderInjuriesTab(){
   });
   html += '</tbody></table>';
 
+  // Build per-season player rows (so each row shows the season)
   const allPlayers = [];
-  for (const [key, d] of Object.entries(acc)) {
-    for (const [pName, pData] of Object.entries(d.players)) {
-      allPlayers.push({ name: pName, pos: pData.pos, weeks: pData.weeks, injury: pData.injury, owner: nameMap[key] || key });
+  for (const yr of checked) {
+    const d = history.data[yr];
+    if (!d || !d.computed || !d.computed.rosterStats) continue;
+    const inj = d.computed.rosterStats.injuries;
+    for (const [key, data] of Object.entries(inj)) {
+      for (const p of data.players) {
+        allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
+      }
     }
   }
-  allPlayers.sort((a,b) => b.weeks - a.weeks);
+  allPlayers.sort((a,b) => b.weeks - a.weeks || b.season - a.season);
 
+  // Manager dropdown
+  const managerList = keys.map(k => ({ key: k, name: nameMap[k] || k })).sort((a,b) => a.name.localeCompare(b.name));
   html += '<h3>Most Injured Players</h3>';
-  html += '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Injury</th><th>Manager</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
-  allPlayers.slice(0, 25).forEach((p, i) => {
-    html += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td>' + escapeHtml(p.injury || '\u2014') + '</td><td class="team-name">' + escapeHtml(p.owner) + '</td><td class="num">' + p.weeks + '</td></tr>';
-  });
-  html += '</tbody></table>';
+  html += '<div style="margin-bottom:var(--sp-sm)"><label style="font-size:var(--fs-sm);margin-right:var(--sp-xs)">Manager:</label>';
+  html += '<select id="injuryManagerFilter" style="font-size:var(--fs-sm);padding:var(--sp-xs) var(--sp-sm);border-radius:6px;border:1px solid var(--clr-border);background:var(--clr-surface);color:var(--clr-text)">';
+  html += '<option value="">All Managers</option>';
+  managerList.forEach(m => { html += '<option value="' + m.key + '">' + escapeHtml(m.name) + '</option>'; });
+  html += '</select></div>';
+  html += '<div id="injuryPlayerTable"></div>';
 
   injuriesView.innerHTML = html;
+
+  // Render table function (called on dropdown change)
+  function renderInjuryPlayerTable(filterKey) {
+    const filtered = filterKey ? allPlayers.filter(p => p.ownerKey === filterKey) : allPlayers;
+    const limit = filterKey ? 50 : 25;
+    const showManager = !filterKey;
+    let t = '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Injury</th>';
+    if (showManager) t += '<th>Manager</th>';
+    t += '<th class="num">Season</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
+    filtered.slice(0, limit).forEach((p, i) => {
+      t += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td>' + escapeHtml(p.injury || '\u2014') + '</td>';
+      if (showManager) t += '<td class="team-name">' + escapeHtml(p.owner) + '</td>';
+      t += '<td class="num">' + p.season + '</td><td class="num">' + p.weeks + '</td></tr>';
+    });
+    if (filtered.length === 0) t += '<tr><td colspan="' + (showManager ? 7 : 6) + '">No injuries recorded.</td></tr>';
+    t += '</tbody></table>';
+    document.getElementById('injuryPlayerTable').innerHTML = t;
+  }
+
+  renderInjuryPlayerTable('');
+  document.getElementById('injuryManagerFilter').addEventListener('change', function() {
+    renderInjuryPlayerTable(this.value);
+  });
 }
 
 // ===== Roster Management Tab =====
