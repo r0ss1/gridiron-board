@@ -1528,9 +1528,7 @@ function gradeDraftPicks(picks, pmap){
 async function renderDraftContent(){
   const view = document.getElementById('draftView');
   if (!view) return;
-  const yr = state.seasonYear || latestLikelySeason;
-  view.innerHTML = '<select id="draftYearSel" style="display:none"></select><div id="draftBody"></div>';
-  document.getElementById('draftYearSel').value = yr;
+  view.innerHTML = '<div id="draftBody"></div>';
   renderDraftBody();
 }
 
@@ -1614,7 +1612,7 @@ async function computeDraftSuperlatives(year){
 
 async function renderDraftBody(){
   const body = document.getElementById('draftBody');
-  const year = document.getElementById('draftYearSel').value;
+  const year = state.seasonYear || document.getElementById('draftYearSel')?.value || latestLikelySeason;
   body.innerHTML = '<p>Loading draft data\u2026</p>';
   const data = await fetchDraftData(year);
   if (!data || !data.draftDetail || !Array.isArray(data.draftDetail.picks) || !data.draftDetail.picks.length){
@@ -2028,6 +2026,10 @@ function renderStandings(){
       '<p><strong>Power</strong> &mdash; a score that rewards consistent week-to-week scoring, not just total points. Higher is better and less swingy than raw PF.</p>' +
     '</div>'
   ) : '';
+}
+
+function espnBoxScoreUrl(teamId, week, year){
+  return 'https://fantasy.espn.com/football/boxscore?leagueId=' + LEAGUE_ID + '&matchupPeriodId=' + week + '&seasonId=' + (year || state.seasonYear) + '&teamId=' + teamId;
 }
 
 function espnMatchupUrl(year, week){
