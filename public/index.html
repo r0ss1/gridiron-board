@@ -5835,20 +5835,21 @@ function renderInjuriesTab(){
       acc[key].totalWeeksMissed += data.totalWeeksMissed;
       for (const p of data.players) {
         const pk = p.name;
-        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0 };
+        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, injury: '' };
         acc[key].players[pk].weeks += p.weeksMissed;
+        if (p.injury && p.injury !== 'Unknown') acc[key].players[pk].injury = p.injury;
       }
     }
   }
 
   const keys = Object.keys(acc).sort((a,b) => acc[b].totalWeeksMissed - acc[a].totalWeeksMissed);
-  if (!keys.length) { injuriesView.innerHTML = '<div class="status">No injury data found for selected seasons. Run precompute-rosters.js first.</div>'; return; }
+  if (!keys.length) { injuriesView.innerHTML = '<div class="status">No injury data found for selected seasons. Run precompute-injuries.js first.</div>'; return; }
 
   const nameMap = historyTeamNames();
   const label = checked.length > 1 ? checked[0] + '\u2013' + checked[checked.length-1] : String(checked[0]);
 
   let html = '<h2 class="section-title">Injury Report</h2>';
-  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players marked OUT, IR, Doubtful, or Suspended on game day</p>';
+  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players listed Out or Doubtful on official NFL injury reports while on your fantasy roster</p>';
 
   html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Player-Weeks Lost</th><th class="num">Players Hurt</th><th class="num">Avg Wks/Season</th></tr></thead><tbody>';
   keys.forEach((key, i) => {
@@ -5863,15 +5864,15 @@ function renderInjuriesTab(){
   const allPlayers = [];
   for (const [key, d] of Object.entries(acc)) {
     for (const [pName, pData] of Object.entries(d.players)) {
-      allPlayers.push({ name: pName, pos: pData.pos, weeks: pData.weeks, owner: nameMap[key] || key });
+      allPlayers.push({ name: pName, pos: pData.pos, weeks: pData.weeks, injury: pData.injury, owner: nameMap[key] || key });
     }
   }
   allPlayers.sort((a,b) => b.weeks - a.weeks);
 
   html += '<h3>Most Injured Players</h3>';
-  html += '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Manager</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Injury</th><th>Manager</th><th class="num">Weeks Missed</th></tr></thead><tbody>';
   allPlayers.slice(0, 25).forEach((p, i) => {
-    html += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td class="team-name">' + escapeHtml(p.owner) + '</td><td class="num">' + p.weeks + '</td></tr>';
+    html += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td>' + escapeHtml(p.injury || '\u2014') + '</td><td class="team-name">' + escapeHtml(p.owner) + '</td><td class="num">' + p.weeks + '</td></tr>';
   });
   html += '</tbody></table>';
 
