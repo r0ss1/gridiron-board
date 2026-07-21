@@ -5831,9 +5831,10 @@ function renderInjuriesTab(){
     if (!d || !d.computed || !d.computed.rosterStats) continue;
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
-      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, totalPtsLost: 0, players: {} };
+      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, totalPtsLost: 0, byRound: { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0 }, players: {} };
       acc[key].totalWeeksMissed += data.totalWeeksMissed;
       acc[key].totalPtsLost += (data.totalPtsLost || 0);
+      if (data.byRound) { acc[key].byRound.rd1 += data.byRound.rd1 || 0; acc[key].byRound.rd2 += data.byRound.rd2 || 0; acc[key].byRound.rd3 += data.byRound.rd3 || 0; acc[key].byRound.rd4plus += data.byRound.rd4plus || 0; }
       for (const p of data.players) {
         const pk = p.name;
         if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, ptsLost: 0, ppg: p.ppg || 0, injury: '' };
@@ -5852,15 +5853,31 @@ function renderInjuriesTab(){
   const label = checked.length > 1 ? checked[0] + '\u2013' + checked[checked.length-1] : String(checked[0]);
 
   let html = '<h2 class="section-title">Injury Report</h2>';
-  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players listed Out/Doubtful on NFL injury reports, or Questionable and scored 0. Pts Lost is weighted by player PPG.</p>';
+  html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 players listed Out/Doubtful on NFL injury reports, or Questionable and scored 0. Pts Lost is weighted by player value.</p>';
+  html += '<details style="margin-bottom:var(--sp-md);font-size:var(--fs-sm);color:var(--ink-dim)"><summary style="cursor:pointer;color:var(--amber)">How is this calculated?</summary><div style="margin-top:var(--sp-xs);line-height:1.5">';
+  html += '<p><strong>Data sources:</strong> Official NFL weekly injury reports (via nflverse) cross-referenced with your ESPN fantasy roster each week. A player-week counts as a miss if any of the following are true:</p>';
+  html += '<ul style="margin:var(--sp-xs) 0;padding-left:1.2em">';
+  html += '<li><strong>Out / Doubtful</strong> on the NFL injury report while on your fantasy roster</li>';
+  html += '<li><strong>Questionable + scored 0</strong> \u2014 listed Questionable but confirmed DNP (zero fantasy points)</li>';
+  html += '<li><strong>IR slot</strong> \u2014 player in your ESPN IR slot with 0 points (catches players removed from weekly reports after IR designation)</li>';
+  html += '<li><strong>Extended absence</strong> \u2014 6+ consecutive zero-point weeks on your bench (catches PUP/NFI stashes who never appear on injury reports)</li>';
+  html += '<li><strong>Dropped while injured</strong> \u2014 if a player\u2019s last 2+ weeks on your roster were 0-point and they never reappear on any roster, remaining season weeks are attributed to you (you lost the asset even though you freed the spot)</li>';
+  html += '</ul>';
+  html += '<p><strong>Pts Lost</strong> = Weeks Missed \u00d7 estimated PPG. PPG is based on:</p>';
+  html += '<ul style="margin:var(--sp-xs) 0;padding-left:1.2em">';
+  html += '<li>If the player played 7+ games that season: their <em>actual</em> season PPG</li>';
+  html += '<li>If fewer than 7 games: <em>draft capital expectation</em> based on where they were drafted (Rd1 \u2248 17 PPG, Rd2 \u2248 15, Rd3 \u2248 13, tapering down). Undrafted players use a positional default (RB/WR \u2248 8\u20139, QB \u2248 14, TE/K \u2248 7).</li>';
+  html += '</ul>';
+  html += '<p><strong>Round columns (Rd1\u2013Rd4+)</strong> show how many missed weeks came from players drafted in each round \u2014 losing a 1st-rounder for 10 weeks hurts more than losing a 12th-rounder.</p>';
+  html += '</div></details>';
 
-  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Pts Lost</th><th class="num">Weeks Lost</th><th class="num">Players</th><th class="num">Avg Pts/Season</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Pts Lost</th><th class="num">Wks Lost</th><th class="num">Rd1</th><th class="num">Rd2</th><th class="num">Rd3</th><th class="num">Rd4+</th><th class="num">Players</th></tr></thead><tbody>';
   keys.forEach((key, i) => {
     const d = acc[key];
     const name = nameMap[key] || key;
     const playerCount = Object.keys(d.players).length;
-    const avgPts = (d.totalPtsLost / checked.length).toFixed(0);
-    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalPtsLost.toFixed(0) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + playerCount + '</td><td class="num">' + avgPts + '</td></tr>';
+    const r = d.byRound || { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0 };
+    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalPtsLost.toFixed(0) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + r.rd1 + '</td><td class="num">' + r.rd2 + '</td><td class="num">' + r.rd3 + '</td><td class="num">' + r.rd4plus + '</td><td class="num">' + playerCount + '</td></tr>';
   });
   html += '</tbody></table>';
 
@@ -5872,7 +5889,7 @@ function renderInjuriesTab(){
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
       for (const p of data.players) {
-        allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, ptsLost: p.ptsLost || 0, ppg: p.ppg || 0, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
+        allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, ptsLost: p.ptsLost || 0, ppg: p.ppg || 0, rd: p.rd || 99, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
       }
     }
   }
@@ -5897,13 +5914,13 @@ function renderInjuriesTab(){
     const showManager = !filterKey;
     let t = '<table class="data"><thead><tr><th>#</th><th>Player</th><th>Pos</th><th>Injury</th>';
     if (showManager) t += '<th>Manager</th>';
-    t += '<th class="num">Season</th><th class="num">PPG</th><th class="num">Wks</th><th class="num">Pts Lost</th></tr></thead><tbody>';
+    t += '<th class="num">Season</th><th class="num">Rd</th><th class="num">PPG</th><th class="num">Wks</th><th class="num">Pts Lost</th></tr></thead><tbody>';
     filtered.slice(0, limit).forEach((p, i) => {
       t += '<tr><td class="rank">' + (i+1) + '</td><td>' + escapeHtml(p.name) + '</td><td>' + p.pos + '</td><td>' + escapeHtml(p.injury || '\u2014') + '</td>';
       if (showManager) t += '<td class="team-name">' + escapeHtml(p.owner) + '</td>';
-      t += '<td class="num">' + p.season + '</td><td class="num">' + p.ppg.toFixed(1) + '</td><td class="num">' + p.weeks + '</td><td class="num">' + p.ptsLost.toFixed(0) + '</td></tr>';
+      t += '<td class="num">' + p.season + '</td><td class="num">' + (p.rd <= 15 ? p.rd : 'FA') + '</td><td class="num">' + p.ppg.toFixed(1) + '</td><td class="num">' + p.weeks + '</td><td class="num">' + p.ptsLost.toFixed(0) + '</td></tr>';
     });
-    if (filtered.length === 0) t += '<tr><td colspan="' + (showManager ? 9 : 8) + '">No injuries recorded.</td></tr>';
+    if (filtered.length === 0) t += '<tr><td colspan="' + (showManager ? 10 : 9) + '">No injuries recorded.</td></tr>';
     t += '</tbody></table>';
     document.getElementById('injuryPlayerTable').innerHTML = t;
   }
@@ -5949,6 +5966,12 @@ function renderRosterTab(){
 
   let html = '<h2 class="section-title">Roster Management</h2>';
   html += '<p class="section-note">' + checked.length + ' season' + (checked.length>1?'s':'') + ' (' + label + ') \u2014 compares actual lineups to optimal (best possible) lineups using only rostered players each week</p>';
+  html += '<details style="margin-bottom:var(--sp-md);font-size:var(--fs-sm);color:var(--ink-dim)"><summary style="cursor:pointer;color:var(--amber)">How is this calculated?</summary><div style="margin-top:var(--sp-xs);line-height:1.5">';
+  html += '<p><strong>Efficiency %</strong> = Actual Points Scored \u00f7 Optimal Points. Optimal is the maximum your roster <em>could</em> have scored each week if you made perfect start/sit decisions, subject to lineup slot constraints (QB, 2\u00d7RB, 2\u00d7WR, TE, FLEX, K, D/ST). Only players already on your roster that week are considered \u2014 this measures lineup-setting skill, not waiver wire activity.</p>';
+  html += '<p><strong>Left on Bench</strong> = Optimal \u2212 Actual. Total fantasy points you forfeited across all weeks by not starting the right players.</p>';
+  html += '<p><strong>Avg/Wk</strong> = Left on Bench \u00f7 number of weeks played. A lower number means you consistently set near-optimal lineups.</p>';
+  html += '<p><strong>Worst Start/Sit</strong> = The single biggest mistake in one week: a benched player who outscored a starter at the same eligible position (or FLEX). The "Diff" column shows how many extra points you would have gained by swapping them.</p>';
+  html += '</div></details>';
 
   html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Efficiency</th><th class="num">Pts Scored</th><th class="num">Optimal Pts</th><th class="num">Left on Bench</th><th class="num">Avg/Wk</th></tr></thead><tbody>';
   keys.forEach((key, i) => {
