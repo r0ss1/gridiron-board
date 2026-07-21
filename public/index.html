@@ -3509,7 +3509,7 @@ function computeAwards(year, teams, schedule, settings){
       // Best Roster Manager: highest lineup efficiency
       const bestMgr = benchEntries.reduce((a, b) => (b[1].efficiency > a[1].efficiency) ? b : a);
       const bestMgrName = teamDisplayName({ primaryOwner: bestMgr[0] });
-      awards.push({ emoji: '\u{1f9e0}', title: 'The Optimizer', desc: 'Best lineup efficiency \u2014 fewest points left on the bench relative to optimal', winner: bestMgrName, detail: bestMgr[1].efficiency.toFixed(1) + '% efficiency (' + bestMgr[1].avgLeftOnBench.toFixed(1) + ' pts/wk left on bench)', ownerKey: bestMgr[0] });
+      awards.push({ emoji: '\u{1f9ee}', title: 'The Optimizer', desc: 'Best lineup efficiency \u2014 fewest points left on the bench relative to optimal', winner: bestMgrName, detail: bestMgr[1].efficiency.toFixed(1) + '% efficiency (' + bestMgr[1].avgLeftOnBench.toFixed(1) + ' pts/wk left on bench)', ownerKey: bestMgr[0] });
 
       // Worst Roster Manager: lowest lineup efficiency
       const worstMgr = benchEntries.reduce((a, b) => (b[1].efficiency < a[1].efficiency) ? b : a);
@@ -4606,6 +4606,12 @@ const ALL_AWARD_TYPES = [
   { emoji: '🏜️', title: 'The Wilderness Years' },
   { emoji: '💯', title: 'Century Club' },
   { emoji: '🧊', title: 'Ice Age' },
+  { emoji: '🧮', title: 'The Optimizer' },
+  { emoji: '😴', title: 'Asleep at the Wheel' },
+  { emoji: '🩼', title: 'Walking Wounded' },
+  { emoji: '🎯', title: 'The Optimizer (Career)' },
+  { emoji: '🥱', title: 'Asleep at the Wheel (Career)' },
+  { emoji: '🏥', title: 'Walking Wounded (Career)' },
 ];
 
 // Static descriptions for the award glossary modal (Task 3/4).
