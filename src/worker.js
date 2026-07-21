@@ -23,7 +23,7 @@
 // for it via ?roster=1, e.g. for the Positions tab.
 
 const VIEWS = 'view=mTeam&view=mStandings&view=mMatchupScore&view=mSettings&view=mTransactions2';
-const LEGACY_CUTOFF_YEAR = 2018;
+const LEGACY_CUTOFF_YEAR = 2017;
 
 export default {
   async fetch(request, env) {
