@@ -1314,7 +1314,7 @@ function setTab(name){
   injuriesView.style.display = name === 'injuries' ? '' : 'none';
   if (name === 'injuries') renderInjuriesTab();
   rosterView.style.display = name === 'roster' ? '' : 'none';
-  if (name === 'roster') { try { renderRosterTab(); } catch(e) { rosterView.innerHTML = '<div class="error">Roster tab error: ' + e.message + '<br><pre>' + e.stack + '</pre></div>'; } }
+  if (name === 'roster') renderRosterTab();
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
   activeTabName = name;
@@ -1496,7 +1496,7 @@ function rerenderActiveTab(){
     case 'waivers': renderWaiversTab(); break;
     case 'bracket': renderBracketTab(); break;
     case 'injuries': renderInjuriesTab(); break;
-    case 'roster': try { renderRosterTab(); } catch(e) { document.getElementById('rosterView').innerHTML = '<div class="error">Roster rerender error: ' + e.message + '</div>'; } break;
+    case 'roster': renderRosterTab(); break;
     case 'whatif': renderWhatIfContent(); break;
     case 'awards': renderAwards(); break;
     case 'h2h': renderH2HContent(); break;
@@ -5831,19 +5831,39 @@ function renderInjuriesTab(){
     if (!d || !d.computed || !d.computed.rosterStats) continue;
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
-      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, totalPtsLost: 0, byRound: { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0 }, players: {} };
+      if (!acc[key]) acc[key] = { totalWeeksMissed: 0, totalPtsLost: 0, byRound: { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0, fa: 0 }, players: {} };
       acc[key].totalWeeksMissed += data.totalWeeksMissed;
       acc[key].totalPtsLost += (data.totalPtsLost || 0);
-      if (data.byRound) { acc[key].byRound.rd1 += data.byRound.rd1 || 0; acc[key].byRound.rd2 += data.byRound.rd2 || 0; acc[key].byRound.rd3 += data.byRound.rd3 || 0; acc[key].byRound.rd4plus += data.byRound.rd4plus || 0; }
+      
       for (const p of data.players) {
+        if (p.pos === 'K') continue;
         const pk = p.name;
-        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, ptsLost: 0, ppg: p.ppg || 0, injury: '' };
+        if (!acc[key].players[pk]) acc[key].players[pk] = { pos: p.pos, weeks: 0, ptsLost: 0, ppg: p.ppg || 0, rd: p.rd || 99, injury: '' };
         acc[key].players[pk].weeks += p.weeksMissed;
         acc[key].players[pk].ptsLost += (p.ptsLost || 0);
         if (p.ppg) acc[key].players[pk].ppg = p.ppg;
         if (p.injury && p.injury !== 'Unknown') acc[key].players[pk].injury = p.injury;
       }
     }
+  }
+
+  // Recompute totals and byRound from player data (excludes kickers, splits FA from Rd4+)
+  for (const key of Object.keys(acc)) {
+    const byR = { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0, fa: 0 };
+    let totalWks = 0, totalPts = 0;
+    for (const p of Object.values(acc[key].players)) {
+      totalWks += p.weeks;
+      totalPts += p.ptsLost;
+      const rd = p.rd || 99;
+      if (rd === 1) byR.rd1 += p.weeks;
+      else if (rd === 2) byR.rd2 += p.weeks;
+      else if (rd === 3) byR.rd3 += p.weeks;
+      else if (rd >= 4 && rd <= 15) byR.rd4plus += p.weeks;
+      else byR.fa += p.weeks;
+    }
+    acc[key].byRound = byR;
+    acc[key].totalWeeksMissed = totalWks;
+    acc[key].totalPtsLost = totalPts;
   }
 
   const keys = Object.keys(acc).sort((a,b) => acc[b].totalPtsLost - acc[a].totalPtsLost);
@@ -5868,16 +5888,16 @@ function renderInjuriesTab(){
   html += '<li>If the player played 7+ games that season: their <em>actual</em> season PPG</li>';
   html += '<li>If fewer than 7 games: <em>draft capital expectation</em> based on where they were drafted (Rd1 \u2248 17 PPG, Rd2 \u2248 15, Rd3 \u2248 13, tapering down). Undrafted players use a positional default (RB/WR \u2248 8\u20139, QB \u2248 14, TE/K \u2248 7).</li>';
   html += '</ul>';
-  html += '<p><strong>Round columns (Rd1\u2013Rd4+)</strong> show how many missed weeks came from players drafted in each round \u2014 losing a 1st-rounder for 10 weeks hurts more than losing a 12th-rounder.</p>';
+  html += '<p><strong>Round columns (Rd1\u2013Rd4+, FA)</strong> show how many missed weeks came from players drafted in each round vs. undrafted free agents \u2014 losing a 1st-rounder for 10 weeks hurts more than losing a waiver pickup.</p>';
   html += '</div></details>';
 
-  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Pts Lost</th><th class="num">Wks Lost</th><th class="num">Rd1</th><th class="num">Rd2</th><th class="num">Rd3</th><th class="num">Rd4+</th><th class="num">Players</th></tr></thead><tbody>';
+  html += '<table class="data"><thead><tr><th>#</th><th>Manager</th><th class="num">Pts Lost</th><th class="num">Wks Lost</th><th class="num">Rd1</th><th class="num">Rd2</th><th class="num">Rd3</th><th class="num">Rd4+</th><th class="num">FA</th><th class="num">Players</th></tr></thead><tbody>';
   keys.forEach((key, i) => {
     const d = acc[key];
     const name = nameMap[key] || key;
     const playerCount = Object.keys(d.players).length;
     const r = d.byRound || { rd1: 0, rd2: 0, rd3: 0, rd4plus: 0 };
-    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalPtsLost.toFixed(0) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + r.rd1 + '</td><td class="num">' + r.rd2 + '</td><td class="num">' + r.rd3 + '</td><td class="num">' + r.rd4plus + '</td><td class="num">' + playerCount + '</td></tr>';
+    html += '<tr><td class="rank">' + (i+1) + '</td><td class="team-name">' + escapeHtml(name) + '</td><td class="num">' + d.totalPtsLost.toFixed(0) + '</td><td class="num">' + d.totalWeeksMissed + '</td><td class="num">' + r.rd1 + '</td><td class="num">' + r.rd2 + '</td><td class="num">' + r.rd3 + '</td><td class="num">' + r.rd4plus + '</td><td class="num">' + r.fa + '</td><td class="num">' + playerCount + '</td></tr>';
   });
   html += '</tbody></table>';
 
@@ -5889,6 +5909,7 @@ function renderInjuriesTab(){
     const inj = d.computed.rosterStats.injuries;
     for (const [key, data] of Object.entries(inj)) {
       for (const p of data.players) {
+        if (p.pos === 'K') continue;
         allPlayers.push({ name: p.name, pos: p.pos, weeks: p.weeksMissed, ptsLost: p.ptsLost || 0, ppg: p.ppg || 0, rd: p.rd || 99, injury: p.injury || '', season: yr, ownerKey: key, owner: nameMap[key] || key });
       }
     }
@@ -5941,6 +5962,7 @@ function renderRosterTab(){
     const d = history.data[yr];
     if (!d || !d.computed || !d.computed.rosterStats) continue;
     const bench = d.computed.rosterStats.bench;
+    if (!bench) continue;
     for (const [key, data] of Object.entries(bench)) {
       if (!acc[key]) acc[key] = { totalActual: 0, totalOptimal: 0, totalBench: 0, weeks: 0, worstWeek: null, worstYear: null };
       acc[key].totalActual += data.totalActual;
