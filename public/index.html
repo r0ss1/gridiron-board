@@ -3500,11 +3500,44 @@ function computeAwards(year, teams, schedule, settings){
     awards.push({ emoji: '💎', title: 'Diamond in the Rough', desc: 'Best waiver/FA pickup (most pts while rostered, min 3 wks)', winner: _bpOwner, detail: _bpData.playerName + ' (Wk ' + _bpData.weekAdded + ', ' + _bpData.totalPoints.toFixed(1) + ' pts, ' + _bpData.weeksRostered + ' wks)', ownerKey: _bpData.ownerKey });
   }
 
+  // ---- Roster Management & Injuries (precomputed) ----
+  const _rosterStats = (history && history.data && history.data[year])
+    ? history.data[year].computed?.rosterStats : null;
+  if (_rosterStats && _rosterStats.bench) {
+    const benchEntries = Object.entries(_rosterStats.bench);
+    if (benchEntries.length) {
+      // Best Roster Manager: highest lineup efficiency
+      const bestMgr = benchEntries.reduce((a, b) => (b[1].efficiency > a[1].efficiency) ? b : a);
+      const bestMgrName = teamDisplayName({ primaryOwner: bestMgr[0] });
+      awards.push({ emoji: '\u{1f9e0}', title: 'The Optimizer', desc: 'Best lineup efficiency \u2014 fewest points left on the bench relative to optimal', winner: bestMgrName, detail: bestMgr[1].efficiency.toFixed(1) + '% efficiency (' + bestMgr[1].avgLeftOnBench.toFixed(1) + ' pts/wk left on bench)', ownerKey: bestMgr[0] });
+
+      // Worst Roster Manager: lowest lineup efficiency
+      const worstMgr = benchEntries.reduce((a, b) => (b[1].efficiency < a[1].efficiency) ? b : a);
+      const worstMgrName = teamDisplayName({ primaryOwner: worstMgr[0] });
+      awards.push({ emoji: '\u{1f634}', title: 'Asleep at the Wheel', desc: 'Worst lineup efficiency \u2014 most points left on the bench relative to optimal', winner: worstMgrName, detail: worstMgr[1].efficiency.toFixed(1) + '% efficiency (' + worstMgr[1].avgLeftOnBench.toFixed(1) + ' pts/wk left on bench)', ownerKey: worstMgr[0] });
+    }
+  }
+  if (_rosterStats && _rosterStats.injuries) {
+    const injEntries = Object.entries(_rosterStats.injuries);
+    if (injEntries.length) {
+      // Most Injuries: highest pts lost (excl kickers)
+      const injTotals = injEntries.map(([k, v]) => {
+        const ptsLost = v.players.filter(p => p.pos !== 'K').reduce((s, p) => s + (p.ptsLost || 0), 0);
+        return [k, ptsLost];
+      });
+      const mostInj = injTotals.reduce((a, b) => b[1] > a[1] ? b : a);
+      if (mostInj[1] > 0) {
+        const mostInjName = teamDisplayName({ primaryOwner: mostInj[0] });
+        awards.push({ emoji: '\u{1fa7c}', title: 'Walking Wounded', desc: 'Most points lost to injured players (excl. kickers)', winner: mostInjName, detail: mostInj[1].toFixed(0) + ' pts lost to injuries', ownerKey: mostInj[0] });
+      }
+    }
+  }
+
   return awards;
 }
 
 // Career/all-time awards — computed ONCE across all loaded history, not per-season.
-const CAREER_AWARD_TITLES = new Set(['The Dynasty','Bridesmaid','The Wilderness Years','Century Club','Ice Age']);
+const CAREER_AWARD_TITLES = new Set(['The Dynasty','Bridesmaid','The Wilderness Years','Century Club','Ice Age','The Optimizer (Career)','Asleep at the Wheel (Career)','Walking Wounded (Career)']);
 
 function computeCareerAwards(){
   if (!history || !history.data || Object.keys(history.data).length < 3) return [];
@@ -3634,6 +3667,57 @@ function computeCareerAwards(){
   });
   if (worstIce) {
     awards.push({ emoji: '\u{1f9ca}', title: 'Ice Age', desc: 'Most sub-70 point games, all-time', winner: worstIce.name, detail: worstIce.count + ' games scoring under 70' });
+  }
+
+  // All-time Roster Management & Injuries
+  const allBench = {}, allInj = {};
+  for (const yr of allYears) {
+    const rs = history.data[yr]?.computed?.rosterStats;
+    if (rs?.bench) {
+      for (const [k, v] of Object.entries(rs.bench)) {
+        if (!allBench[k]) allBench[k] = { actual: 0, optimal: 0, weeks: 0, bench: 0 };
+        allBench[k].actual += v.totalActual;
+        allBench[k].optimal += v.totalOptimal;
+        allBench[k].bench += v.totalBench;
+        allBench[k].weeks += v.weeks;
+      }
+    }
+    if (rs?.injuries) {
+      for (const [k, v] of Object.entries(rs.injuries)) {
+        if (!allInj[k]) allInj[k] = 0;
+        allInj[k] += v.players.filter(p => p.pos !== 'K').reduce((s, p) => s + (p.ptsLost || 0), 0);
+      }
+    }
+  }
+
+  const benchKeys = Object.keys(allBench).filter(k => allBench[k].weeks >= 28);
+  if (benchKeys.length) {
+    // All-time best roster manager
+    const bestAll = benchKeys.reduce((a, b) => {
+      const effA = allBench[a].optimal > 0 ? allBench[a].actual / allBench[a].optimal : 0;
+      const effB = allBench[b].optimal > 0 ? allBench[b].actual / allBench[b].optimal : 0;
+      return effB > effA ? b : a;
+    });
+    const bestEff = (allBench[bestAll].actual / allBench[bestAll].optimal * 100).toFixed(1);
+    const bestName = ownerSeasons[bestAll]?.name || bestAll;
+    awards.push({ emoji: '\u{1f3af}', title: 'The Optimizer (Career)', desc: 'Highest all-time lineup efficiency (min 2 seasons)', winner: bestName, detail: bestEff + '% efficiency over ' + allBench[bestAll].weeks + ' weeks' });
+
+    // All-time worst roster manager
+    const worstAll = benchKeys.reduce((a, b) => {
+      const effA = allBench[a].optimal > 0 ? allBench[a].actual / allBench[a].optimal : 0;
+      const effB = allBench[b].optimal > 0 ? allBench[b].actual / allBench[b].optimal : 0;
+      return effB < effA ? b : a;
+    });
+    const worstEff = (allBench[worstAll].actual / allBench[worstAll].optimal * 100).toFixed(1);
+    const worstName = ownerSeasons[worstAll]?.name || worstAll;
+    awards.push({ emoji: '\u{1f971}', title: 'Asleep at the Wheel (Career)', desc: 'Lowest all-time lineup efficiency (min 2 seasons)', winner: worstName, detail: worstEff + '% efficiency over ' + allBench[worstAll].weeks + ' weeks' });
+  }
+
+  const injKeys = Object.keys(allInj).filter(k => allInj[k] > 0);
+  if (injKeys.length) {
+    const mostInjAll = injKeys.reduce((a, b) => allInj[b] > allInj[a] ? b : a);
+    const mostInjName = ownerSeasons[mostInjAll]?.name || mostInjAll;
+    awards.push({ emoji: '\u{1f3e5}', title: 'Walking Wounded (Career)', desc: 'Most career points lost to injuries (excl. kickers)', winner: mostInjName, detail: allInj[mostInjAll].toFixed(0) + ' pts lost to injuries all-time' });
   }
 
   return awards;
