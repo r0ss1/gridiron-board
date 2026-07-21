@@ -1314,7 +1314,7 @@ function setTab(name){
   injuriesView.style.display = name === 'injuries' ? '' : 'none';
   if (name === 'injuries') renderInjuriesTab();
   rosterView.style.display = name === 'roster' ? '' : 'none';
-  if (name === 'roster') renderRosterTab();
+  if (name === 'roster') { try { renderRosterTab(); } catch(e) { rosterView.innerHTML = '<div class="error">Roster tab error: ' + e.message + '<br><pre>' + e.stack + '</pre></div>'; } }
   trendsView.style.display = name === 'trends' ? '' : 'none';
   if (name === 'trends') renderTrendsTab();
   activeTabName = name;
@@ -1496,7 +1496,7 @@ function rerenderActiveTab(){
     case 'waivers': renderWaiversTab(); break;
     case 'bracket': renderBracketTab(); break;
     case 'injuries': renderInjuriesTab(); break;
-    case 'roster': renderRosterTab(); break;
+    case 'roster': try { renderRosterTab(); } catch(e) { document.getElementById('rosterView').innerHTML = '<div class="error">Roster rerender error: ' + e.message + '</div>'; } break;
     case 'whatif': renderWhatIfContent(); break;
     case 'awards': renderAwards(); break;
     case 'h2h': renderH2HContent(); break;
